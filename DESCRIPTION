@@ -1,0 +1,45 @@
+Type: Package
+Package: VarGen
+Title: Fetching Variants Related to Phenotypes Using Public Databases
+Version: 0.1.0
+Authors@R: c(
+    person("Corentin", "Molitor", email = "c.molitor@cranfield.ac.uk", role = c("aut", "cre")),
+	person("Matt", "Brember", role = "aut"),
+    person("Fady", "Mohareb", role = "aut"))	   
+Description: Discover and annotate variants related to phenotypes.
+    VarGen is centred on the genes linked to the disease of interest in OMIM 
+	(subsequently called the "OMIM genes").
+    Variants are obtained from the following sources:
+    - OMIM: Variants located directly on the "OMIM genes".
+    - FANTOM5: Variants located on the enhancers of the "OMIM genes".
+    - GTEx: Variants associated with a change in expression for 
+	  the "OMIM genes", in certain tissues.
+    - GWAS catalog: Variants associated with the phenotype of interest.
+License: MIT + file LICENSE
+URL: https://github.com/MCorentin/VarGen
+BugReports: https://github.com/MCorentin/VarGen/issues
+Imports:
+	BiocGenerics (>= 0.30.0),
+	BiocManager (>= 1.30.4),
+	biomaRt (>= 2.40.3),
+	GenomeInfoDb (>= 1.20.0),
+	GenomicRanges (>= 1.36.0),
+	ggplot2 (>= 3.2.1),
+	gtools (>= 3.8.1),
+	gwascat (>= 2.16.0),
+	httr (>= 1.4.1),
+	IRanges (>= 2.18.1),
+	jsonlite (>= 1.6),
+	myvariant (>= 1.14.0),
+	rtracklayer (>= 1.44.2),
+	R.utils (>= 2.9.0),
+	splitstackshape (>= 1.4.8),
+	stringr (>= 1.4.0),
+	utils (>= 3.6.0)
+Suggests:
+	ggbio (>= 1.32.0),
+	grDevices (>= 3.6.0),
+	Gviz (>= 1.28.1)
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 6.1.1
