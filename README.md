@@ -38,7 +38,7 @@ All the coordinates are based on the hg38 version of the human genome.
 
 This pipeline is centred on the genes linked to the disease of interest in OMIM (subsequently called the "OMIM genes").
 
-VarGen outputs variants form the following sources:
+VarGen outputs variants from the following sources:
 - **OMIM:** Variants located directly on the "OMIM genes".
 - **FANTOM5:** Variants located on the enhancers / promoters of the "OMIM genes".
 - **GTEx:** Variants associated with a change in expression for the "OMIM genes", in certain tissues. Currently GTEx v7 
