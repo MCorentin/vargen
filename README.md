@@ -1,7 +1,9 @@
 # VarGen
 
-VarGen is an R package designed to fetch variants related to phenotypes from the Online Mendelian Inheritance in Man (OMIM) 
-and / or Genome Wide Association Studies (GWAS).
+VarGen is an R package designed to get a list of variants related to a disease. It just need an OMIM morbid ID as input 
+and optionally a list of tissues / gwas traits of interest to complete the results. You can use your own customised list 
+of genes instead of an OMIM ID. VarGen is also capable of annotating the variants to help you rank and identify the most 
+impactful ones.
 
 All the coordinates are based on the hg38 version of the human genome.
 
@@ -13,10 +15,10 @@ All the coordinates are based on the hg38 version of the human genome.
     - [VarGen workflow](#vargen-workflow)
     - [VarPhen workflow](#varphen-workflow)
 - [Installation](#installation)
+    - [Dependencies](#dependencies)
     - [Install VarGen with devtools](#install-vargen-with-devtools)
     - [Install VarGen from source](#install-vargen-from-source)
-    - [Database files](#database-files)
-    - [Dependencies](#dependencies)
+    - [Database files](#database-files) 
 - [How to use VarGen](#how-to-use-vargen)
     - [Examples](#examples)
 - [How to use VarPhen](#how-to-use-varphen)
@@ -64,6 +66,38 @@ directly related to the disease of interest. It relies on biomaRt to link varian
 
 VarGen is available on [GitHub](https://github.com/MCorentin/VarGen "GitHub VarGen page")
 
+### Dependencies
+
+VarGen needs the following:
+- **R** (tested on version 3.6)
+- **An internet connection**
+- **The following R libraries:** (The number is the version tested during development)
+```` 
+    Bioconductor (3.9)      biomaRt (2.40.3)        gtools (3.8.1)         
+    gwascat (2.16.0)        jsonlite (1.6)          GenomeInfoDb (1.20.0)
+    IRanges (2.18.1)        httr (1.4.1)            BiocGenerics (0.30.0)
+    stringr (1.4.0)         utils (3.6.0)           splitstackshape (1.4.8)
+    ggplot2 (3.2.1)         rtracklayer (1.44.2)    BiocManager (1.30.4)
+    R.utils (2.9.0)         myvariant (1.14.0)      GenomicRanges (1.36.0)
+````
+
+- Optional R libraries (used for the visualisation functions: "vargen_visualisation" and "plot_manhattan_gwas"):
+````
+    Gviz (1.28.1)           ggbio (>= 1.32.0)       grDevices (>= 3.6.0)
+````
+
+To install the dependencies you can use the following command in R (it might take a while depending on your connection):
+````
+# If not already installed
+install.packages("BiocManager")
+
+BiocManager::install(c("biomaRt", "gtools", "GenomicRanges", "gwascat", "jsonlite",
+                       "GenomeInfoDb", "IRanges", "httr", "BiocGenerics", "stringr",
+                       "utils", "splitstackshape", "ggplot2", "rtracklayer",
+                       "R.utils", "myvariant"), dependencies = TRUE)
+````
+**note:** "R.methodsS3" and "R.oo" will be installed as dependencies of "R.utils"
+
 ### Install VarGen with devtools
 
 The easiest way to get VarGen is to install it directly from R using “devtools”:
@@ -110,38 +144,6 @@ database (GTEx) (available at: https://gtexportal.org/home/datasets). v7 and v8 
     Direct link for v7: https://storage.googleapis.com/gtex_analysis_v7/single_tissue_eqtl_data/GTEx_Analysis_v7_eQTL.tar.gz
 
     Direct link for v8: https://storage.googleapis.com/gtex_analysis_v8/single_tissue_qtl_data/GTEx_Analysis_v8_eQTL.tar 
-
-### Dependencies
-
-VarGen needs the following:
-- **R** (tested on version 3.6)
-- **An internet connection**
-- **The following R libraries:** (The number is the version tested during development)
-```` 
-    Bioconductor (3.9)      biomaRt (2.40.3)        gtools (3.8.1)         
-    gwascat (2.16.0)        jsonlite (1.6)          GenomeInfoDb (1.20.0)
-    IRanges (2.18.1)        httr (1.4.1)            BiocGenerics (0.30.0)
-    stringr (1.4.0)         utils (3.6.0)           splitstackshape (1.4.8)
-    ggplot2 (3.2.1)         rtracklayer (1.44.2)    BiocManager (1.30.4)
-    R.utils (2.9.0)         myvariant (1.14.0)      GenomicRanges (1.36.0)
-````
-
-- Optional R libraries (used for the visualisation functions: "vargen_visualisation" and "plot_manhattan_gwas"):
-````
-    Gviz (1.28.1)           ggbio (>= 1.32.0)       grDevices (>= 3.6.0)
-````
-
-To install the dependencies you can use the following command in R:
-````
-# If not already installed
-install.packages("BiocManager")
-
-BiocManager::install(c("biomaRt", "gtools", "GenomicRanges", "gwascat", "jsonlite",
-                       "GenomeInfoDb", "IRanges", "httr", "BiocGenerics", "stringr",
-                       "utils", "splitstackshape", "ggplot2", "rtracklayer",
-                       "R.utils", "myvariant"), dependencies = TRUE)
-````
-**note:** "R.methodsS3" and "R.oo" will be installed as dependencies of "R.utils"
 
 ## How to use VarGen
 
