@@ -67,7 +67,9 @@ VarGen is available on [GitHub](https://github.com/MCorentin/VarGen "GitHub VarG
 ### Install VarGen with devtools
 
 The easiest way to get VarGen is to install it directly from R using “devtools”:
+To install devtools:
 ````
+install.packages("devtools")
 library(devtools)
 install_github("MCorentin/VarGen")
 library(VarGen)
