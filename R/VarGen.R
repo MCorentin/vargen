@@ -1221,10 +1221,10 @@ vargen_install <- function(install_dir = "./", gtex_version = "v8", verbose = FA
   # Add gtex folder
   if(verbose) print("Download GTEx variant association file... This may take a while")
   if(gtex_version == "v7") {
-    gtex_filename = "./GTEx_Analysis_v7_eQTL.tar.gz"
+    gtex_filename = "GTEx_Analysis_v7_eQTL.tar.gz"
     gtex_url = "https://storage.googleapis.com/gtex_analysis_v7/single_tissue_eqtl_data/GTEx_Analysis_v7_eQTL.tar.gz"
   } else if(gtex_version == "v8") {
-    gtex_filename = "./GTEx_Analysis_v8_eQTL.tar"
+    gtex_filename = "GTEx_Analysis_v8_eQTL.tar"
     gtex_url = "https://storage.googleapis.com/gtex_analysis_v8/single_tissue_qtl_data/GTEx_Analysis_v8_eQTL.tar"
   } else {
     stop(paste0("Please set 'gtex_version' as v7 or v8, current value: '", gtex_version, "'"))
@@ -1233,13 +1233,13 @@ vargen_install <- function(install_dir = "./", gtex_version = "v8", verbose = FA
   # The tar file is considered as a binary file, so the "mode = wb" option is needed
   # or else there is a "corrupt archive" error during untar.
   utils::download.file(url = gtex_url,
-                       destfile = paste0(install_dir, "./", gtex_filename),
+                       destfile = paste0(install_dir, "/", gtex_filename),
                        mode = "wb")
-  utils::untar(tarfile = paste0(install_dir, "./", gtex_filename),
+  utils::untar(tarfile = paste0(install_dir, "/", gtex_filename),
                exdir = paste0(install_dir))
 
-  if(file.remove(paste0(install_dir, "./", gtex_filename))){
-    if(verbose) print(paste0(gtex_filename, " untared and removed succesfully"))
+  if(file.remove(paste0(install_dir, "/", gtex_filename))){
+    if(verbose) print(paste0(install_dir, "/", gtex_filename, " untared and removed succesfully"))
   } else{
     print(paste0("Error while removing ", gtex_filename))
   }
