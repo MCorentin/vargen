@@ -37,7 +37,7 @@ VarGen is open-source and available on [GitHub](https://github.com/MCorentin/Var
 ## VarGen workflow
 
 This pipeline is centred on the genes linked to the disease of interest in the Online Mendelian Inheritance in Man 
-(subsequently called the "OMIM genes"). This was designed as a discovery tool, if you want a more specific pipeline see
+(subsequently called the "OMIM genes"). VarGen is designed as a discovery tool, if you want a more specific pipeline see
 "VarPhen" in "Alternative pipelines".
 
 VarGen outputs variants from the following sources:
@@ -137,6 +137,7 @@ database (GTEx) (available at: https://gtexportal.org/home/datasets). v7 and v8 
 - __gwas catalog file__, this is an optional file. Depending on your connection, creating the lastest gwas catalog using 
 *makeCurrentGwascat* function can take a long time. You can instead download a gwas catalog file from http://www.ebi.ac.uk/gwas/api/search/downloads/alternative 
 and give it as input for the VarGen pipeline. 
+
 **note:** VarGen will use the name of the file to get the extract date, so it needs to be in the format: \[filename\]_r**YYYYY**-**MM**-**DD**.tsv
 
 ### Getting the OMIM id
@@ -255,7 +256,7 @@ annotation type (eg: "Intergenic"), consequence (eg: "DOWNSTREAM"), [clinvar cli
 
 ### Annotating the variants
 
-To annotate the variants you can use the annotate_variants function with the list of rsids obtained with the vargen 
+To annotate the variants you can use the *annotate_variants* function with the list of rsids obtained with the vargen 
 pipeline. This uses [myvariant.info](https://myvariant.info/, "myvariant.info main page") to annotate the variants and 
 may take some time depending on your internet connection.
 
@@ -265,11 +266,6 @@ this is expected. You can check the variant position on the different isoforms w
 ````
 obesity_annotation <- annotate_variants(obesity_variants$rsid, verbose = T)
 ````
-- The cadd phred score, the higher it is, the more deleterious the variant is
-- The annotation type, eg: “Intergenic”, “CodingTranscript”, “RegulatoryFeature”…
-- The consequence, eg: “DOWNSTREAM”, “STOP_GAINED”, “SYNONYMOUS”…
-- The clinical significance from clinVar, eg: “begnin”, “pathogenic”…
-- The snpEff annotation, eg: “LOW”, “MODERATE”, “MODIFIER” or “HIGH”
 
 You may want to merge the annotation output with the data.frame from the vargen pipeline. The following command will 
 merge the variants from the VarGen pipeline with the output from the annotation (using the rsid column):
