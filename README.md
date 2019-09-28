@@ -7,38 +7,38 @@ impactful ones.
 
 All the coordinates are based on the hg38 version of the human genome.
 
+VarGen is open-source and available on [GitHub](https://github.com/MCorentin/VarGen "GitHub VarGen page")
+
 ## Table of Contents
 
 - [VarGen](#vargen)
 - [Table of Contents](#table-of-contents)
-- [Workflows](#workflows)
-    - [VarGen workflow](#vargen-workflow)
-    - [VarPhen workflow](#varphen-workflow)
+- [VarGen workflow](#vargen-workflow)
+- [Dependencies](#dependencies)
 - [Installation](#installation)
-    - [Dependencies](#dependencies)
     - [Install VarGen with devtools](#install-vargen-with-devtools)
     - [Install VarGen from source](#install-vargen-from-source)
-    - [Database files](#database-files) 
+- [Preparing the input](#preparing-the-input)
+    - [Obtaining the local files](#obtaining-the-local-files)
+    - [Getting the OMIM id](#getting-the-omim-id)
+    - [Getting the GTEx tissues](#getting-the-gtex-tissues)
+    - [Getting the gwas traits](#getting-the-gwas-traits)
 - [How to use VarGen](#how-to-use-vargen)
-    - [Examples](#examples)
-- [How to use VarPhen](#how-to-use-varphen)
-    - [Example](#example)
-- [Tips](#Tips)
-    - [How to get the OMIM morbid ID](#how-to-get-the-omim-morbid-id)
-    - [How to use a local gwas catalog file](#how-to-use-a-local-gwas-catalog-file)
-    - [How to list the available tissues in GTEx](#how-to-list-the-available-tissues-in-gtex)
-    - [How to list the available GWAS traits](#how-to-list-the-available-gwas-traits)
-    - [How to use a custom list of genes](#how-to-use-a-custom-list-of-genes)
-    - [How to annotate the variants](#how-to-annotate-the-variants)
+    - [Launching the pipeline](#launching-the-pipeline)
+    - [Annotating the variants](#annotating-the-variants)
+    - [Filtering the variants](#filtering-the-variants)
+- [Alternative pipelines](#alternative-pipelines)
+    - [VarPhen](#varphen)
+    - [Customised list of genes](#customised-list-of-genes)
+- [Tips](#tips)
     - [How to plot the gwas variants](#how-to-plot-the-gwas-variants)
     - [How to plot the omim variants](#how-to-plot-the-omim-variants)
-    - [How to filter VarGen output](#how-to-filter-vargen-output)
 
-## Workflows
+## VarGen workflow
 
-### VarGen workflow
-
-This pipeline is centred on the genes linked to the disease of interest in OMIM (subsequently called the "OMIM genes").
+This pipeline is centred on the genes linked to the disease of interest in the Online Mendelian Inheritance in Man 
+(subsequently called the "OMIM genes"). This was designed as a discovery tool, if you want a more specific pipeline see
+"VarPhen" in "Alternative pipelines".
 
 VarGen outputs variants from the following sources:
 - **OMIM:** Variants located directly on the "OMIM genes".
@@ -47,26 +47,11 @@ VarGen outputs variants from the following sources:
 and v8 are supported.
 - **GWAS catalog:** Variants associated with the phenotype of interest.
 
+The variants are then annotated with [myvariant](http://bioconductor.org/packages/release/bioc/html/myvariant.html "myvariant bioconductor package").
+
 ![VarGen workflow](./images/VarGen_workflow.png?raw=true)
 
-The variants are then annotated with [myvariant](http://bioconductor.org/packages/release/bioc/html/myvariant.html "myvariant bioconductor package"). 
-
-This pipeline is designed as a discovery analysis, to identify potential new variants, **you should not expect every variants from the pipeline to have an effect on the phenotype**. 
-The annotation will help you defining which variants to keep or discard. The annotation contains the [CADD Phred score](https://cadd.gs.washington.edu/ "CADD main page"),
-annotation type (eg: "Intergenic"), consequence (eg: "DOWNSTREAM"), [clinvar clinical significance](https://www.ncbi.nlm.nih.gov/clinvar/docs/clinsig/ "Representation of clinical significance in ClinVar and other variation resources at NCBI") and [snpEff impact](http://snpeff.sourceforge.net/SnpEff_manual.html "snpEff Manual").
-
-### VarPhen workflow
-
-An alternative pipeline is available as part of this package, called "VarPhen", it outputs a smaller list of variants, but 
-directly related to the disease of interest. It relies on biomaRt to link variants to phenotypes.
-
-![VarPhen workflow](./images/VarPhen_workflow.png?raw=true)
-
-## Installation
-
-VarGen is available on [GitHub](https://github.com/MCorentin/VarGen "GitHub VarGen page")
-
-### Dependencies
+## Dependencies
 
 VarGen needs the following:
 - **R** (tested on version 3.6)
@@ -81,7 +66,7 @@ VarGen needs the following:
     R.utils (2.9.0)         myvariant (1.14.0)      GenomicRanges (1.36.0)
 ````
 
-- Optional R libraries (used for the visualisation functions: "vargen_visualisation" and "plot_manhattan_gwas"):
+- Optional R libraries (needed for the visualisation functions: *vargen_visualisation* and *plot_manhattan_gwas*):
 ````
     Gviz (1.28.1)           ggbio (>= 1.32.0)       grDevices (>= 3.6.0)
 ````
@@ -97,6 +82,8 @@ BiocManager::install(c("biomaRt", "gtools", "GenomicRanges", "gwascat", "jsonlit
                        "R.utils", "myvariant"), dependencies = TRUE)
 ````
 **note:** "R.methodsS3" and "R.oo" will be installed as dependencies of "R.utils"
+
+## Installation
 
 ### Install VarGen with devtools
 
@@ -115,13 +102,15 @@ Alternatively you can clone the GitHub repository:
 ````
 git clone https://github.com/MCorentin/VarGen
 ````
-Then open R and install the VarGen.R script from source:
+Then open R and install the package script from source:
 ````
 library(utils)
 install.packages("./VarGen/", repos = NULL, type = "source")
 ````
 
-### Database files
+## Preparing the input
+
+### Obtaining the local files
 
 VarGen is fetching data from public databases, it needs the following files (the files should all be in the same folder). 
 The easiest way to get them is to use the *vargen_install* function from this package.
@@ -143,23 +132,288 @@ database (GTEx) (available at: https://gtexportal.org/home/datasets). v7 and v8 
     
     Direct link for v7: https://storage.googleapis.com/gtex_analysis_v7/single_tissue_eqtl_data/GTEx_Analysis_v7_eQTL.tar.gz
 
-    Direct link for v8: https://storage.googleapis.com/gtex_analysis_v8/single_tissue_qtl_data/GTEx_Analysis_v8_eQTL.tar 
+    Direct link for v8: https://storage.googleapis.com/gtex_analysis_v8/single_tissue_qtl_data/GTEx_Analysis_v8_eQTL.tar
+
+- __gwas catalog file__, this is an optional file. Depending on your connection, creating the lastest gwas catalog using 
+*makeCurrentGwascat* function can take a long time. You can instead download a gwas catalog file from http://www.ebi.ac.uk/gwas/api/search/downloads/alternative 
+and give it as input for the VarGen pipeline. 
+**note:** VarGen will use the name of the file to get the extract date, so it needs to be in the format: \[filename\]_r**YYYYY**-**MM**-**DD**.tsv
+
+### Getting the OMIM id
+
+The OMIM morbid ID is the starting point of the pipeline, from it VarGen will get the genes associated to the disease. You 
+can obtain it from the OMIM website https://omim.org/ or using the *list_omim_accessions* function. In our case we will 
+use “obesity leanness included” (OMIM id: 601665).
+
+````
+gene_mart <- connect_to_gene_ensembl()
+View(list_omim_accessions(gene_mart))
+````
+
+### Getting the GTEx tissues
+
+This database will be used to get tissue-specific variants that are affecting the expression of the genes related to the 
+disease. You can obtain the list of files with the *list_gtex_tissues* function.
+
+````
+list_gtex_tissues(gtex_dir = "./vargen_data/GTEx_Analysis_v8_eQTL/")
+
+#>       keywords                     filepaths
+#> 1     Adipose_Subcutaneous         vargen_data/GTEx_Analysis_v8_eQTL/Adipose_Subcutaneous.v8.signif_variant_gene_pairs.txt.gz
+#> 2     Adipose_Visceral_Omentum     vargen_data/GTEx_Analysis_v8_eQTL/Adipose_Visceral_Omentum.v8.signif_variant_gene_pairs.txt.gz
+#> 3     Adrenal_Gland                vargen_data/GTEx_Analysis_v8_eQTL/Adrenal_Gland.v8.signif_variant_gene_pairs.txt.gz
+#> 4     Artery_Aorta                 vargen_data/GTEx_Analysis_v8_eQTL/Artery_Aorta.v8.signif_variant_gene_pairs.txt.gz
+#> ...
+````
+
+To select the GTEx tissues of interest you can use the *select_gtex_tissues* function, for our case we will use the 
+adipose tissues (subcutaneous and visceral): 
+
+````
+adipose_tissues <- select_gtex_tissues("./vargen_data/GTEx_Analysis_v8_eQTL/", "adipose")
+adipose_tissues
+
+#> [1] "./vargen_data/GTEx_Analysis_v8_eQTL/Adipose_Subcutaneous.v8.signif_variant_gene_pairs.txt.gz"    
+#> [2] "./vargen_data/GTEx_Analysis_v8_eQTL/Adipose_Visceral_Omentum.v8.signif_variant_gene_pairs.txt.gz"
+````
+
+### Getting the gwas traits
+
+The gwas traits will be used to get associated variants in the gwas catalog (https://www.ebi.ac.uk/gwas/). 
+You can search the available gwas traits by keyword with the *list_gwas_traits* function. Here we are going to use a local 
+gwas catalog file (gwas_catalog_v1.0.2-associations_e96_r2019-08-24.tsv). 
+
+````
+obesity_traits <- list_gwas_traits("obesity",  
+                                   "./vargen_data/gwas_catalog_v1.0.2-associations_e96_r2019-08-24.tsv")
+obesity_traits
+
+#>  [1] "Obesity (extreme)"
+#>  [2] "Obesity-related traits"
+#>  [3] "Obesity"
+#>  [4] "Obesity (early onset extreme)"
+#>  [5] "Obesity in adult survivors of childhood cancer exposed to cranial radiation"
+#>  [6] "Obesity in adult survivors of childhood cancer not exposed to cranial radiation"
+#>  [7] "Bilirubin levels in extreme obesity"
+#>  [8] "Type 2 diabetes (young onset) and obesity"
+#>  [9] "Obesity and osteoporosis"
+#> [10] "Hepatic lipid content in extreme obesity"
+#> [11] "Hyperinsulinemia in obesity"
+````
 
 ## How to use VarGen
 
-The main entry point is *vargen_pipeline*, this function will get a list of variants possibly related to the phenotype of 
-interest. The only mandatory input is an OMIM morbid ID (or alternatively a list of gene IDs).
+### Launching the pipeline
 
-You can also add a list of tissues, if you are interested in variants that are affecting the expression of the genes (from 
-GTEx) and a list of GWAS traits to get variants from the [GWAS catalog](https://www.ebi.ac.uk/gwas/ "gwas catalog main page").
+VarGen main entry point is the *vargen_pipeline* function.
 
-The pipeline outputs variants with their positions, IDs and related gene (if applicable). It is then possible to annotate 
-the results with the function *annotate_variants*.
+The mandatory inputs are:
+- The folder with the installed files, "./vargen_data/" in our case (see "Obtaining the local files")
+- A OMIM morbid id, “601665” in our case (see "Getting the OMIM id").
+- An output directory, where information about the variants and the genes will be written. The default is the current directory “./”.
+
+The optional inputs are:
+- A fantom5 correlation threshold, the higher it is, the stricter you are about association between genes and enhancers. 
+The default is 0.25
+- A list of GTEx tissues (see "Getting the GTEx tissues")
+- A list of gwas traits (see "Getting the gwas traits")
+
+Now we can launch the pipeline with all the input data:
+````
+adipose_tissues <- select_gtex_tissues("./vargen_data/GTEx_Analysis_v8_eQTL/", 
+                                       "adipose")
+
+obesity_traits <- list_gwas_traits("obesity",
+                                   "./vargen_data/gwas_catalog_v1.0.2-associations_e96_r2019-08-24.tsv")
+
+obesity_variants <- vargen_pipeline(vargen_dir = "./vargen_data/", 
+                                    omim_morbid = "601665", 
+                                    gtex_tissues = adipose_tissues, 
+                                    gwascat_file = "./vargen_data/gwas_catalog_v1.0.2-associations_e96_r2019-08-24.tsv", 
+                                    gwas_traits = obesity_traits, 
+                                    verbose = T)
+````
+
+You will obtain a data.frame with the list of variants, their position on GRCh38, the ensembl id and hgnc gene symbol of
+the gene associated with the variant and the source (omim, fantom5, gtex or gwas).
+
+````
+head(obesity_variants)
+
+   chr     pos         rsid           ensembl_gene_id    hgnc_symbol  source
+#> chr2    25160855    rs777983882    ENSG00000115138    POMC         omim
+#> chr2    25160866    rs1480805741   ENSG00000115138    POMC         omim
+#> chr2    25160871    rs1245939527   ENSG00000115138    POMC         omim
+#> chr2    25160872    rs1219237056   ENSG00000115138    POMC         omim
+#> chr2    25160877    rs1453226041   ENSG00000115138    POMC         omim
+#> chr2    25160879    rs566456581    ENSG00000115138    POMC         omim
+````
+
+This pipeline is designed as a discovery analysis, to identify potential new variants, **you should not expect every variants from the pipeline to have an effect on the phenotype**. 
+The annotation will help you defining which variants to keep or discard. The annotation contains the [CADD Phred score](https://cadd.gs.washington.edu/ "CADD main page"),
+annotation type (eg: "Intergenic"), consequence (eg: "DOWNSTREAM"), [clinvar clinical significance](https://www.ncbi.nlm.nih.gov/clinvar/docs/clinsig/ "Representation of clinical significance in ClinVar and other variation resources at NCBI") and [snpEff impact](http://snpeff.sourceforge.net/SnpEff_manual.html "snpEff Manual").
+
+### Annotating the variants
+
+To annotate the variants you can use the annotate_variants function with the list of rsids obtained with the vargen 
+pipeline. This uses [myvariant.info](https://myvariant.info/, "myvariant.info main page") to annotate the variants and 
+may take some time depending on your internet connection.
+
+/!\ Due to the different transcripts for a same gene, some variants will appear more than once with a different annotation, 
+this is expected. You can check the variant position on the different isoforms with the *vargen_visualisation* function.
+
+````
+obesity_annotation <- annotate_variants(obesity_variants$rsid, verbose = T)
+````
+- The cadd phred score, the higher it is, the more deleterious the variant is
+- The annotation type, eg: “Intergenic”, “CodingTranscript”, “RegulatoryFeature”…
+- The consequence, eg: “DOWNSTREAM”, “STOP_GAINED”, “SYNONYMOUS”…
+- The clinical significance from clinVar, eg: “begnin”, “pathogenic”…
+- The snpEff annotation, eg: “LOW”, “MODERATE”, “MODIFIER” or “HIGH”
+
+You may want to merge the annotation output with the data.frame from the vargen pipeline. The following command will 
+merge the variants from the VarGen pipeline with the output from the annotation (using the rsid column):
+````
+obesity_ann <- merge(obesity_variants, obesity_annotation)
+
+# We advise you to write the variants in a file, so you will not have to run the pipeline again.
+write.table(x = obesity_vargen_ann,
+            file = "./vargen_obesity/vargen_variants_annotated.tsv", sep = "\t")
+````
 
 Output after annotation:
 ![Output after annotation](./images/Example_output_VarGen.PNG?raw=true)
 
-### Examples
+### Filtering the variants
+
+As VarGen is outputting a lot of variants, you may want to filter the results. The filtering strategy is dependent on 
+your preferences. VarGen outputs an R data.frame containing information about each variant. You can focus on clinically 
+significant variants ("pathogenic", "likely pathogenic" etc...), on variants with a high phred score etc...
+
+You can even combine different filtering, for example we found that keeping all the variants from the gwas catalog and
+with clinical significance while removing the variants with a cadd phred score lower than 10 was removing a lot of 
+potentially false positive results:
+````
+vargen_phred_10 <- obesity_ann [obesity_ann $cadd_phred > 10,]
+vargen_phred_10 <- vargen_phred_10[!is.na(vargen_phred_10$cadd_phred),]
+
+vargen_clinVar <- obesity_ann [obesity_ann $clinical_significance != "",]
+
+vargen_gwas <- obesity_ann[obesity_ann $source == "gwas",]
+
+#Concatenating the different filtering
+obesity_filtered <- rbind(vargen_phred_10, vargen_clinVar, vargen_gwas)	
+````
+
+## Alternative pipelines
+
+### VarPhen
+
+A more specific, alternative pipeline is available as part of this package, called "VarPhen", it outputs a smaller list 
+of variants, but directly related to the disease of interest. It relies on biomaRt to link variants to phenotypes.
+
+![VarPhen workflow](./images/VarPhen_workflow.png?raw=true)
+
+Example with obesity:
+````
+# First connect to snp ensembl
+snp_mart <- connect_to_snp_ensembl()
+
+obesity_phens <- get_phenotype_terms(keyword = "obesity", 
+                                     snp_mart = snp_mart)
+
+obesity_varphen_snps <- get_variants_from_phenotypes(phenotypes = obesity_phens, 
+                                                     snp_mart = snp_mart)
+
+obesity_varphen_snps_annotated <- annotate_variants(obesity_varphen_snps$refsnp_id)
+````
+
+Output example:
+![VarPhen output](./images/Example_output_VarPhen.PNG?raw=true)
+
+### Customised list of genes
+
+If instead of an OMIM id you are interested in a specific list of genes, you can use the *vargen_custom* function with a 
+list of ensembl gene ids. This take the same input as vargen_pipeline (except the omim id) and follow the same workflow
+(variants on genes, promoters, gtex and gwas).
+
+Example:
+````
+adipose_tissues <- select_gtex_tissues("./vargen_data/GTEx_Analysis_v8_eQTL/", 
+                                       "adipose")
+
+obesity_traits <- list_gwas_traits("obesity",  
+                                   "./vargen_data/gwas_catalog_v1.0.2-associations_e96_r2019-08-24.tsv")
+
+obesity_custom <- vargen_custom(vargen_dir = "./vargen_data/", 
+                                gene_ids = c("ENSG00000155846", "ENSG00000115138"), 
+                                outdir = "./", 
+                                gtex_tissues = adipose_tissues, 
+                                gwascat_file = "./varen_data/gwas_catalog_v1.0.2-associations_e96_r2019-08-24.tsv", 
+                                gwas_traits = obesity_traits, 
+                                verbose = T)
+````
+
+## Tips 
+
+### How to plot the gwas variants
+
+If you want to visualise the variants in a manhattan plot, you can use the *plot_manhattan_gwas* function:
+````
+gwas_cat <- create_gwas(gwascat_file = "./gwas_catalog_v1.0.2-associations_e96_r2019-07-30.tsv")
+ 
+plot_manhattan_gwas(gwas_cat = gwas_cat, traits = c("Type 1 diabetes", "Type 2 diabetes"))
+
+# Optional: if you want to save the plot as a pdf
+grDevices::dev.print(pdf, "./manhanttan_diabetes.pdf")
+````
+
+![Example of manhanttan plot for diabetes](./images/manhattan_diabetes.png?raw=true)
+
+The two thresholds, suggestive and significant, correspond to the definition given by Lander and Kruglyak:
+````
+Lander E, Kruglyak L. Genetic dissection of complex traits: guidelines for interpreting and reporting linkage results. Nat Genet. 1995;11(3):241-7.
+````
+
+### How to plot the omim variants
+
+You can use the *vargen_visualisation* function to have an overview of the variants located on the omim genes. Note that 
+one variant can be represented multiple times, as it consequence and phred score will be different according to each transcript.
+
+````
+# cf: 'Annotating the variants' to create "vargen_variants_annotated.tsv":
+obesity_vargen_ann <- read.table(file = "./vargen_obesity/vargen_variants_annotated.tsv",
+                                 header = T, sep = "\t", stringsAsFactors = F)
+ 
+gene_mart <- connect_to_gene_ensembl()
+vargen_visualisation(annotated_snps = obesity_vargen_ann,
+                     outdir = "./obesity_gviz/", 
+                     device = "png", 
+                     gene_mart = gene_mart)
+
+````
+The plot contains 4 tracks:
+ - The chromosome, with a red marker on the gene location
+ - The ensembl transcripts
+ - The variant consequences, grouped by type (eg: INTRONIC, STOP LOST etc...), each green bar represent a variant
+ - The cadd phred score, each dot represent a variant. 
+
+![vargen visualisation](./images/SIM1_ENSG00000112246_GVIZ.png?raw=true)
+
+The **rsid_highlight** parameter allows you to highlight some variants (by rsid) in red:
+````
+obesity_vargen_ann <- read.table("vargen_obesity/vargen_variants_annotated.tsv")
+
+gene_mart <- connect_to_gene_ensembl()
+vargen_visualisation(annotated_snps = obesity_vargen_ann, verbose = T,
+                     outdir = "./obesity_gviz/", device = "png", 
+                     gene_mart = gene_mart,
+                     rsid_highlight = unique(obesity_vargen_ann[obesity_vargen_ann$cadd_phred > 20, "rsid"]))
+
+````
+![vargen visualisation with highlighted variants](./images/SIM1_ENSG00000112246_GVIZ_highlighted.png?raw=true)
+
+### More examples
 
 In the following example we are assuming that the files described in "Installation" have been installed in the folder 
 "./vargen_data", either manually or by running:
@@ -211,239 +465,4 @@ Obesity_annotation <- annotate_variants(rsid = Obesity_variants$rsid)
 # Merging the original output with the annotation:
 Obesity_variants_annotated <- merge(Obesity_variants, Obesity_annotation)
 View(Obesity_variants_annotated)
-````
-
-## How to use VarPhen
-
-VarPhen is the alternative pipeline of this package. It is designed to be much more specific than "VarGen", it should give 
-less variants but all associated to the phenotypes. It relies on biomaRt to link variants to phenotypes (cf Workflow).
-
-### Example
-
-Example with obesity:
-````
-# First connect to snp ensembl
-snp_mart <- connect_to_snp_ensembl()
-
-obesity_phens <- get_phenotype_terms(keyword = "obesity", 
-                                     snp_mart = snp_mart)
-
-obesity_varphen_snps <- get_variants_from_phenotypes(phenotypes = obesity_phens, 
-                                                     snp_mart = snp_mart)
-
-obesity_varphen_snps_annotated <- annotate_variants(obesity_varphen_snps$refsnp_id)
-````
-
-Output example:
-![VarPhen output](./images/Example_output_VarPhen.PNG?raw=true)
-
-
-## Tips 
-
-### How to get the OMIM morbid ID
-
-You can search on the Online Mendelian Inheritance in Man website (https://www.omim.org/) or use the function *list_omim_accessions*.
-````
-gene_mart <-  connect_to_gene_ensembl()
-list_omim_accessions(gene_mart)
-````
-
-### How to use a local gwas catalog file
-
-Depending on your connection, creating the lastest gwas catalog using the *makeCurrentGwascat* function can take a long time. 
-You can instead download a gwas catalog file from http://www.ebi.ac.uk/gwas/api/search/downloads/alternative and give it as 
-input for the VarGen pipeline. VarGen uses the name of the file to get the extract date, so it needs to be in the format: 
-
-\[filename\]_r**YYYYY**-**MM**-**DD**.tsv
-
-For example: "gwas_catalog_v1.0.2-associations_e96_r2019-07-30.tsv" will be parsed to get the extract date "2019-07-30".
-
-You can then use the **gwascat_file** option in the *vargen_pipeline* function.
-````
-# Getting the gwas variants will be faster if the "gwascat_file" option is used
-T1DM_variants <- vargen_pipeline(vargen_dir = "./vargen_data/", 
-                                 omim_morbid = "222100", 
-                                 gwas_traits = "Type 1 diabetes", 
-                                 gwascat_file = "./gwas_catalog_v1.0.2-associations_e96_r2019-07-30.tsv")
-````
-
-### How to list the available tissues in GTEx
-
-The function __select_gtex_tissues__ will list the files in the "./vargen_data/GTEx_Analysis_v8_eQTL" folder corresponding to the keyword 
-entered as input.
-
-Example:
-````
-select_gtex_tissues(gtex_dir = "./vargen_data/GTEx_Analysis_v8_eQTL/", tissues_query = c("pancreas", "adipose"))
-
-[1] "./vargen_data/GTEx_Analysis_v8_eQTL/Pancreas.v8.signif_variant_gene_pairs.txt.gz"
-[2] "./vargen_data/GTEx_Analysis_v8_eQTL/Adipose_Subcutaneous.v8.signif_variant_gene_pairs.txt.gz"    
-[3] "./vargen_data/GTEx_Analysis_v8_eQTL/Adipose_Visceral_Omentum.v8.signif_variant_gene_pairs.txt.gz"
-````
-
-### How to list the available GWAS traits
-
-The function __list_gwas_traits__ will list the available gwas traits. It builds a gwas object from "makeCurrentGwascat" 
-and list the unique list of `DISEASE/TRAIT`.
-
-Example:
-````
-list_gwas_traits(keyword = "Obesity")
-
- [1] "Obesity (extreme)"
- [2] "Obesity-related traits"
- [3] "Obesity"
- [4] "Obesity (early onset extreme)"
- [5] "Obesity in adult survivors of childhood cancer exposed to cranial radiation"
- [6] "Obesity in adult survivors of childhood cancer not exposed to cranial radiation"
- [7] "Bilirubin levels in extreme obesity"
- [8] "Type 2 diabetes (young onset) and obesity"
- [9] "Obesity and osteoporosis"
-[10] "Hepatic lipid content in extreme obesity"
-[11] "Hyperinsulinemia in obesity"
-````
-**note** The function also accept a gwas catalog file (cf "How to use a local gwas catalog file" above):
-````
-list_gwas_traits(keyword = "Obesity", 
-                 gwascat_file = "./gwas_catalog_v1.0.2-associations_e96_r2019-07-30.tsv")
-````
-
-### How to use a custom list of genes
-
-The *vargen_custom* pipeline has been designed to accept a list of gene IDs instead of a OMIM morbid id. 
-
-The pipeline will return the same information as with the omim query (ie: variants on the genes, on the enhancers, changing 
-expression in certain tissues and from gwas analysis).
-
-Example:
-````
-# First select the tissues of interest (here adipose) 
-# it is possible to select more than one tissue (eg: c("pancreas", "adipose"))
-pancreas_tissues <- select_gtex_tissues(gtex_dir = "./vargen_data/GTEx_Analysis_v8_eQTL/", 
-                                        tissues_query = "pancreas")
-
-custom_variants <- vargen_custom(vargen_dir = "./vargen_data/", 
-                                 gene_ids = c("ENSG00000134242", "ENSG00000049768"),
-                                 outdir = "./custom_test/", 
-                                 gtex_tissues = pancreas_tissues,
-                                 gwas_traits = c("Type 1 diabetes"))
-````
-
-### How to annotate the variants
-
-As the VarGen pipeline outputs a lot of variants, it is necessary to prioritise them. The *annotate_variants* function has 
-been designed to associate each variant to a consequence, snpEff impact, cadd phred score and clinical significance.
-
-/!\ Due to the different transcripts for a same gene, some variants will appear more than once with a different annotation, 
-this is expected. You can check the variant position on the different isoforms with the *vargen_visualisation* function.
-
-````
-# Get the variants:
-obesity_vargen <- vargen_pipeline(vargen_dir = "./vargen_data/", 
-                                  omim_morbid = "601665",
-                                  outdir = "./vargen_obesity/")
-
-# Annotate the variants:
-obesity_ann <- annotate_variants(obesity_vargen$rsid, verbose = T)
-
-# Then you will just have to merge the variants (they will merge automatically by rsids)
-obesity_vargen_ann <- merge(obesity_vargen, obesity_ann)
-
-# We advise you to write the variants in a file, so you will not have to run the pipeline again.
-write.table(x = obesity_vargen_ann,
-            file = "./vargen_obesity/vargen_variants_annotated.tsv", sep = "\t")
-
-obesity_vargen_ann <- read.table(file = "./vargen_obesity/vargen_variants_annotated.tsv",
-                                 header = T, sep = "\t", stringsAsFactors = F)
-````
-
-### How to plot the gwas variants
-
-If you want to visualise the variants in a manhattan plot, you can use the *plot_manhattan_gwas* function:
-````
-gwas_cat <- create_gwas(gwascat_file = "./gwas_catalog_v1.0.2-associations_e96_r2019-07-30.tsv")
- 
-plot_manhattan_gwas(gwas_cat = gwas_cat, traits = c("Type 1 diabetes", "Type 2 diabetes"))
-
-# Optional: if you want to save the plot as a pdf
-grDevices::dev.print(pdf, "./manhanttan_diabetes.pdf")
-````
-
-![Example of manhanttan plot for diabetes](./images/manhattan_diabetes.png?raw=true)
-
-The two thresholds, suggestive and significant, correspond to the definition given by Lander and Kruglyak:
-````
-Lander E, Kruglyak L. Genetic dissection of complex traits: guidelines for interpreting and reporting linkage results. Nat Genet. 1995;11(3):241-7.
-````
-
-### How to plot the omim variants
-
-You can use the *vargen_visualisation* function to have an overview of the variants located on the omim genes. Note that 
-one variant can be represented multiple times, as it consequence and phred score will be different according to each transcript.
-
-````
-# cf: 'How to annotate the variants' to create "vargen_variants_annotated.tsv":
-obesity_vargen_ann <- read.table("vargen_obesity/vargen_variants_annotated.tsv")
- 
-gene_mart <- connect_to_gene_ensembl()
-vargen_visualisation(annotated_snps = obesity_vargen_ann,
-                     outdir = "./obesity_gviz/", 
-                     device = "png", 
-                     gene_mart = gene_mart)
-
-````
-The plot contains 4 tracks:
- - The chromosome, with a red marker on the gene location
- - The ensembl transcripts
- - The variant consequences, grouped by type (eg: INTRONIC, STOP LOST etc...), each green bar represent a variant
- - The cadd phred score, each dot represent a variant. 
-
-![vargen visualisation](./images/SIM1_ENSG00000112246_GVIZ.png?raw=true)
-
-The **rsid_highlight** parameter allows you to highlight some variants (by rsid) in red:
-````
-obesity_vargen_ann <- read.table("vargen_obesity/vargen_variants_annotated.tsv")
-
-gene_mart <- connect_to_gene_ensembl()
-vargen_visualisation(annotated_snps = obesity_vargen_ann, verbose = T,
-                     outdir = "./obesity_gviz/", device = "png", 
-                     gene_mart = gene_mart,
-                     rsid_highlight = unique(obesity_vargen_ann[obesity_vargen_ann$cadd_phred > 20, "rsid"]))
-
-````
-![vargen visualisation with highlighted variants](./images/SIM1_ENSG00000112246_GVIZ_highlighted.png?raw=true)
-
-### How to filter VarGen output
-
-The filtering strategy is dependent on your study. VarGen outputs an R data.frame containing information about each variant. 
-You can focus on clinically significant variants ("pathogenic", "likely pathogenic" etc...), on variants with a high phred 
-score etc...
-
-You can even combine different filtering, for example we found that keeping all the variants from the gwas catalog and with 
-clinical significance while removing the variants with a cadd phred score lower than 10 was removing a lot of potentially
-false positive results:
-
-````
-# If you have not installed the files already:
-# vargen_install(install_dir = "./vargen_data/", verbose = T)
-
-adipose_tissues <- select_gtex_tissues(gtex_dir = "./vargen_data/GTEx_Analysis_v8_eQTL/",
-                                        tissues_query = "adipose")
-
-obesity_vargen <- vargen_pipeline(vargen_dir = "./vargen_data/", omim_morbid = "601665",
-                                  fantom_corr = 0.20, outdir = "./vargen_obesity/",
-                                  gtex_tissues = adipose_tissues,
-                                  gwascat_file = "./gwas_catalog_v1.0.2-associations_e96_r2019-07-30.tsv",
-                                  gwas_traits = "Obesity", verbose = T)
-
-obesity_vargen_ann <- annotate_variants(obesity_vargen$rsid, verbose = T)
-obesity_vargen_ann <- merge(obesity_vargen, obesity_vargen_ann)
-
-# Filtering the vargen variants:
-    vargen_phred_10 <- obesity_vargen_ann[obesity_vargen_ann$cadd_phred > 10,]
-    vargen_phred_10 <- vargen_phred_10[!is.na(vargen_phred_10$cadd_phred),]
-    vargen_clinVar <- obesity_vargen_ann[obesity_vargen_ann$clinical_significance != "",]
-    vargen_gwas <- obesity_vargen_ann[obesity_vargen_ann$source == "gwas",]
-
-    filtered_vargen <- rbind(vargen_phred_10, vargen_clinVar, vargen_gwas)
 ````
