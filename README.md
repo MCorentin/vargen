@@ -14,8 +14,8 @@ VarGen is open-source and available on [GitHub](https://github.com/MCorentin/Var
 - [VarGen](#vargen)
 - [Table of Contents](#table-of-contents)
 - [VarGen workflow](#vargen-workflow)
-- [Dependencies](#dependencies)
 - [Installation](#installation)
+    - [Dependencies](#dependencies)
     - [Install VarGen with devtools](#install-vargen-with-devtools)
     - [Install VarGen from source](#install-vargen-from-source)
 - [Preparing the input](#preparing-the-input)
@@ -51,7 +51,10 @@ The variants are then annotated with [myvariant](http://bioconductor.org/package
 
 ![VarGen workflow](./images/VarGen_workflow.png?raw=true)
 
-## Dependencies
+
+## Installation
+
+### Dependencies
 
 VarGen needs the following:
 - **R** (tested on version 3.6)
@@ -82,8 +85,6 @@ BiocManager::install(c("biomaRt", "gtools", "GenomicRanges", "gwascat", "jsonlit
                        "R.utils", "myvariant"), dependencies = TRUE)
 ````
 **note:** "R.methodsS3" and "R.oo" will be installed as dependencies of "R.utils"
-
-## Installation
 
 ### Install VarGen with devtools
 
@@ -138,7 +139,8 @@ database (GTEx) (available at: https://gtexportal.org/home/datasets). v7 and v8 
 *makeCurrentGwascat* function can take a long time. You can instead download a gwas catalog file from http://www.ebi.ac.uk/gwas/api/search/downloads/alternative 
 and give it as input for the VarGen pipeline. 
 
-**note:** VarGen will use the name of the file to get the extract date, so it needs to be in the format: \[filename\]_r**YYYYY**-**MM**-**DD**.tsv
+**note:** VarGen will use the name of the file to get the extract date, so it needs to be in the format: 
+\[filename\]_r**YYYYY**-**MM**-**DD**.tsv
 
 ### Getting the OMIM id
 
@@ -250,11 +252,11 @@ head(obesity_variants)
 #> chr2    25160879    rs566456581    ENSG00000115138    POMC         omim
 ````
 
+### Annotating the variants
+
 This pipeline is designed as a discovery analysis, to identify potential new variants, **you should not expect every variants from the pipeline to have an effect on the phenotype**. 
 The annotation will help you defining which variants to keep or discard. The annotation contains the [CADD Phred score](https://cadd.gs.washington.edu/ "CADD main page"),
 annotation type (eg: "Intergenic"), consequence (eg: "DOWNSTREAM"), [clinvar clinical significance](https://www.ncbi.nlm.nih.gov/clinvar/docs/clinsig/ "Representation of clinical significance in ClinVar and other variation resources at NCBI") and [snpEff impact](http://snpeff.sourceforge.net/SnpEff_manual.html "snpEff Manual").
-
-### Annotating the variants
 
 To annotate the variants you can use the *annotate_variants* function with the list of rsids obtained with the vargen 
 pipeline. This uses [myvariant.info](https://myvariant.info/, "myvariant.info main page") to annotate the variants and 
