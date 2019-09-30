@@ -1398,7 +1398,7 @@ vargen_pipeline <- function(vargen_dir, omim_morbid, fantom_corr = 0.25, outdir 
     if(length(gtex_variants) != 0) master_variants <- rbind(master_variants, gtex_variants)
 
   } else{
-    print("No values for 'gtex_tissues', skipping GTEx step...")
+    if(verbose) print("No values for 'gtex_tissues', skipping GTEx step...")
   }
 
 

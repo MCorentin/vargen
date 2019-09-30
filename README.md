@@ -275,8 +275,8 @@ merge the variants from the VarGen pipeline with the output from the annotation 
 obesity_ann <- merge(obesity_variants, obesity_annotation)
 
 # We advise you to write the variants in a file, so you will not have to run the pipeline again.
-write.table(x = obesity_vargen_ann,
-            file = "./vargen_obesity/vargen_variants_annotated.tsv", sep = "\t")
+write.table(x = obesity_ann,
+            file = "./OMIM_601665/vargen_variants_annotated.tsv", sep = "\t")
 ````
 
 Output after annotation:
@@ -292,12 +292,12 @@ You can even combine different filtering, for example we found that keeping all 
 with clinical significance while removing the variants with a cadd phred score lower than 10 was removing a lot of 
 potentially false positive results:
 ````
-vargen_phred_10 <- obesity_ann [obesity_ann $cadd_phred > 10,]
+vargen_phred_10 <- obesity_ann [obesity_ann$cadd_phred > 10,]
 vargen_phred_10 <- vargen_phred_10[!is.na(vargen_phred_10$cadd_phred),]
 
-vargen_clinVar <- obesity_ann [obesity_ann $clinical_significance != "",]
+vargen_clinVar <- obesity_ann [obesity_ann$clinical_significance != "",]
 
-vargen_gwas <- obesity_ann[obesity_ann $source == "gwas",]
+vargen_gwas <- obesity_ann[obesity_ann$source == "gwas",]
 
 #Concatenating the different filtering
 obesity_filtered <- rbind(vargen_phred_10, vargen_clinVar, vargen_gwas)	
@@ -347,7 +347,7 @@ obesity_custom <- vargen_custom(vargen_dir = "./vargen_data/",
                                 gene_ids = c("ENSG00000155846", "ENSG00000115138"), 
                                 outdir = "./", 
                                 gtex_tissues = adipose_tissues, 
-                                gwascat_file = "./varen_data/gwas_catalog_v1.0.2-associations_e96_r2019-08-24.tsv", 
+                                gwascat_file = "./vargen_data/gwas_catalog_v1.0.2-associations_e96_r2019-08-24.tsv", 
                                 gwas_traits = obesity_traits, 
                                 verbose = T)
 ````
@@ -358,7 +358,7 @@ obesity_custom <- vargen_custom(vargen_dir = "./vargen_data/",
 
 If you want to visualise the variants in a manhattan plot, you can use the *plot_manhattan_gwas* function:
 ````
-gwas_cat <- create_gwas(gwascat_file = "./gwas_catalog_v1.0.2-associations_e96_r2019-07-30.tsv")
+gwas_cat <- create_gwas(gwascat_file = "./vargen_data/gwas_catalog_v1.0.2-associations_e96_r2019-07-30.tsv")
  
 plot_manhattan_gwas(gwas_cat = gwas_cat, traits = c("Type 1 diabetes", "Type 2 diabetes"))
 
@@ -380,7 +380,7 @@ one variant can be represented multiple times, as it consequence and phred score
 
 ````
 # cf: 'Annotating the variants' to create "vargen_variants_annotated.tsv":
-obesity_vargen_ann <- read.table(file = "./vargen_obesity/vargen_variants_annotated.tsv",
+obesity_vargen_ann <- read.table(file = "./OMIM_601665/vargen_variants_annotated.tsv",
                                  header = T, sep = "\t", stringsAsFactors = F)
  
 gene_mart <- connect_to_gene_ensembl()
@@ -400,7 +400,7 @@ The plot contains 4 tracks:
 
 The **rsid_highlight** parameter allows you to highlight some variants (by rsid) in red:
 ````
-obesity_vargen_ann <- read.table("vargen_obesity/vargen_variants_annotated.tsv")
+obesity_vargen_ann <- read.table("OMIM_601665/vargen_variants_annotated.tsv")
 
 gene_mart <- connect_to_gene_ensembl()
 vargen_visualisation(annotated_snps = obesity_vargen_ann, verbose = T,
