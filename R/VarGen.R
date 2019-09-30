@@ -202,13 +202,20 @@ annotate_variants <- function(rsid, verbose = FALSE) {
                                     snpeff_ann = sapply(sapply(rsid_annotated$snpeff.ann, "[", "putative_impact"), paste, collapse = ";", USE.NAMES = FALSE),
                                     stringsAsFactors = FALSE)
   }
+  
 
-  # Replacing the snp eff annotation from " "c(\"MODIFIER\", \"MODIFIER\")"" to
+  # Replacing the snp eff annotation from "c(\"MODIFIER\", \"MODIFIER\")" to
   # MODIFIER;MODIFIER
   rsid_annotated_df$snpeff_ann <- gsub(pattern = "\"|c\\(|\\)", replacement = "",
                                        x = rsid_annotated_df$snpeff_ann)
   rsid_annotated_df$snpeff_ann <- noquote(gsub(pattern = ", ", replacement = ";",
                                           x = rsid_annotated_df$snpeff_ann))
+  
+  # Same as above for clinical significance:
+  rsid_annotated_df$clinical_significance <- gsub(pattern = "\"|c\\(|\\)", replacement = "",
+                                                  x = rsid_annotated_df$clinical_significance)
+  rsid_annotated_df$clinical_significance <- noquote(gsub(pattern = ", ", replacement = ";",
+                                                          x = rsid_annotated_df$clinical_significance))
 
   return(unique(rsid_annotated_df))
 }
