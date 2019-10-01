@@ -170,47 +170,69 @@ format_output <- function(chr, pos, rsid, ensembl_gene_id, hgnc_symbol) {
 #' annotate_variants(rsid = c("rs1225680362", "rs12395043", "rs12395043", "rs28935477"))
 #' @export
 annotate_variants <- function(rsid, verbose = FALSE) {
+  # First, use "getVariants" to annotate the snps
   rsid_annotated <- myvariant::getVariants(hgvsids = rsid, verbose = verbose,
                                            fields =  c("cadd", "clinvar", "snpeff"))
 
-  # snpeff is a list and each variant can have more than one annotation, so we
-  # apply "[" to the "putative_impact" column, and then we concatenate the
-  # different "putative_impact" with another sapply using "paste":
-  # sapply(sapply(rsid_annotated$snpeff.ann, "[", "putative_impact"), paste, collapse = ";")
-  if(is.list(rsid_annotated$clinvar.rcv)){
-    rsid_annotated_df <- data.frame(rsid = unlist(rsid_annotated$query),
-                                    cadd_phred = unlist(rsid_annotated$cadd.phred),
-                                    annot_type = sapply(rsid_annotated$cadd.annotype, paste, collapse = ";", USE.NAMES = FALSE),
-                                    consequence = sapply(rsid_annotated$cadd.consequence, paste, collapse = ";", USE.NAMES = FALSE),
-                                    clinical_significance = sapply(sapply(rsid_annotated$clinvar.rcv, "[", "clinical_significance"), paste, collapse = ";"),
-                                    snpeff_ann = sapply(sapply(rsid_annotated$snpeff.ann, "[", "putative_impact"), paste, collapse = ";", USE.NAMES = FALSE),
-                                    stringsAsFactors = FALSE)
-  } else if(is.null(rsid_annotated$clinvar.rcv)){
-    rsid_annotated_df <- data.frame(rsid = unlist(rsid_annotated$query),
-                                    cadd_phred = unlist(rsid_annotated$cadd.phred),
-                                    annot_type = sapply(rsid_annotated$cadd.annotype, paste, collapse = ";", USE.NAMES = FALSE),
-                                    consequence = sapply(rsid_annotated$cadd.consequence, paste, collapse = ";", USE.NAMES = FALSE),
-                                    clinical_significance = NA,
-                                    snpeff_ann = sapply(sapply(rsid_annotated$snpeff.ann, "[", "putative_impact"), paste, collapse = ";", USE.NAMES = FALSE),
-                                    stringsAsFactors = FALSE)
+  # Then, format the output as a data.frame
+  # Checking "is.null" is needed to avoid errors when there is a list of variants
+  # without some features (eg: no cadd.phred scores). Can happen for small lists.
+  
+  if(is.null(rsid_annotated$cadd.phred)){
+    cadd_phred <- NA
   } else {
-    rsid_annotated_df <- data.frame(rsid = unlist(rsid_annotated$query),
-                                    cadd_phred = unlist(rsid_annotated$cadd.phred),
-                                    annot_type = sapply(rsid_annotated$cadd.annotype, paste, collapse = ";", USE.NAMES = FALSE),
-                                    consequence = sapply(rsid_annotated$cadd.consequence, paste, collapse = ";", USE.NAMES = FALSE),
-                                    clinical_significance = sapply(rsid_annotated$clinvar.rcv.clinical_significance, paste, collapse = ";", USE.NAMES = FALSE),
-                                    snpeff_ann = sapply(sapply(rsid_annotated$snpeff.ann, "[", "putative_impact"), paste, collapse = ";", USE.NAMES = FALSE),
-                                    stringsAsFactors = FALSE)
+    cadd_phred <- unlist(rsid_annotated$cadd.phred)
   }
   
+  if(is.null(rsid_annotated$cadd.annotype)){
+    annot_type <- NA
+  } else {
+    annot_type <- sapply(rsid_annotated$cadd.annotype,
+                         paste, collapse = ";", USE.NAMES = FALSE)
+  }
 
-  # Replacing the snp eff annotation from "c(\"MODIFIER\", \"MODIFIER\")" to
-  # MODIFIER;MODIFIER
+  if(is.null(rsid_annotated$cadd.consequence)){
+    consequence <- NA
+  }  else {
+    consequence <- sapply(rsid_annotated$cadd.consequence,
+                          paste, collapse = ";", USE.NAMES = FALSE)
+  }
+
+  if(is.null(rsid_annotated$snpeff.ann)){
+    snpeff <- NA
+  }  else {
+    snpeff <- sapply(sapply(rsid_annotated$snpeff.ann, "[", "putative_impact"),
+                     paste, collapse = ";", USE.NAMES = FALSE)
+  }
+  
+  # For this one, getVariants returns a different format depending on the data
+  # fetched, so we also need to check if this is a list to extract only relevant information.
+  if(is.list(rsid_annotated$clinvar.rcv)) {
+    clinical_significance <- sapply(sapply(rsid_annotated$clinvar.rcv, "[", "clinical_significance"), 
+                                    paste, collapse = ";")
+  } else if(is.null(rsid_annotated$clinvar.rcv)) {
+    clinical_significance <- NA
+  } else {
+    clinical_significance <- sapply(rsid_annotated$clinvar.rcv.clinical_significance, 
+                                    paste, collapse = ";", USE.NAMES = FALSE)
+  }
+  
+  
+  rsid_annotated_df <- data.frame(rsid = unlist(rsid_annotated$query),
+                                  cadd_phred = cadd_phred,
+                                  annot_type = annot_type,
+                                  consequence = consequence,
+                                  clinical_significance = clinical_significance,
+                                  snpeff_ann = snpeff,
+                                  stringsAsFactors = FALSE)
+  
+
+  #Replacing the snp eff annotation from "c(\"MODIFIER\", \"MODIFIER\")" to "MODIFIER;MODIFIER"
   rsid_annotated_df$snpeff_ann <- gsub(pattern = "\"|c\\(|\\)", replacement = "",
                                        x = rsid_annotated_df$snpeff_ann)
   rsid_annotated_df$snpeff_ann <- noquote(gsub(pattern = ", ", replacement = ";",
-                                          x = rsid_annotated_df$snpeff_ann))
-  
+                                               x = rsid_annotated_df$snpeff_ann))
+
   # Same as above for clinical significance:
   rsid_annotated_df$clinical_significance <- gsub(pattern = "\"|c\\(|\\)", replacement = "",
                                                   x = rsid_annotated_df$clinical_significance)
