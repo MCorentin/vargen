@@ -310,6 +310,9 @@ obesity_filtered <- rbind(vargen_phred_10, vargen_clinVar, vargen_gwas)
 A more specific, alternative pipeline is available as part of this package, called "VarPhen", it outputs a smaller list 
 of variants, but directly related to the disease of interest. It relies on biomaRt to link variants to phenotypes.
 
+**note:** You will need to specify the columns to merge the results from VarPhen ("redsnp_id") and the annotation ("rsid").
+cf: the example below.
+
 ![VarPhen workflow](./images/VarPhen_workflow.png?raw=true)
 
 Example with obesity:
@@ -320,10 +323,16 @@ snp_mart <- connect_to_snp_ensembl()
 obesity_phens <- get_phenotype_terms(keyword = "obesity", 
                                      snp_mart = snp_mart)
 
-obesity_varphen_snps <- get_variants_from_phenotypes(phenotypes = obesity_phens, 
-                                                     snp_mart = snp_mart)
+obesity_varphen <- get_variants_from_phenotypes(phenotypes = obesity_phens, 
+                                                snp_mart = snp_mart)
 
-obesity_varphen_snps_annotated <- annotate_variants(obesity_varphen_snps$refsnp_id)
+obesity_varphen_annotation <- annotate_variants(obesity_varphen$refsnp_id)
+
+# /!\ contrary to vargen, here you need to specify which columns to merge
+# "refsnp_id" for varphen, and "rsid" for the annotation.
+obesity_varphen_annotated <- merge(obesity_varphen, 
+                                   obesity_varphen_annotation, 
+                                   by.x = "refsnp_id", by.y = "rsid")
 ````
 
 Output example:
