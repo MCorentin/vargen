@@ -569,8 +569,8 @@ get_omim_genes <- function(omim_ids, gene_mart) {
 
   if(is.null(gene_mart)) paste0("/!\\ no genes found for:", paste(omim_ids, collapse = ", "))
 
-  if(!is.null(gene_mart)) mim_genes$chromosome_name <- paste0("chr", mim_genes$chromosome_name)
-
+  if(!is.null(gene_mart)) mim_genes$chromosome_name <- format_chr(chr = mim_genes$chromosome_name)
+  
   return(mim_genes)
 }
 
@@ -601,27 +601,30 @@ get_omim_variants <- function(omim_genes, verbose = FALSE){
   list.variants <- vector('list', nrow(omim_genes))
 
   for(gene in 1:nrow(omim_genes)){
-    gene_variants <- cbind(ensembl_gene_id = omim_genes[gene, "ensembl_gene_id"],
-                           hgnc_symbol = omim_genes[gene, "hgnc_symbol"],
-                           get_variants_from_locations(locations = paste0(omim_genes[gene,"chromosome_name"], ":",
-                                                                          omim_genes[gene,"start_position"], ":",
-                                                                          omim_genes[gene,"end_position"]),
-                                                       verbose = verbose))
-
-    gene_variants_df <- format_output(chr = unlist(gene_variants$seq_region_name),
-                                      pos =  unlist(gene_variants$start),
-                                      rsid = unlist(gene_variants$id),
-                                      ensembl_gene_id = gene_variants$ensembl_gene_id,
-                                      hgnc_symbol = gene_variants$hgnc_symbol)
-
-    list.variants[[gene]] <- gene_variants_df
+    variants_loc <- get_variants_from_locations(locations = paste0(omim_genes[gene,"chromosome_name"], ":",
+                                                                   omim_genes[gene,"start_position"], ":",
+                                                                   omim_genes[gene,"end_position"]),
+                                                verbose = verbose)
+    if(length(variants_loc) != 0){
+      gene_variants <- cbind(ensembl_gene_id = omim_genes[gene, "ensembl_gene_id"],
+                             hgnc_symbol = omim_genes[gene, "hgnc_symbol"],
+                             variants_loc)
+      
+      gene_variants_df <- format_output(chr = unlist(gene_variants$seq_region_name),
+                                        pos =  unlist(gene_variants$start),
+                                        rsid = unlist(gene_variants$id),
+                                        ensembl_gene_id = gene_variants$ensembl_gene_id,
+                                        hgnc_symbol = gene_variants$hgnc_symbol)
+      
+      list.variants[[gene]] <- gene_variants_df
+    }
   }
 
+  # Removing the NULL elements of the list if exists
+  list.variants <- list.variants[!sapply(list.variants, is.null)]
+  # Then concatenate the list into a data.frame
   omim_variants <- do.call('rbind', list.variants)
   omim_variants$source <- "omim"
-
-  #UCSC chr format:
-  #omim_variants$chr <- paste0("chr", omim_variants$chr)
 
   return(omim_variants)
 }
@@ -749,25 +752,31 @@ get_fantom5_variants <- function(fantom_df, omim_genes, corr_threshold = 0.25,
                             BiocGenerics::end(enhancers_df))
       fantom_locs <- sub("^chr", "", fantom_locs)
 
-      enhancer_variants <- cbind(ensembl_gene_id = omim_genes[gene, "ensembl_gene_id"],
-                                 hgnc_symbol = omim_genes[gene, "hgnc_symbol"],
-                                 get_variants_from_locations(fantom_locs,
-                                                             verbose = verbose))
-
-      enhancer_variants_df <- format_output(chr = unlist(enhancer_variants$seq_region_name),
-                                            pos =  unlist(enhancer_variants$start),
-                                            rsid = unlist(enhancer_variants$id),
-                                            ensembl_gene_id = enhancer_variants$ensembl_gene_id,
-                                            hgnc_symbol = enhancer_variants$hgnc_symbol)
-
-      list.variants[[gene]] <- enhancer_variants_df
+      
+      variants_loc <- get_variants_from_locations(fantom_locs,
+                                                  verbose = verbose)
+      if(length(variants_loc) != 0){
+        enhancer_variants <- cbind(ensembl_gene_id = omim_genes[gene, "ensembl_gene_id"],
+                                   hgnc_symbol = omim_genes[gene, "hgnc_symbol"],
+                                   variants_loc)
+  
+        enhancer_variants_df <- format_output(chr = unlist(enhancer_variants$seq_region_name),
+                                              pos =  unlist(enhancer_variants$start),
+                                              rsid = unlist(enhancer_variants$id),
+                                              ensembl_gene_id = enhancer_variants$ensembl_gene_id,
+                                              hgnc_symbol = enhancer_variants$hgnc_symbol)
+  
+        list.variants[[gene]] <- enhancer_variants_df
+      }
     }
   }
-
+  
+  # Removing the NULL elements of the list if exists
+  list.variants <- list.variants[!sapply(list.variants, is.null)]
+  # Then concatenate the list into a data.frame
   fantom_variants <- do.call('rbind', list.variants)
   if(length(fantom_variants) != 0){
     fantom_variants$source <- "fantom5"
-    #fantom_variants$chr <- paste0("chr", fantom_variants$chr)
   }
 
   return(fantom_variants)
@@ -1192,14 +1201,16 @@ get_gtex_variants <- function(tissue_files, omim_genes, hg19ToHg38.over.chain,
 
       list.variants[[i]] <- gene_variants_df
       i <- i + 1
-      #gtex_variants <- rbind(gtex_variants, gene_variants_df)
     }
   }
+  
+  # Removing the NULL elements of the list if exists
+  list.variants <- list.variants[!sapply(list.variants, is.null)]
+  # Then concatenate the list into a data.frame
   gtex_variants <- do.call('rbind', list.variants)
 
   # If no variants are found, we do not add the source
   if(length(gtex_variants) != 0)  gtex_variants$source <- "gtex"
-  #if(length(gtex_variants) != 0)  gtex_variants$chr <- paste0("chr", gtex_variants$chr)
 
   return(gtex_variants)
 }
