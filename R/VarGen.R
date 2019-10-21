@@ -422,12 +422,12 @@ vargen_visualisation <- function(annotated_snps, outdir = "./", rsid_highlight,
 
 # ---- varphen Pipeline ----
 
-#' @title From a keyword, get a list of phenotypes to use with snp mart
+#' @title From keywords, get a list of phenotypes to use with snp mart
 #' @description The list of phenotypes obtained can be used with
 #' \code{\link{get_variants_from_phenotypes}} to get a list of variants associated
 #' with the phenotypes.
 #'
-#' @param keyword a keyword, all the phenotypes contaning this keyword will be
+#' @param keywords a keyword, all the phenotypes contaning this keyword will be
 #' returned (based on \code{\link[base]{grep}} with ignore.case)
 #' @param snp_mart a connection to ensembl snp mart, can be generated from
 #' \code{\link{connect_to_snp_ensembl}}
@@ -438,9 +438,10 @@ vargen_visualisation <- function(annotated_snps, outdir = "./", rsid_highlight,
 #' snp_mart <- connect_to_snp_ensembl()
 #'
 #' # Get the phenotypes related to diabetes
-#' get_phenotype_terms(keyword = "diabetes", snp_mart = snp_mart)
+#' get_phenotype_terms(keywords = "diabetes", snp_mart = snp_mart)
 #' @export
-get_phenotype_terms <- function(keyword, snp_mart) {
+get_phenotype_terms <- function(keywords, snp_mart) {
+  if(missing(keywords)) keywords <- ""
   if(missing(snp_mart)) snp_mart <- connect_to_snp_ensembl()
 
   # Get all the possible values for the phenotype filter:
@@ -448,7 +449,8 @@ get_phenotype_terms <- function(keyword, snp_mart) {
                                             mart = snp_mart)
   # Unlist the result and use grep to subset the relevant phenotypes
   filters <- unlist(strsplit(x = as.character(biomart_filters), split = ","))
-  return(filters[grep(keyword, filters, ignore.case = TRUE)])
+  # paste() is done in case there are more than one keyword, the "|" will act as an OR
+  return(filters[grep(paste(keywords,collapse="|"), filters, ignore.case = TRUE)])
 }
 
 
@@ -479,7 +481,7 @@ get_phenotype_terms <- function(keyword, snp_mart) {
 #' snp_mart <- connect_to_snp_ensembl()
 #'
 #' # Get the phenotypes in biomaRt containing the word "Diabetes"
-#' DM_phen <- get_phenotype_terms(keyword = "diabetes", snp_mart = snp_mart)
+#' DM_phen <- get_phenotype_terms(keywords = "diabetes", snp_mart = snp_mart)
 #'
 #' # Get all the variants associated with the penotypes in "DM_phen"
 #' get_variants_from_phenotypes(phenotypes = DM_phen, snp_mart = snp_mart)
