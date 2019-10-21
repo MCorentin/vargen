@@ -2,12 +2,12 @@
 % Please edit documentation in R/VarGen.R
 \name{get_phenotype_terms}
 \alias{get_phenotype_terms}
-\title{From a keyword, get a list of phenotypes to use with snp mart}
+\title{From keywords, get a list of phenotypes to use with snp mart}
 \usage{
-get_phenotype_terms(keyword, snp_mart)
+get_phenotype_terms(keywords, snp_mart)
 }
 \arguments{
-\item{keyword}{a keyword, all the phenotypes contaning this keyword will be
+\item{keywords}{a keyword, all the phenotypes contaning this keyword will be
 returned (based on \code{\link[base]{grep}} with ignore.case)}
 
 \item{snp_mart}{a connection to ensembl snp mart, can be generated from
@@ -26,5 +26,5 @@ with the phenotypes.
 snp_mart <- connect_to_snp_ensembl()
 
 # Get the phenotypes related to diabetes
-get_phenotype_terms(keyword = "diabetes", snp_mart = snp_mart)
+get_phenotype_terms(keywords = "diabetes", snp_mart = snp_mart)
 }

@@ -37,7 +37,7 @@ The vector of phenotypes can be obtained with
 snp_mart <- connect_to_snp_ensembl()
 
 # Get the phenotypes in biomaRt containing the word "Diabetes"
-DM_phen <- get_phenotype_terms(keyword = "diabetes", snp_mart = snp_mart)
+DM_phen <- get_phenotype_terms(keywords = "diabetes", snp_mart = snp_mart)
 
 # Get all the variants associated with the penotypes in "DM_phen"
 get_variants_from_phenotypes(phenotypes = DM_phen, snp_mart = snp_mart)
