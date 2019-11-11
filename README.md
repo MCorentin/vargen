@@ -187,8 +187,7 @@ You can search the available gwas traits by keyword with the *list_gwas_traits* 
 gwas catalog file (gwas_catalog_v1.0.2-associations_e96_r2019-08-24.tsv). 
 
 ````
-obesity_traits <- list_gwas_traits("obesity",  
-                                   "./vargen_data/gwas_catalog_v1.0.2-associations_e96_r2019-08-24.tsv")
+obesity_traits <- list_gwas_traits("obesity", "./vargen_data")
 obesity_traits
 
 #>  [1] "Obesity (extreme)"
@@ -226,13 +225,11 @@ Now we can launch the pipeline with all the input data:
 adipose_tissues <- select_gtex_tissues("./vargen_data/GTEx_Analysis_v8_eQTL/", 
                                        "adipose")
 
-obesity_traits <- list_gwas_traits("obesity",
-                                   "./vargen_data/gwas_catalog_v1.0.2-associations_e96_r2019-08-24.tsv")
+obesity_traits <- list_gwas_traits("obesity", "./vargen_data/")
 
 obesity_variants <- vargen_pipeline(vargen_dir = "./vargen_data/", 
                                     omim_morbid = "601665", 
                                     gtex_tissues = adipose_tissues, 
-                                    gwascat_file = "./vargen_data/gwas_catalog_v1.0.2-associations_e96_r2019-08-24.tsv", 
                                     gwas_traits = obesity_traits, 
                                     verbose = T)
 ````
@@ -349,14 +346,12 @@ Example:
 adipose_tissues <- select_gtex_tissues("./vargen_data/GTEx_Analysis_v8_eQTL/", 
                                        "adipose")
 
-obesity_traits <- list_gwas_traits("obesity",  
-                                   "./vargen_data/gwas_catalog_v1.0.2-associations_e96_r2019-08-24.tsv")
+obesity_traits <- list_gwas_traits("obesity", "./vargen_data/")
 
 obesity_custom <- vargen_custom(vargen_dir = "./vargen_data/", 
                                 gene_ids = c("ENSG00000155846", "ENSG00000115138"), 
                                 outdir = "./", 
                                 gtex_tissues = adipose_tissues, 
-                                gwascat_file = "./vargen_data/gwas_catalog_v1.0.2-associations_e96_r2019-08-24.tsv", 
                                 gwas_traits = obesity_traits, 
                                 verbose = T)
 ````
@@ -367,7 +362,7 @@ obesity_custom <- vargen_custom(vargen_dir = "./vargen_data/",
 
 If you want to visualise the variants in a manhattan plot, you can use the *plot_manhattan_gwas* function:
 ````
-gwas_cat <- create_gwas(gwascat_file = "./vargen_data/gwas_catalog_v1.0.2-associations_e96_r2019-07-30.tsv")
+gwas_cat <- create_gwas("./vargen_data/")
  
 plot_manhattan_gwas(gwas_cat = gwas_cat, traits = c("Type 1 diabetes", "Type 2 diabetes"))
 
