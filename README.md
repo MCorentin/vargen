@@ -93,7 +93,7 @@ To install devtools:
 ````
 install.packages("devtools")
 library(devtools)
-install_github("MCorentin/VarGen")
+install_github(repo = "MCorentin/VarGen", dependencies = TRUE)
 library(VarGen)
 ````
 
@@ -275,7 +275,7 @@ merge the variants from the VarGen pipeline with the output from the annotation 
 obesity_ann <- merge(obesity_variants, obesity_annotation)
 
 # We advise you to write the variants in a file, so you will not have to run the pipeline again.
-write.table(x = obesity_ann,
+write.table(x = obesity_ann, quote = FALSE, row.names = FALSE,
             file = "./OMIM_601665/vargen_variants_annotated.tsv", sep = "\t")
 ````
 

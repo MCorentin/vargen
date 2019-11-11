@@ -4,16 +4,16 @@
 \alias{list_gwas_traits}
 \title{List the available gwas traits}
 \usage{
-list_gwas_traits(keywords = "", gwascat_file)
+list_gwas_traits(keywords = "", vargen_dir)
 }
 \arguments{
 \item{keywords}{a vector of keywords to grep the traits from the gwas catalog. (default: "")}
 
-\item{gwascat_file}{(optional) a path to the file containing a gwas_catalog
-(available at http://www.ebi.ac.uk/gwas/api/search/downloads/alternative). The
-function will use the filename to determine the extract date, please have it
-in the format: \[filename\]_r**YYYYY**-**MM**-**DD**.tsv, eg:
-"gwas_catalog_v1.0.2-associations_e96_r2019-07-30.tsv"}
+\item{vargen_dir}{(optional) a path to vargen data directory, created 
+during \code{\link{vargen_install}}. If not specified, the gwas object will
+be created with \code{\link[gwascat]{makeCurrentGwascat}}. If specified, this
+function will look for files that begin with "gwas_catalog". If more than one 
+is found, the user will have to choose one via a text menu}
 }
 \value{
 a vector of traits

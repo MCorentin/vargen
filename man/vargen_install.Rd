@@ -22,9 +22,10 @@ nothing, download files in "install_dir".
 Only need to run it once. Will download the following files in
 "install_dir":
 \itemize{
-  \item gwas_catalog_v1.0.2-associations_e93_r2019-01-11.tsv
+  \item the latest gwas catalog, eg: gwas_catalog_v1.0.2-associations_e93_r2019-01-11.tsv
   \item hg19ToHg38.over.chain.gz (will be unzipped)
   \item GTEx_Analysis_v8_eQTL.tar.gz (will be untared)
+  \item enhancer_tss_associations.bed
 }
 }
 \examples{

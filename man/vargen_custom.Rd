@@ -5,7 +5,7 @@
 \title{Get variants related to specific genes.}
 \usage{
 vargen_custom(vargen_dir, gene_ids, fantom_corr = 0.25, outdir = "./",
-  gtex_tissues, gwascat_file, gwas_traits, verbose = FALSE)
+  gtex_tissues, gwas_traits, verbose = FALSE)
 }
 \arguments{
 \item{vargen_dir}{directory with the following file (can be generated with
@@ -23,11 +23,6 @@ running of this function}
 
 \item{gtex_tissues}{a vector containing the name of the "signif_variant_gene_pairs.txt.gz"
 files. Output from \code{\link{select_gtex_tissues}} can be used.}
-
-\item{gwascat_file}{Optional, a file containing the information about the
-gwas catalog (can be downloaded from "http://www.ebi.ac.uk/gwas/api/search/downloads/alternative".
-/!\ keep the original filename, this function use it to get the "extract_date".
-If missing the catalog will be fetched using \code{\link[gwascat]{makeCurrentGwascat}}.}
 
 \item{gwas_traits}{a vector with the trait of interest (as characters). The list
 of available traits can be obtained with \code{\link{list_gwas_traits}}}

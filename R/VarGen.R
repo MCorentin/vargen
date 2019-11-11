@@ -789,19 +789,60 @@ get_fantom5_variants <- function(fantom_df, omim_genes, corr_threshold = 0.25,
 
 #' @title Create a gwaswloc object
 #' @description Create a gwaswloc object from \code{\link[gwascat]{makeCurrentGwascat}}
-#' or by reading the "gwascat_file" (if present as a parameter).
+#' or by reading a local file (if "vargen_dir" specified as a parameter). If 
+#' "vargen_dir" contains more than one gwas catalog, the user will be prompted to 
+#' choose one.
 #' The function will use the filename to determine the extract date, please have
 #' it in the format: \[filename\]_r**YYYYY**-**MM**-**DD**.tsv
 #' eg: "gwas_catalog_v1.0.2-associations_e96_r2019-07-30.tsv"
 #'
-#' @param gwascat_file (optional) a path to the file containing a gwas_catalog
-#' (available at http://www.ebi.ac.uk/gwas/api/search/downloads/alternative).
+#' @param vargen_dir (optional) a path to vargen data directory, created 
+#' during \code{\link{vargen_install}}. If not specified, the gwas object will
+#' be created with \code{\link[gwascat]{makeCurrentGwascat}}. If specified, this
+#' function will look for files that begin with "gwas_catalog". If more than one 
+#' is found, the user will have to choose one via a text menu 
+#' @param verbose if true, will print progress information (default: FALSE)
 #'
 #' @examples
 #' gwas_cat <- create_gwas()
 #' @export
-create_gwas <- function(gwascat_file){
-  if(missing(gwascat_file)){
+create_gwas <- function(vargen_dir, verbose = FALSE){
+  # If usemakegwas is true (user choice or no local gwas file found, then we 
+  # download the catalog with gwascat::makeCurrentGwascat())
+  usemakegwas <- FALSE
+  
+  if(missing(vargen_dir)){
+    usemakegwas <- TRUE
+  } else{
+    # Listing the list of gwas catalogs in "vargen_dir"
+    gwasfiles <- list.files(path = vargen_dir, pattern = "gwas_catalog*", 
+                            full.names = TRUE, include.dirs = FALSE)
+    
+    # If more than one catalog found, we let the user choose
+    if(length(gwasfiles) > 1){
+      print(paste0("More than 1 gwas catalog found in ", vargen_dir))
+      print("Please choose one of the file (type 0 to use gwascat::makeCurrentGwascat")
+      # Choice can only get indexes belonging to the menu, so no need to check for
+      # out of array indexes.
+      choice <- utils::menu(choices = gwasfiles)
+      if(choice == 0){
+        print("No correct choice made, downloading gwas catalog with gwascat::makeCurrentGwascat")
+        usemakegwas <- TRUE
+      } else {
+        gwascat_file <- gwasfiles[choice]
+      }
+      
+    } else if(length(gwasfiles) == 1){
+      gwascat_file <- gwasfiles
+    } else {
+      # Any other option we use "gwascat::makeCurrentGwascat()"
+      if(verbose) print(paste0("No gwas catalogs detected in ", vargen_dir, 
+                               ". Downloading gwas catalog with gwascat::makeCurrentGwascat"))
+      usemakegwas <- TRUE
+    }
+  }
+  
+  if(usemakegwas == TRUE){
     require("gwascat")
     utils::data("ebicat38")
     # The following line downloads file and build the gwasloc object all in one step
@@ -810,8 +851,8 @@ create_gwas <- function(gwascat_file){
                                             genome = "GRCh38",
                                             withOnt = TRUE)
     extract_date <- as.character(Sys.Date())
-  } else{
-    # File from "http://www.ebi.ac.uk/gwas/api/search/downloads/alternative"
+  } else {
+    # File from "https://www.ebi.ac.uk/gwas/api/search/downloads/full"
     # quote = "" is important to avoid error about EOF in quoted string.
     gwas_cat <- utils::read.delim(file = gwascat_file, check.names = FALSE, quote = "",
                                   stringsAsFactors = FALSE, header = TRUE, sep = "\t")
@@ -819,7 +860,8 @@ create_gwas <- function(gwascat_file){
     extract_date <- sub(".*_r", "", gwascat_file)
     extract_date <- sub(".tsv", "", extract_date)
   }
-
+  
+  # We transform the gwas cat object into a GRanges object:
   gwas_cat <- gwascat:::gwdf2GRanges(df = gwas_cat, extractDate = extract_date)
   rtracklayer::genome(gwas_cat) <- "GRCh38"
 
@@ -834,23 +876,25 @@ create_gwas <- function(gwascat_file){
 #' Output can be used as parameter for \code{\link{vargen_pipeline}}
 #'
 #' @param keywords a vector of keywords to grep the traits from the gwas catalog. (default: "")
-#' @param gwascat_file (optional) a path to the file containing a gwas_catalog
-#' (available at http://www.ebi.ac.uk/gwas/api/search/downloads/alternative). The
-#' function will use the filename to determine the extract date, please have it
-#' in the format: \[filename\]_r**YYYYY**-**MM**-**DD**.tsv, eg:
-#' "gwas_catalog_v1.0.2-associations_e96_r2019-07-30.tsv"
+#' @param vargen_dir (optional) a path to vargen data directory, created 
+#' during \code{\link{vargen_install}}. If not specified, the gwas object will
+#' be created with \code{\link[gwascat]{makeCurrentGwascat}}. If specified, this
+#' function will look for files that begin with "gwas_catalog". If more than one 
+#' is found, the user will have to choose one via a text menu 
 #' @return a vector of traits
 #'
 #' @examples
 #' list_gwas_traits(keywords = c("type 1 diabetes", "Obesity"))
 #' @export
-list_gwas_traits <- function(keywords = "", gwascat_file) {
+list_gwas_traits <- function(keywords = "", vargen_dir) {
   traits <- c()
-
-  if(missing(gwascat_file)){
+  
+  # If the user prefers to create a gwasloc object from gwascat::makeCurrentGwascat()
+  # instead of using the local catalog in "vargen_dir" he can use "makegwas = TRUE"
+  if(missing(vargen_dir)){
     gwas_cat <- create_gwas()
   } else{
-    gwas_cat <- create_gwas(gwascat_file = gwascat_file)
+    gwas_cat <- create_gwas(vargen_dir = vargen_dir)
   }
 
   # Collapsing the values with a "|" for "OR" in grep search
@@ -898,9 +942,12 @@ get_gwas_variants <- function(gwas_cat, gwas_traits){
 
   # "gwas_variants@ranges" contains "start" "stop" "width", that is why we only
   # select columns c(1,2,5,6,7,8).
-  gwas_variants_df <- unique(data.frame(chr = gwas_variants@seqnames, pos = gwas_variants@ranges,
-                                        rsid = gwas_variants$SNPS, ensembl_gene_id = gwas_variants$SNP_GENE_IDS,
-                                        hgnc_symbol = gwas_variants$MAPPED_GENE, source = "gwas")[,c(1,2,5,6,7,8)])
+  gwas_variants_df <- unique(data.frame(chr = gwas_variants@seqnames, 
+                                        pos = gwas_variants@ranges,
+                                        rsid = gwas_variants$SNPS, 
+                                        ensembl_gene_id = gwas_variants$SNP_GENE_IDS,
+                                        hgnc_symbol = gwas_variants$MAPPED_GENE, 
+                                        source = "gwas")[,c(1,2,5,6,7,8)])
   colnames(gwas_variants_df)[2] <- "pos"
 
   return(gwas_variants_df)
@@ -1224,9 +1271,10 @@ get_gtex_variants <- function(tissue_files, omim_genes, hg19ToHg38.over.chain,
 #' @description Only need to run it once. Will download the following files in
 #' "install_dir":
 #' \itemize{
-#'   \item gwas_catalog_v1.0.2-associations_e93_r2019-01-11.tsv
+#'   \item the latest gwas catalog, eg: gwas_catalog_v1.0.2-associations_e93_r2019-01-11.tsv
 #'   \item hg19ToHg38.over.chain.gz (will be unzipped)
 #'   \item GTEx_Analysis_v8_eQTL.tar.gz (will be untared)
+#'   \item enhancer_tss_associations.bed
 #' }
 #'
 #' @param install_dir the path to the installation folder (default = "./")
@@ -1260,6 +1308,26 @@ vargen_install <- function(install_dir = "./", gtex_version = "v8", verbose = FA
   R.utils::gunzip(filename = paste0(install_dir, "/hg19ToHg38.over.chain.gz"),
                   skip = TRUE, remove = TRUE)
 
+  
+  # download gwas file:
+  if(verbose) print("Downloading the gwas catalog file from ebi")
+  gwasurl <- "https://www.ebi.ac.uk/gwas/api/search/downloads/full"
+  # gwasheaders contains the http header from the URL
+  gwasheaders <- curlGetHeaders(url = gwasurl, redirect = TRUE, verify = TRUE)
+  # From the header, we can extract the line where the filename is
+  gwasheaders <- gwasheaders[grep("filename", gwasheaders)]
+  # Then we extract the filname from the header line, which should resemble:
+  # "Content-Disposition: attachement; filename=gwas_catalog_v1.0-associations_e96_r2019-10-14.tsv\r\n"
+  gwasfilename <- unlist(strsplit(x = gwasheaders, split = "filename="))[2]
+  # This should remove new lines "\r", "\r\n" or "\n"
+  gwasfilename <- gsub("\r?\n|\r", "", gwasfilename)
+  
+  # Now that we have the gwas catalog filename, we can download it:
+  utils::download.file(url = gwasurl, 
+                       destfile = paste0(install_dir, gwasfilename))
+  
+  cat("\n")
+  
   # Add gtex folder
   if(verbose) print("Download GTEx variant association file... This may take a while")
   if(gtex_version == "v7") {
@@ -1317,10 +1385,6 @@ vargen_install <- function(install_dir = "./", gtex_version = "v8", verbose = FA
 #' running of this function
 #' @param gtex_tissues a vector containing the name of the "signif_variant_gene_pairs.txt.gz"
 #' files. Output from \code{\link{select_gtex_tissues}} can be used.
-#' @param gwascat_file Optional, a file containing the information about the
-#' gwas catalog (can be downloaded from "http://www.ebi.ac.uk/gwas/api/search/downloads/alternative".
-#' /!\ keep the original filename, this function use it to get the "extract_date".
-#' If missing the catalog will be fetched using \code{\link[gwascat]{makeCurrentGwascat}}.
 #' @param gwas_traits a vector with the trait of interest (as characters). The list
 #' of available traits can be obtained with \code{\link{list_gwas_traits}}
 #' @param verbose if TRUE, will print progress messages (default: FALSE)
@@ -1355,7 +1419,7 @@ vargen_install <- function(install_dir = "./", gtex_version = "v8", verbose = FA
 #'                        gwas_traits = "Type 1 diabetes", verbose = TRUE)
 #' @export
 vargen_pipeline <- function(vargen_dir, omim_morbid, fantom_corr = 0.25, outdir = "./",
-                            gtex_tissues, gwascat_file, gwas_traits, verbose = FALSE) {
+                            gtex_tissues, gwas_traits, verbose = FALSE) {
   if(length(omim_morbid) != 1){
     stop("Please provide a unique OMIM morbid id.")
   }
@@ -1375,11 +1439,11 @@ vargen_pipeline <- function(vargen_dir, omim_morbid, fantom_corr = 0.25, outdir 
   # no gwas traits = no need to generate the gwas object
   if(!missing(gwas_traits)){
     if(verbose) print("Building the gwascat object...")
-      if(missing(gwascat_file)){
-        gwas_cat <- create_gwas()
-      } else {
-        gwas_cat <- create_gwas(gwascat_file)
-      }
+      #if(missing(gwascat_file)){
+      #  gwas_cat <- create_gwas()
+      #} else {
+      gwas_cat <- create_gwas(vargen_dir)
+      #}
     # Check if the gwas traits are in the gwas catalog:
     for(trait in gwas_traits){
       if(!(trait %in% gwas_cat$`DISEASE/TRAIT`)) stop(paste0("gwas trait '", trait, "' not found in gwas catalog, stopping now."))
@@ -1484,10 +1548,6 @@ vargen_pipeline <- function(vargen_dir, omim_morbid, fantom_corr = 0.25, outdir 
 #' running of this function
 #' @param gtex_tissues a vector containing the name of the "signif_variant_gene_pairs.txt.gz"
 #' files. Output from \code{\link{select_gtex_tissues}} can be used.
-#' @param gwascat_file Optional, a file containing the information about the
-#' gwas catalog (can be downloaded from "http://www.ebi.ac.uk/gwas/api/search/downloads/alternative".
-#' /!\ keep the original filename, this function use it to get the "extract_date".
-#' If missing the catalog will be fetched using \code{\link[gwascat]{makeCurrentGwascat}}.
 #' @param gwas_traits a vector with the trait of interest (as characters). The list
 #' of available traits can be obtained with \code{\link{list_gwas_traits}}
 #' @param verbose if TRUE, will print progress messages (default: FALSE)
@@ -1521,7 +1581,7 @@ vargen_pipeline <- function(vargen_dir, omim_morbid, fantom_corr = 0.25, outdir 
 #'               gwas_traits = "Obesity")
 #' @export
 vargen_custom <- function(vargen_dir, gene_ids, fantom_corr = 0.25, outdir = "./",
-                          gtex_tissues, gwascat_file, gwas_traits, verbose = FALSE) {
+                          gtex_tissues, gwas_traits, verbose = FALSE) {
   if (!file.exists(outdir)){
     if(verbose) print(paste0("Creating folder '", outdir, "'"))
     dir.create(outdir)
@@ -1537,11 +1597,11 @@ vargen_custom <- function(vargen_dir, gene_ids, fantom_corr = 0.25, outdir = "./
   # no gwas traits = no need to generate the gwas object
   if(!missing(gwas_traits)){
     if(verbose) print("Building the gwascat object...")
-    if(missing(gwascat_file)){
-      gwas_cat <- create_gwas()
-    } else {
-      gwas_cat <- create_gwas(gwascat_file)
-    }
+    #if(missing(gwascat_file)){
+    #  gwas_cat <- create_gwas()
+    #} else {
+    gwas_cat <- create_gwas(vargen_dir)
+    #}
     # Check if the gwas traits are in the gwas catalog:
     for(trait in gwas_traits){
       if(!(trait %in% gwas_cat$`DISEASE/TRAIT`)) stop(paste0("gwas trait '", trait, "' not found in gwas catalog, stopping now."))
