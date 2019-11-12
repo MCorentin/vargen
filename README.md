@@ -113,29 +113,31 @@ install.packages("./VarGen/", repos = NULL, type = "source")
 
 ### Obtaining the local files
 
-VarGen is fetching data from public databases, it needs the following files (the files should all be in the same folder). 
-The easiest way to get them is to use the *vargen_install* function from this package.
+VarGen is fetching data from public databases, it needs the following files (they should all be in the same folder). 
+The easiest way to get them is to use the *vargen_install* function from this package. The list of files obtained by 
+the function is available below (with their approximate sizes and the links to download them manually).
+**note:** The installation can take a while, especially for the GTEx files.
 
 ````
 vargen_install(install_dir = "./vargen_data", gtex_version = "v8", verbose = T)
 ````
 
-Alternatively, they can be installed manually:
+Alternatively, they can be installed manually (the approximate size of every file is written in parenthesis next to the filename):
 
- - __enhancer_tss_associations.bed__, this is the enhancer to transcript start site association file from FANTOM5. 
+ - __enhancer_tss_associations.bed__ (~10 Mb), this is the enhancer to transcript start site association file from FANTOM5. 
  (available at:  http://enhancer.binf.ku.dk/presets/enhancer_tss_associations.bed)
  
- - __hg19ToHg38.over.chain__, some databases are still using information from the human reference genome "hg19". VarGen 
+ - __hg19ToHg38.over.chain__ (~500 kb), some databases are still using information from the human reference genome "hg19". VarGen 
  will use this file to liftover the information to "hg38" (available at: http://hgdownload.cse.ucsc.edu/goldenPath/hg19/liftOver/hg19ToHg38.over.chain.gz)
 
-- __GTEx_Analysis_v8_eQTL__, a folder containing the significant variant gene pairs from the Genotype-Tissues Expression 
+- __GTEx_Analysis_v8_eQTL__ (~1.45 Gb), a folder containing the significant variant gene pairs from the Genotype-Tissues Expression 
 database (GTEx) (available at: https://gtexportal.org/home/datasets). v7 and v8 are supported by VarGen.
     
     Direct link for v7: https://storage.googleapis.com/gtex_analysis_v7/single_tissue_eqtl_data/GTEx_Analysis_v7_eQTL.tar.gz
 
     Direct link for v8: https://storage.googleapis.com/gtex_analysis_v8/single_tissue_qtl_data/GTEx_Analysis_v8_eQTL.tar
 
-- __gwas catalog file__, this is an optional file. Depending on your connection, creating the lastest gwas catalog using 
+- __gwas catalog file__ (~90 Mb), this is an optional file. Depending on your connection, creating the lastest gwas catalog using 
 *makeCurrentGwascat* function can take a long time. You can instead download a gwas catalog file from http://www.ebi.ac.uk/gwas/api/search/downloads/alternative 
 and give it as input for the VarGen pipeline. 
 
@@ -240,7 +242,7 @@ the gene associated with the variant and the source (omim, fantom5, gtex or gwas
 ````
 head(obesity_variants)
 
-   chr     pos         rsid           ensembl_gene_id    hgnc_symbol  source
+#  chr     pos         rsid           ensembl_gene_id    hgnc_symbol  source
 #> chr2    25160855    rs777983882    ENSG00000115138    POMC         omim
 #> chr2    25160866    rs1480805741   ENSG00000115138    POMC         omim
 #> chr2    25160871    rs1245939527   ENSG00000115138    POMC         omim

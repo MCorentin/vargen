@@ -1324,7 +1324,7 @@ vargen_install <- function(install_dir = "./", gtex_version = "v8", verbose = FA
   
   # Now that we have the gwas catalog filename, we can download it:
   utils::download.file(url = gwasurl, 
-                       destfile = paste0(install_dir, gwasfilename))
+                       destfile = paste0(install_dir, "/", gwasfilename))
   
   cat("\n")
   
