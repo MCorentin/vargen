@@ -189,6 +189,7 @@ annotate_variants <- function(rsid, verbose = FALSE) {
   } else {
     annot_type <- sapply(rsid_annotated$cadd.annotype,
                          paste, collapse = ";", USE.NAMES = FALSE)
+    annot_type <- gsub("\n", "", annot_type)
   }
 
   if(is.null(rsid_annotated$cadd.consequence)){
@@ -196,6 +197,7 @@ annotate_variants <- function(rsid, verbose = FALSE) {
   }  else {
     consequence <- sapply(rsid_annotated$cadd.consequence,
                           paste, collapse = ";", USE.NAMES = FALSE)
+    consequence <- gsub("\n", "", consequence)
   }
 
   if(is.null(rsid_annotated$snpeff.ann)){
@@ -203,6 +205,7 @@ annotate_variants <- function(rsid, verbose = FALSE) {
   }  else {
     snpeff <- sapply(sapply(rsid_annotated$snpeff.ann, "[", "putative_impact"),
                      paste, collapse = ";", USE.NAMES = FALSE)
+    snpeff <- gsub("\n", "", snpeff)
   }
   
   # For this one, getVariants returns a different format depending on the data
@@ -515,22 +518,39 @@ get_variants_from_phenotypes <- function(phenotypes, snp_mart) {
 #' @param gene_mart a connection to hsapiens gene mart, can be generated
 #' from \code{\link{connect_to_gene_ensembl}} (which will be used if this argument
 #' if not specified).
+#' @param keywords a vector containing a list of keywords. This will be grepped 
+#' (case insensitive) against the list of omim descriptions to retrieve a list of 
+#' omim IDs.
 #'
 #' @return a dataframe with two columns ("mim_morbid_accession" and "mim_morbid_description")
 #'
 #' @examples
 #' gene_mart <- connect_to_gene_ensembl()
 #' list_omim_accessions(gene_mart)
+#' list_omim_accessions(gene_mart, "alzheimer")
+#' list_omim_accessions(gene_mart, c("alzheimer", "obesity"))
 #' @export
-list_omim_accessions <- function(gene_mart){
+list_omim_accessions <- function(gene_mart, keywords){
   if(missing(gene_mart)) gene_mart <- connect_to_gene_ensembl()
 
-  return(biomaRt::getBM(mart = gene_mart,
-                        attributes = c("mim_morbid_accession",
-                                       "mim_morbid_description"),
-                        filters = "with_mim_morbid",
-                        values = c(TRUE),
-                        uniqueRows = TRUE))
+  omim_list <- biomaRt::getBM(mart = gene_mart,
+                              attributes = c("mim_morbid_accession",
+                                             "mim_morbid_description"),
+                              filters = "with_mim_morbid",
+                              values = c(TRUE),
+                              uniqueRows = TRUE)
+  
+  if(!missing(keywords)){
+    # use "|" as an OR for the grep search
+    keys <- paste(keywords, collapse = "|")
+    omim_list <- omim_list[grep(keys,
+                                omim_list$mim_morbid_description,
+                                ignore.case = T),]
+
+    if(nrow(omim_list) == 0) print(paste0("No OMIM ID found for '", keywords, "'"))
+  }
+  
+  return(omim_list)
 }
 
 
@@ -870,7 +890,7 @@ create_gwas <- function(vargen_dir, verbose = FALSE){
 
 
 #' @title List the available gwas traits
-#' @description Return the gwas traits available in the gwas catalog, based on a keyword.
+#' @description Return the gwas traits available in the gwas catalog, based on keywords.
 #' The traits are found using \code{\link[base]{grep}} on the `DISEASE/TRAIT`
 #' column from the gwas object produced by \code{\link[gwascat]{makeCurrentGwascat}}.
 #' Output can be used as parameter for \code{\link{vargen_pipeline}}
@@ -1478,8 +1498,8 @@ vargen_pipeline <- function(vargen_dir, omim_morbid, fantom_corr = 0.25, outdir 
                      file = paste0(omim_folder, "/", omim_morbid, "_genes_info.tsv"))
 
   # Get the variants on the OMIM genes:
-  master_variants <- get_omim_variants(omim_genes = omim_genes, verbose = verbose)
-
+  master_variants <- get_omim_variants(omim_genes = omim_genes, 
+                                       verbose = verbose)
 
   #_____________________________________________________________________________
   # Getting variants on the enhancers of the OMIM genes, using FANTOM5

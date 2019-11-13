@@ -12,6 +12,8 @@ during \code{\link{vargen_install}}. If not specified, the gwas object will
 be created with \code{\link[gwascat]{makeCurrentGwascat}}. If specified, this
 function will look for files that begin with "gwas_catalog". If more than one 
 is found, the user will have to choose one via a text menu}
+
+\item{verbose}{if true, will print progress information (default: FALSE)}
 }
 \description{
 Create a gwaswloc object from \code{\link[gwascat]{makeCurrentGwascat}}

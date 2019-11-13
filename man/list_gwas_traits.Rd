@@ -19,7 +19,7 @@ is found, the user will have to choose one via a text menu}
 a vector of traits
 }
 \description{
-Return the gwas traits available in the gwas catalog, based on a keyword.
+Return the gwas traits available in the gwas catalog, based on keywords.
 The traits are found using \code{\link[base]{grep}} on the `DISEASE/TRAIT`
 column from the gwas object produced by \code{\link[gwascat]{makeCurrentGwascat}}.
 Output can be used as parameter for \code{\link{vargen_pipeline}}

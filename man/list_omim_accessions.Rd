@@ -4,12 +4,16 @@
 \alias{list_omim_accessions}
 \title{List the available OMIM morbid IDs and descriptions}
 \usage{
-list_omim_accessions(gene_mart)
+list_omim_accessions(gene_mart, keywords)
 }
 \arguments{
 \item{gene_mart}{a connection to hsapiens gene mart, can be generated
 from \code{\link{connect_to_gene_ensembl}} (which will be used if this argument
 if not specified).}
+
+\item{keywords}{a vector containing a list of keywords. This will be grepped 
+(case insensitive) against the list of omim descriptions to retrieve a list of 
+omim IDs.}
 }
 \value{
 a dataframe with two columns ("mim_morbid_accession" and "mim_morbid_description")
@@ -23,4 +27,6 @@ This function is useful to get OMIM IDs for \code{\link{get_omim_genes}}
 \examples{
 gene_mart <- connect_to_gene_ensembl()
 list_omim_accessions(gene_mart)
+list_omim_accessions(gene_mart, "alzheimer")
+list_omim_accessions(gene_mart, c("alzheimer", "obesity"))
 }

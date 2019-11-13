@@ -153,6 +153,9 @@ use “obesity leanness included” (OMIM id: 601665).
 ````
 gene_mart <- connect_to_gene_ensembl()
 View(list_omim_accessions(gene_mart))
+
+# You can search using list of keywords as well:
+View(list_omim_accessions(gene_mart, c("alzheimer", "neurodegeneration")))
 ````
 
 ### Getting the GTEx tissues
