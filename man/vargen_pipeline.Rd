@@ -4,15 +4,15 @@
 \alias{vargen_pipeline}
 \title{Main vargen function, to get the list of variants}
 \usage{
-vargen_pipeline(vargen_dir, omim_morbid, fantom_corr = 0.25,
+vargen_pipeline(vargen_dir, omim_morbid_ids, fantom_corr = 0.25,
   outdir = "./", gtex_tissues, gwas_traits, verbose = FALSE)
 }
 \arguments{
 \item{vargen_dir}{directory with the following file (can be generated with
 \code{\link{vargen_install}})}
 
-\item{omim_morbid}{the omim morbid id of the phenotype of interest. You can
-search on the Online Mendelian Inheritance in Man website
+\item{omim_morbid_ids}{a vector containing the omim morbid id(s) of the phenotype(s) 
+of interest. You can search on the Online Mendelian Inheritance in Man website
 (https://www.omim.org/) or use \code{\link{list_omim_accessions}}}
 
 \item{fantom_corr}{the minimum correlation (z-score) to consider a FANTOM5

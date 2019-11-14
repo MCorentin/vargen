@@ -93,12 +93,10 @@ get_variants_from_locations <- function(locations, verbose = FALSE) {
     variants_at_loc <- rbind(variants_at_loc, jsonlite::fromJSON(
                           jsonlite::toJSON(httr::content(get_output))))
 
-    if(verbose) print(paste0("location '", curr_loc, "' done !"))
+    #if(verbose) print(paste0("location '", curr_loc, "' done !"))
 
     ensembl_rest_limit <- ensembl_rest_limit + 1
   }
-
-  #variants_at_loc$seq_region_name <- paste0("chr", variants_at_loc$seq_region_name)
 
   return(variants_at_loc)
 }
@@ -1394,8 +1392,8 @@ vargen_install <- function(install_dir = "./", gtex_version = "v8", verbose = FA
 #'
 #' @param vargen_dir directory with the following file (can be generated with
 #' \code{\link{vargen_install}})
-#' @param omim_morbid the omim morbid id of the phenotype of interest. You can
-#' search on the Online Mendelian Inheritance in Man website
+#' @param omim_morbid_ids a vector containing the omim morbid id(s) of the phenotype(s) 
+#' of interest. You can search on the Online Mendelian Inheritance in Man website
 #' (https://www.omim.org/) or use \code{\link{list_omim_accessions}}
 #' @param fantom_corr the minimum correlation (z-score) to consider a FANTOM5
 #' enhancer/gene association valid (default: 0.25).
@@ -1438,13 +1436,13 @@ vargen_install <- function(install_dir = "./", gtex_version = "v8", verbose = FA
 #'                        gtex_tissues = pancreas_tissues,
 #'                        gwas_traits = "Type 1 diabetes", verbose = TRUE)
 #' @export
-vargen_pipeline <- function(vargen_dir, omim_morbid, fantom_corr = 0.25, outdir = "./",
-                            gtex_tissues, gwas_traits, verbose = FALSE) {
-  if(length(omim_morbid) != 1){
-    stop("Please provide a unique OMIM morbid id.")
+vargen_pipeline <- function(vargen_dir, omim_morbid_ids, fantom_corr = 0.25, 
+                            outdir = "./", gtex_tissues, gwas_traits, verbose = FALSE) {
+  if(missing(omim_morbid_ids)){
+    stop("Please provide OMIM morbid ids. Stopping now")
   }
 
-  if (!file.exists(outdir)){
+  if(!file.exists(outdir)){
     if(verbose) print(paste0("Creating folder '", outdir, "'"))
     dir.create(outdir)
   }
@@ -1459,20 +1457,19 @@ vargen_pipeline <- function(vargen_dir, omim_morbid, fantom_corr = 0.25, outdir 
   # no gwas traits = no need to generate the gwas object
   if(!missing(gwas_traits)){
     if(verbose) print("Building the gwascat object...")
-      #if(missing(gwascat_file)){
-      #  gwas_cat <- create_gwas()
-      #} else {
       gwas_cat <- create_gwas(vargen_dir)
-      #}
     # Check if the gwas traits are in the gwas catalog:
     for(trait in gwas_traits){
-      if(!(trait %in% gwas_cat$`DISEASE/TRAIT`)) stop(paste0("gwas trait '", trait, "' not found in gwas catalog, stopping now."))
+      if(!(trait %in% gwas_cat$`DISEASE/TRAIT`)){
+        stop(paste0("gwas trait '", trait, "' not found in gwas catalog, stopping now."))
+      } 
     }
   }
 
   if(verbose) print(paste0("Reading the enhancer tss association file for FANTOM5... '" ,
                            vargen_dir, "/enhancer_tss_associations.bed'"))
-  fantom_df <- prepare_fantom(enhancer_tss_association = paste0(vargen_dir, "/enhancer_tss_associations.bed"))
+  fantom_df <- prepare_fantom(enhancer_tss_association = paste0(vargen_dir, 
+                                                                "/enhancer_tss_associations.bed"))
 
   if(verbose) print(paste0("Reading the liftOver chain file... '",
                            vargen_dir, "/hg19ToHg38.over.chain'"))
@@ -1482,42 +1479,46 @@ vargen_pipeline <- function(vargen_dir, omim_morbid, fantom_corr = 0.25, outdir 
   #_____________________________________________________________________________
   # Getting variants from genes related to OMIM disease
   #_____________________________________________________________________________
-  omim_folder <- paste0(outdir, "/OMIM_", omim_morbid)
-  if (!file.exists(omim_folder)){
-    if(verbose) print(paste0("Creating folder '", omim_folder, "'"))
-    dir.create(omim_folder)
-  }
-
-  # Get the genes related to the phenotype:
-  omim_genes <- get_omim_genes(omim_ids = omim_morbid,
-                               gene_mart = gene_mart)
-
-  #if(is.null(omim_genes) == 0) stop(paste0("/!\\ stopping, no genes found for omim id:", omim_morbid))
-
-  utils::write.table(x = omim_genes, quote = FALSE, sep = "\t", row.names = FALSE,
-                     file = paste0(omim_folder, "/", omim_morbid, "_genes_info.tsv"))
-
-  # Get the variants on the OMIM genes:
-  master_variants <- get_omim_variants(omim_genes = omim_genes, 
-                                       verbose = verbose)
-
-  #_____________________________________________________________________________
-  # Getting variants on the enhancers of the OMIM genes, using FANTOM5
-  #_____________________________________________________________________________
-  fantom_variants <- get_fantom5_variants(fantom_df = fantom_df,
-                                          omim_genes = omim_genes,
-                                          corr_threshold = fantom_corr,
-                                          hg19ToHg38.over.chain = hg19ToHg38.over.chain,
+  omim_all_genes <- data.frame()
+  master_variants <- data.frame()
+  for(omim_morbid in omim_morbid_ids){
+    
+    # First: get all the genes linked to the different omim ids:
+    omim_genes <- get_omim_genes(omim_morbid, gene_mart)
+    if(nrow(omim_genes) == 0){
+      if(verbose) print(paste0("warning: no genes found for omim id: ", omim_morbid))
+    } else {
+      
+      omim_all_genes <- rbind(omim_all_genes, omim_genes)
+      
+      # We get the variants on the genes:
+      genes_variants <- get_omim_variants(omim_genes = omim_genes, 
                                           verbose = verbose)
+      
+      if(length(genes_variants) != 0) master_variants <- rbind(master_variants, genes_variants)
+      
+      
+      # We get the variants on the enhancers of the genes:
+      fantom_variants <- get_fantom5_variants(fantom_df = fantom_df,
+                                              omim_genes = omim_genes,
+                                              corr_threshold = fantom_corr,
+                                              hg19ToHg38.over.chain = hg19ToHg38.over.chain,
+                                              verbose = verbose)
 
-  if(length(fantom_variants) != 0) master_variants <- rbind(master_variants, fantom_variants)
+      if(length(fantom_variants) != 0) master_variants <- rbind(master_variants, fantom_variants)
+    }
+  }
+  
+  # We write the list of genes in a file.
+  utils::write.table(x = omim_all_genes, quote = FALSE, sep = "\t", row.names = FALSE,
+                     file = paste0(outdir, "/genes_info.tsv"))
 
   #_____________________________________________________________________________
   # Getting variants associated with change of expression in GTEx (need tissues as input)
   #_____________________________________________________________________________
   if(!missing(gtex_tissues)){
     gtex_variants <- get_gtex_variants(tissue_files = gtex_tissues,
-                                       omim_genes = omim_genes,
+                                       omim_genes = omim_all_genes,
                                        hg19ToHg38.over.chain = hg19ToHg38.over.chain,
                                        verbose = verbose)
 
@@ -1526,7 +1527,6 @@ vargen_pipeline <- function(vargen_dir, omim_morbid, fantom_corr = 0.25, outdir 
   } else{
     if(verbose) print("No values for 'gtex_tissues', skipping GTEx step...")
   }
-
 
   #_____________________________________________________________________________
   # Getting variants associated to the disease in the gwas catalog
@@ -1540,9 +1540,9 @@ vargen_pipeline <- function(vargen_dir, omim_morbid, fantom_corr = 0.25, outdir 
 
   # writing the variants data.frame to a file
   if(verbose) print(paste0("Writing the variants to ",
-                           paste0(omim_folder, "/", omim_morbid, "_vargen_variants.tsv")))
+                           paste0(outdir, "/vargen_variants.tsv")))
   utils::write.table(x = master_variants, append = FALSE, quote = FALSE, sep = "\t", row.names = FALSE,
-                     file = paste0(omim_folder, "/", omim_morbid, "_vargen_variants.tsv"))
+                     file = paste0(outdir, "/vargen_variants.tsv"))
 
   return(unique(master_variants))
 }
