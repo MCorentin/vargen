@@ -15,7 +15,9 @@ annotate_variants(rsid, verbose = FALSE)
 a data.frame with the following columns:
 \itemize{
   \item rsid (variant id)
-  \item cadd phred (phred score from CADD)
+  \item cadd phred (phred score from CADD, higher more deleterious)
+  \item fathmm_xf_score (from 0 to 1, higher is more deleterious)
+  \item fathmm_xf_pred ("D"(DAMAGING) if score > 0.5, "N"(NEUTRAL) otherwise)
   \item annot_type (the annotation type from CADD, eg: "Intergenic")
   \item consequence (the consequence from CADD, eg: "DOWNSTREAM")
   \item clinical_significance (risk factor from clinvar, eg: "Benign", "risk factor")
@@ -27,5 +29,5 @@ use \code{\link[myvariant]{getVariants}} and process the output
 to return a data.frame instead of nested lists.
 }
 \examples{
-annotate_variants(rsid = c("rs1225680362", "rs12395043", "rs12395043", "rs28935477"))
+annotate_variants(rsid = c("rs1225680362", "rs12395043", "rs746318172"))
 }

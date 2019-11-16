@@ -157,7 +157,9 @@ format_output <- function(chr, pos, rsid, ensembl_gene_id, hgnc_symbol) {
 #' @return a data.frame with the following columns:
 #' \itemize{
 #'   \item rsid (variant id)
-#'   \item cadd phred (phred score from CADD)
+#'   \item cadd phred (phred score from CADD, higher more deleterious)
+#'   \item fathmm_xf_score (from 0 to 1, higher is more deleterious)
+#'   \item fathmm_xf_pred ("D"(DAMAGING) if score > 0.5, "N"(NEUTRAL) otherwise)
 #'   \item annot_type (the annotation type from CADD, eg: "Intergenic")
 #'   \item consequence (the consequence from CADD, eg: "DOWNSTREAM")
 #'   \item clinical_significance (risk factor from clinvar, eg: "Benign", "risk factor")
@@ -165,12 +167,12 @@ format_output <- function(chr, pos, rsid, ensembl_gene_id, hgnc_symbol) {
 #' }
 #'
 #' @examples
-#' annotate_variants(rsid = c("rs1225680362", "rs12395043", "rs12395043", "rs28935477"))
+#' annotate_variants(rsid = c("rs1225680362", "rs12395043", "rs746318172"))
 #' @export
 annotate_variants <- function(rsid, verbose = FALSE) {
   # First, use "getVariants" to annotate the snps
   rsid_annotated <- myvariant::getVariants(hgvsids = rsid, verbose = verbose,
-                                           fields =  c("cadd", "clinvar", "snpeff"))
+                                           fields =  c("cadd", "dbnsfp", "clinvar", "snpeff"))
 
   # Then, format the output as a data.frame
   # Checking "is.null" is needed to avoid errors when there is a list of variants
@@ -180,6 +182,18 @@ annotate_variants <- function(rsid, verbose = FALSE) {
     cadd_phred <- NA
   } else {
     cadd_phred <- unlist(rsid_annotated$cadd.phred)
+  }
+  
+  if(is.null(rsid_annotated$dbnsfp.fathmm.xf.coding_score)){
+    fathmm_score <- NA
+  } else {
+    fathmm_score <- rsid_annotated$dbnsfp.fathmm.xf.coding_score
+  }
+  
+  if(is.null(rsid_annotated$dbnsfp.fathmm.xf.coding_pred)){
+     fathmm_pred <- NA
+  } else {
+     fathmm_pred <- rsid_annotated$dbnsfp.fathmm.xf.coding_pred
   }
   
   if(is.null(rsid_annotated$cadd.annotype)){
@@ -221,6 +235,8 @@ annotate_variants <- function(rsid, verbose = FALSE) {
   
   rsid_annotated_df <- data.frame(rsid = unlist(rsid_annotated$query),
                                   cadd_phred = cadd_phred,
+                                  fathmm_xf_score = fathmm_score,
+                                  fathmm_xf_pred = fathmm_pred,
                                   annot_type = annot_type,
                                   consequence = consequence,
                                   clinical_significance = clinical_significance,
@@ -1479,6 +1495,7 @@ vargen_pipeline <- function(vargen_dir, omim_morbid_ids, fantom_corr = 0.25,
   #_____________________________________________________________________________
   # Getting variants from genes related to OMIM disease
   #_____________________________________________________________________________
+  if(verbose) print("Starting the pipeline...")
   omim_all_genes <- data.frame()
   master_variants <- data.frame()
   for(omim_morbid in omim_morbid_ids){
@@ -1496,7 +1513,6 @@ vargen_pipeline <- function(vargen_dir, omim_morbid_ids, fantom_corr = 0.25,
                                           verbose = verbose)
       
       if(length(genes_variants) != 0) master_variants <- rbind(master_variants, genes_variants)
-      
       
       # We get the variants on the enhancers of the genes:
       fantom_variants <- get_fantom5_variants(fantom_df = fantom_df,

@@ -257,8 +257,13 @@ head(obesity_variants)
 ### Annotating the variants
 
 This pipeline is designed as a discovery analysis, to identify potential new variants, **you should not expect every variants from the pipeline to have an effect on the phenotype**. 
-The annotation will help you defining which variants to keep or discard. The annotation contains the [CADD Phred score](https://cadd.gs.washington.edu/ "CADD main page"),
+The annotation will help you defining which variants to keep or discard. The annotation contains the [CADD Phred score](https://cadd.gs.washington.edu/ "CADD main page"), [fathmm-xf](https://academic.oup.com/bioinformatics/article/34/3/511/4104409 "fathmm-xf manuscript") score and prediction, 
 annotation type (eg: "Intergenic"), consequence (eg: "DOWNSTREAM"), [clinvar clinical significance](https://www.ncbi.nlm.nih.gov/clinvar/docs/clinsig/ "Representation of clinical significance in ClinVar and other variation resources at NCBI") and [snpEff impact](http://snpeff.sourceforge.net/SnpEff_manual.html "snpEff Manual").
+
+Interpretation of the different scores:
+ - CADD Phred score: higher values means a more deleterious variant. (above 20 means the variant is in the top 10%)
+ - FATHMM-XF score: between 0 and 1, a higher value means a more deleterious variant. (more confidence closer to 0 or 1)
+ - FATHMM-XF prediction: "D" (DAMAGING) if score > 0.5 or "N" (NEUTRAL) otherwise. 
 
 To annotate the variants you can use the *annotate_variants* function with the list of rsids obtained with the vargen 
 pipeline. This uses [myvariant.info](https://myvariant.info/, "myvariant.info main page") to annotate the variants and 
@@ -269,11 +274,8 @@ this is expected. You can check the variant position on the different isoforms w
 
 ````
 obesity_annotation <- annotate_variants(obesity_variants$rsid, verbose = T)
-````
 
-You may want to merge the annotation output with the data.frame from the vargen pipeline. The following command will 
-merge the variants from the VarGen pipeline with the output from the annotation (using the rsid column):
-````
+# Merging the output of the annotation with VarGen output, using the "rsid" column
 obesity_ann <- merge(obesity_variants, obesity_annotation)
 
 # We advise you to write the variants in a file, so you will not have to run the pipeline again.
