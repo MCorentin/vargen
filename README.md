@@ -370,14 +370,17 @@ obesity_custom <- vargen_custom(vargen_dir = "./vargen_data/",
 If you want to visualise the variants in a manhattan plot, you can use the *plot_manhattan_gwas* function:
 ````
 gwas_cat <- create_gwas("./vargen_data/")
- 
-plot_manhattan_gwas(gwas_cat = gwas_cat, traits = c("Type 1 diabetes", "Type 2 diabetes"))
+
+alzheimer_traits <- c("Alzheimer's disease", "Alzheimer's disease (late onset)", "Alzheimer's disease biomarkers", 
+                      "Alzheimer's disease (cognitive decline)")
+
+plot_manhattan_gwas(gwas_cat = gwas_cat, traits = alzheimer_traits)
 
 # Optional: if you want to save the plot as a pdf
-grDevices::dev.print(pdf, "./manhanttan_diabetes.pdf")
+grDevices::dev.print(pdf, "./manhanttan_alzheimer.pdf")
 ````
 
-![Example of manhanttan plot for diabetes](./images/manhattan_diabetes.png?raw=true)
+![Example of manhanttan plot for alzheimer's disease](./images/manhattan_alzheimer.png?raw=true)
 
 The two thresholds, suggestive and significant, correspond to the definition given by Lander and Kruglyak:
 ````
