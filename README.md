@@ -265,8 +265,8 @@ The annotation contains:
  - [CADD Phred score](https://cadd.gs.washington.edu/ "CADD main page"): ranging from 1 to 99, based on the rank of each variant relative to all possible 8.6 billion substitutions in the human reference genome.  A higher value means a more deleterious variant. (above 10 means the variant is in the top 10%, above 20 in the top 1%).
  - [fathmm-xf score](https://academic.oup.com/bioinformatics/article/34/3/511/4104409 "fathmm-xf manuscript"): between 0 and 1, a higher value means a more deleterious variant. (more confidence closer to 0 or 1)
  - [fathmm-xf prediction](https://academic.oup.com/bioinformatics/article/34/3/511/4104409 "fathmm-xf manuscript"): "D" (DAMAGING) if score > 0.5 or "N" (NEUTRAL) otherwise.
- - Annotation type: information about the variant location (eg: coding, non-coding, regulatory region...)
- - Consequence: gives more information on the functionnal effect (eg: REGULATORY, DOWNSTREAM, STOP_GAINED, SPLICE-SITE...)
+ - **Annotation type**: information about the variant location (eg: coding, non-coding, regulatory region...)
+ - **Consequence**: gives more information on the functionnal effect (eg: REGULATORY, DOWNSTREAM, STOP_GAINED, SPLICE-SITE...)
  - [ClinVar clinical significance](https://www.ncbi.nlm.nih.gov/clinvar/docs/clinsig/ "Representation of clinical significance in ClinVar and other variation resources at NCBI"): standard to report the clinical significance of certain variants (eg: "benign", "pathogenic", "drug response" etc....). 
  - [snpEff impact](http://snpeff.sourceforge.net/SnpEff_manual.html "snpEff Manual"): assessment of the putative impact of the variant (HIGH, MODERATE, MODIFIER or LOW).
 
