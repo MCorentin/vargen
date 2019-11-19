@@ -257,17 +257,18 @@ head(obesity_variants)
 ### Annotating the variants
 
 This pipeline is designed as a discovery analysis, to identify potential new variants, **you should not expect every variants from the pipeline to have an effect on the phenotype**. 
-The annotation will help you defining which variants to keep or discard. The annotation contains the [CADD Phred score](https://cadd.gs.washington.edu/ "CADD main page"), [fathmm-xf](https://academic.oup.com/bioinformatics/article/34/3/511/4104409 "fathmm-xf manuscript") score and prediction, 
-annotation type (eg: "Intergenic"), consequence (eg: "DOWNSTREAM"), [clinvar clinical significance](https://www.ncbi.nlm.nih.gov/clinvar/docs/clinsig/ "Representation of clinical significance in ClinVar and other variation resources at NCBI") and [snpEff impact](http://snpeff.sourceforge.net/SnpEff_manual.html "snpEff Manual").
+Annotating the variants will help you defining which variants to keep or discard. To annotate the variants you can use 
+the *annotate_variants* function with the list of rsids obtained with the vargen pipeline. This uses [myvariant.info](https://myvariant.info/, "myvariant.info main page") 
+to annotate the variants and may take some time depending on your internet connection.
 
-Interpretation of the different scores:
- - CADD Phred score: higher values means a more deleterious variant. (above 20 means the variant is in the top 10%)
- - FATHMM-XF score: between 0 and 1, a higher value means a more deleterious variant. (more confidence closer to 0 or 1)
- - FATHMM-XF prediction: "D" (DAMAGING) if score > 0.5 or "N" (NEUTRAL) otherwise. 
-
-To annotate the variants you can use the *annotate_variants* function with the list of rsids obtained with the vargen 
-pipeline. This uses [myvariant.info](https://myvariant.info/, "myvariant.info main page") to annotate the variants and 
-may take some time depending on your internet connection.
+The annotation contains:
+ - [CADD Phred score](https://cadd.gs.washington.edu/ "CADD main page"): ranging from 1 to 99, based on the rank of each variant relative to all possible 8.6 billion substitutions in the human reference genome.  A higher value means a more deleterious variant. (above 10 means the variant is in the top 10%, above 20 in the top 1%).
+ - [fathmm-xf score](https://academic.oup.com/bioinformatics/article/34/3/511/4104409 "fathmm-xf manuscript"): between 0 and 1, a higher value means a more deleterious variant. (more confidence closer to 0 or 1)
+ - [fathmm-xf prediction](https://academic.oup.com/bioinformatics/article/34/3/511/4104409 "fathmm-xf manuscript"): "D" (DAMAGING) if score > 0.5 or "N" (NEUTRAL) otherwise.
+ - Annotation type: information about the variant location (eg: coding, non-coding, regulatory region...)
+ - Consequence: gives more information on the functionnal effect (eg: REGULATORY, DOWNSTREAM, STOP_GAINED, SPLICE-SITE...)
+ - [ClinVar clinical significance](https://www.ncbi.nlm.nih.gov/clinvar/docs/clinsig/ "Representation of clinical significance in ClinVar and other variation resources at NCBI"): standard to report the clinical significance of certain variants (eg: "benign", "pathogenic", "drug response" etc....). 
+ - [snpEff impact](http://snpeff.sourceforge.net/SnpEff_manual.html "snpEff Manual"): assessment of the putative impact of the variant (HIGH, MODERATE, MODIFIER or LOW).
 
 /!\ Due to the different transcripts for a same gene, some variants will appear more than once with a different annotation, 
 this is expected. You can check the variant position on the different isoforms with the *vargen_visualisation* function.

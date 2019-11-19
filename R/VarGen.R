@@ -81,7 +81,7 @@ get_variants_from_locations <- function(locations, verbose = FALSE) {
   for(curr_loc in locations){
     # ensembl has a limit of 15 requests / seconds
     if(ensembl_rest_limit >= 14){
-      if(verbose) print("waiting... (to not reach the limit of queries on ensembl REST API)")
+      #if(verbose) print("waiting... (to not reach the limit of queries on ensembl REST API)")
       Sys.sleep(1)
       ensembl_rest_limit <- 0
     }
@@ -1499,7 +1499,7 @@ vargen_pipeline <- function(vargen_dir, omim_morbid_ids, fantom_corr = 0.25,
   omim_all_genes <- data.frame()
   master_variants <- data.frame()
   for(omim_morbid in omim_morbid_ids){
-    
+    if(verbose) print(paste0("Getting genes and variants for OMIM: ", omim_morbid))
     # First: get all the genes linked to the different omim ids:
     omim_genes <- get_omim_genes(omim_morbid, gene_mart)
     if(nrow(omim_genes) == 0){
