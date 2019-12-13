@@ -9,7 +9,7 @@ All the coordinates are based on the hg38 version of the human genome.
 
 VarGen is open-source and available on [GitHub](https://github.com/MCorentin/VarGen "GitHub VarGen page")
 
-##Funding
+## Funding
 
 Vargen was developed as part of the European Union’s Horizon 2020-funded project Nutrishield (GA 818110). For more information about the Nutrishield project, please visit [the Nutrishield Webpage](https://nutrishield-project.eu) 
 
