@@ -13,9 +13,13 @@ VarGen is open-source and available on [GitHub](https://github.com/MCorentin/Var
 
 Vargen was developed as part of the European Union’s Horizon 2020-funded project Nutrishield (GA 818110). For more information about the Nutrishield project, please visit [the Nutrishield Webpage](https://nutrishield-project.eu) 
 
+## How to cite VarGen:
+Corentin Molitor, Matt Brember, Fady Mohareb, VarGen: An R package for disease-associated variant discovery and annotation, Bioinformatics, , btz930, https://doi.org/10.1093/bioinformatics/btz930
+
 ## Table of Contents
 
 - [VarGen](#vargen)
+- [How to Cite Vargen](#how-to-cite-vargen)
 - [Table of Contents](#table-of-contents)
 - [VarGen workflow](#vargen-workflow)
 - [Installation](#installation)
