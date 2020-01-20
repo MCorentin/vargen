@@ -41,6 +41,7 @@ Corentin Molitor, Matt Brember, Fady Mohareb, VarGen: An R package for disease-a
 - [Tips](#tips)
     - [How to plot the gwas variants](#how-to-plot-the-gwas-variants)
     - [How to plot the omim variants](#how-to-plot-the-omim-variants)
+- [Some Examples](#some-examples)
 
 ## VarGen workflow
 
@@ -241,7 +242,7 @@ adipose_tissues <- select_gtex_tissues("./vargen_data/GTEx_Analysis_v8_eQTL/",
 obesity_traits <- list_gwas_traits("obesity", "./vargen_data/")
 
 obesity_variants <- vargen_pipeline(vargen_dir = "./vargen_data/", 
-                                    omim_morbid = "601665", 
+                                    omim_morbid_ids = "601665", 
                                     gtex_tissues = adipose_tissues, 
                                     gwas_traits = obesity_traits, 
                                     verbose = T)
@@ -274,7 +275,7 @@ The annotation contains:
  - [fathmm-xf score](https://academic.oup.com/bioinformatics/article/34/3/511/4104409 "fathmm-xf manuscript"): between 0 and 1, a higher value means a more deleterious variant. (more confidence closer to 0 or 1)
  - [fathmm-xf prediction](https://academic.oup.com/bioinformatics/article/34/3/511/4104409 "fathmm-xf manuscript"): "D" (DAMAGING) if score > 0.5 or "N" (NEUTRAL) otherwise.
  - **Annotation type**: information about the variant location (eg: coding, non-coding, regulatory region...)
- - **Consequence**: gives more information on the functionnal effect (eg: REGULATORY, DOWNSTREAM, STOP_GAINED, SPLICE-SITE...)
+ - **Consequence**: gives more information on the functional effect (eg: REGULATORY, DOWNSTREAM, STOP_GAINED, SPLICE-SITE...)
  - [ClinVar clinical significance](https://www.ncbi.nlm.nih.gov/clinvar/docs/clinsig/ "Representation of clinical significance in ClinVar and other variation resources at NCBI"): standard to report the clinical significance of certain variants (eg: "benign", "pathogenic", "drug response" etc....). 
  - [snpEff impact](http://snpeff.sourceforge.net/SnpEff_manual.html "snpEff Manual"): assessment of the putative impact of the variant (HIGH, MODERATE, MODIFIER or LOW).
 
@@ -434,7 +435,23 @@ vargen_visualisation(annotated_snps = obesity_vargen_ann, verbose = T,
 ````
 ![vargen visualisation with highlighted variants](./images/SIM1_ENSG00000112246_GVIZ_highlighted.png?raw=true)
 
-### More examples
+### ensembl
+
+If you come accross the following error when trying to use VarGen:
+````
+Error in bmRequest(request = request, ssl.verifypeer = ssl.verifypeer,  : 
+  Internal Server Error (HTTP 500).
+````
+
+It means that the ensembl server you are trying to access is not available (by 
+default VarGen tries to access the "www" mirror of ensembl).
+
+To solve this issue, you can try to connect with a different mirror ("useast", "uswest" or "asia"):
+````
+gene_ensembl <- connect_to_gene_ensembl(mirror = "useast")
+````
+
+## Some examples
 
 In the following example we are assuming that the files described in "Installation" have been installed in the folder 
 "./vargen_data", either manually or by running:
@@ -445,7 +462,7 @@ In the following example we are assuming that the files described in "Installati
  - Example 1: "Simple query for Type 1 Diabetes Mellitus"
 ````
 T1DM_variants <- vargen_pipeline(vargen_dir = "./vargen_data",
-                                 omim_morbid = "222100")
+                                 omim_morbid_ids = "222100")
 ````
 
  - Example 2: "Type 1 Diabetes Mellitus with GTEx"
@@ -456,7 +473,7 @@ pancreas_gtex <- select_gtex_tissues(gtex_dir = "./vargen_data/GTEx_Analysis_v8_
                                      tissues_query = "pancreas")
 
 T1DM_variants <- vargen_pipeline(vargen_dir = "./vargen_data", 
-                                 omim_morbid = "222100", 
+                                 omim_morbid_ids = "222100", 
                                  gtex_tissues = pancreas_gtex)
 ````
 
@@ -474,7 +491,7 @@ list_gwas_traits(keywords = "obesity")
 gwas_obesity <- c("Obesity (extreme)", "Obesity-related traits", "Obesity", "Obesity (early onset extreme)")
 
 Obesity_variants <- vargen_pipeline(vargen_dir = "./vargen_data",
-                                    omim_morbid = "601665", 
+                                    omim_morbid_ids = "601665", 
                                     gtex_tissues = adipose_gtex,
                                     gwas_traits = gwas_obesity,
                                     fantom_corr = 0.25, 

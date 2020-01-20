@@ -172,7 +172,7 @@ format_output <- function(chr, pos, rsid, ensembl_gene_id, hgnc_symbol) {
 annotate_variants <- function(rsid, verbose = FALSE) {
   # First, use "getVariants" to annotate the snps
   rsid_annotated <- myvariant::getVariants(hgvsids = rsid, verbose = verbose,
-                                           fields =  c("cadd", "dbnsfp", "clinvar", "snpeff"))
+                                           fields =  c("cadd", "dbnsfp", "clinvar", "snpeff", "vcf"))
 
   # Then, format the output as a data.frame
   # Checking "is.null" is needed to avoid errors when there is a list of variants
@@ -234,6 +234,8 @@ annotate_variants <- function(rsid, verbose = FALSE) {
   
   
   rsid_annotated_df <- data.frame(rsid = unlist(rsid_annotated$query),
+                                  ref = rsid_annotated$vcf.ref,
+                                  alt = rsid_annotated$vcf.alt,
                                   cadd_phred = cadd_phred,
                                   fathmm_xf_score = fathmm_score,
                                   fathmm_xf_pred = fathmm_pred,
@@ -290,7 +292,7 @@ annotate_variants <- function(rsid, verbose = FALSE) {
 #'
 #' # Simple query
 #' gene_mart <- connect_to_gene_ensembl()
-#' DM1_simple <- vargen_pipeline(vargen_dir = "./vargen_data/", omim_morbid = "222100",
+#' DM1_simple <- vargen_pipeline(vargen_dir = "./vargen_data/", omim_morbid_ids = "222100",
 #'                               fantom_corr = 0.25, outdir = "./", verbose = TRUE)
 #'
 #' vargen_visualisation(annotated_snps = DM1_simple, verbose = TRUE,
@@ -510,8 +512,7 @@ get_variants_from_phenotypes <- function(phenotypes, snp_mart) {
   pheno_variants <- biomaRt::getBM(attributes = c("chr_name", "chrom_start",
                                                   "refsnp_id", "refsnp_source",
                                                   "associated_variant_risk_allele",
-                                                  "phenotype_description",
-                                                  "clinical_significance", "validated"),
+                                                  "phenotype_description"),
                                    filters = c("phenotype_description"),
                                    values = c(phenotypes),
                                    mart = snp_mart
@@ -679,6 +680,8 @@ prepare_fantom <- function(enhancer_tss_association) {
   # TSS = Transcripton Start Site
   fantom <- utils::read.delim(enhancer_tss_association, skip = 1, stringsAsFactors = FALSE)
 
+  # The enhancer position correspond to the 4th column of the bed file
+  # SO we split it by ";" and get the chr, start, stop and gene symbol.
   fantom_df <- as.data.frame(splitstackshape::cSplit(fantom, splitCols="name",
                                                      sep=";", direction="wide"))
 
@@ -1437,7 +1440,7 @@ vargen_install <- function(install_dir = "./", gtex_version = "v8", verbose = FA
 #' vargen_install("./vargen_data/")
 #'
 #' # Simple query
-#' DM1_simple <- vargen_pipeline(vargen_dir = "./vargen_data/", omim_morbid = "222100",
+#' DM1_simple <- vargen_pipeline(vargen_dir = "./vargen_data/", omim_morbid_ids = "222100",
 #'                               fantom_corr = 0.25, outdir = "./", verbose = TRUE)
 #'
 #'
@@ -1447,7 +1450,7 @@ vargen_install <- function(install_dir = "./", gtex_version = "v8", verbose = FA
 #'
 #' # list_gwas_traits("diabetes")
 #'
-#' DM1 <- vargen_pipeline(vargen_dir = "./vargen_data/", omim_morbid = "222100",
+#' DM1 <- vargen_pipeline(vargen_dir = "./vargen_data/", omim_morbid_ids = "222100",
 #'                        fantom_corr = 0.25, outdir = "./",
 #'                        gtex_tissues = pancreas_tissues,
 #'                        gwas_traits = "Type 1 diabetes", verbose = TRUE)
@@ -1469,7 +1472,7 @@ vargen_pipeline <- function(vargen_dir, omim_morbid_ids, fantom_corr = 0.25,
   if(verbose) print("Connection to gene and snp marts...")
   gene_mart <- connect_to_gene_ensembl()
   snp_mart <- connect_to_snp_ensembl()
-
+  
   # no gwas traits = no need to generate the gwas object
   if(!missing(gwas_traits)){
     if(verbose) print("Building the gwascat object...")
