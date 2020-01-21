@@ -177,25 +177,25 @@ annotate_variants <- function(rsid, verbose = FALSE) {
   # Then, format the output as a data.frame
   # Checking "is.null" is needed to avoid errors when there is a list of variants
   # without some features (eg: no cadd.phred scores). Can happen for small lists.
-  
+
   if(is.null(rsid_annotated$cadd.phred)){
     cadd_phred <- NA
   } else {
     cadd_phred <- unlist(rsid_annotated$cadd.phred)
   }
-  
+
   if(is.null(rsid_annotated$dbnsfp.fathmm.xf.coding_score)){
     fathmm_score <- NA
   } else {
     fathmm_score <- rsid_annotated$dbnsfp.fathmm.xf.coding_score
   }
-  
+
   if(is.null(rsid_annotated$dbnsfp.fathmm.xf.coding_pred)){
      fathmm_pred <- NA
   } else {
      fathmm_pred <- rsid_annotated$dbnsfp.fathmm.xf.coding_pred
   }
-  
+
   if(is.null(rsid_annotated$cadd.annotype)){
     annot_type <- NA
   } else {
@@ -219,20 +219,20 @@ annotate_variants <- function(rsid, verbose = FALSE) {
                      paste, collapse = ";", USE.NAMES = FALSE)
     snpeff <- gsub("\n", "", snpeff)
   }
-  
+
   # For this one, getVariants returns a different format depending on the data
   # fetched, so we also need to check if this is a list to extract only relevant information.
   if(is.list(rsid_annotated$clinvar.rcv)) {
-    clinical_significance <- sapply(sapply(rsid_annotated$clinvar.rcv, "[", "clinical_significance"), 
+    clinical_significance <- sapply(sapply(rsid_annotated$clinvar.rcv, "[", "clinical_significance"),
                                     paste, collapse = ";")
   } else if(is.null(rsid_annotated$clinvar.rcv)) {
     clinical_significance <- NA
   } else {
-    clinical_significance <- sapply(rsid_annotated$clinvar.rcv.clinical_significance, 
+    clinical_significance <- sapply(rsid_annotated$clinvar.rcv.clinical_significance,
                                     paste, collapse = ";", USE.NAMES = FALSE)
   }
-  
-  
+
+
   rsid_annotated_df <- data.frame(rsid = unlist(rsid_annotated$query),
                                   ref = rsid_annotated$vcf.ref,
                                   alt = rsid_annotated$vcf.alt,
@@ -244,7 +244,7 @@ annotate_variants <- function(rsid, verbose = FALSE) {
                                   clinical_significance = clinical_significance,
                                   snpeff_ann = snpeff,
                                   stringsAsFactors = FALSE)
-  
+
 
   #Replacing the snp eff annotation from "c(\"MODIFIER\", \"MODIFIER\")" to "MODIFIER;MODIFIER"
   rsid_annotated_df$snpeff_ann <- gsub(pattern = "\"|c\\(|\\)", replacement = "",
@@ -533,8 +533,8 @@ get_variants_from_phenotypes <- function(phenotypes, snp_mart) {
 #' @param gene_mart a connection to hsapiens gene mart, can be generated
 #' from \code{\link{connect_to_gene_ensembl}} (which will be used if this argument
 #' if not specified).
-#' @param keywords a vector containing a list of keywords. This will be grepped 
-#' (case insensitive) against the list of omim descriptions to retrieve a list of 
+#' @param keywords a vector containing a list of keywords. This will be grepped
+#' (case insensitive) against the list of omim descriptions to retrieve a list of
 #' omim IDs.
 #'
 #' @return a dataframe with two columns ("mim_morbid_accession" and "mim_morbid_description")
@@ -554,7 +554,7 @@ list_omim_accessions <- function(gene_mart, keywords){
                               filters = "with_mim_morbid",
                               values = c(TRUE),
                               uniqueRows = TRUE)
-  
+
   if(!missing(keywords)){
     # use "|" as an OR for the grep search
     keys <- paste(keywords, collapse = "|")
@@ -564,7 +564,7 @@ list_omim_accessions <- function(gene_mart, keywords){
 
     if(nrow(omim_list) == 0) print(paste0("No OMIM ID found for '", keywords, "'"))
   }
-  
+
   return(omim_list)
 }
 
@@ -607,7 +607,7 @@ get_omim_genes <- function(omim_ids, gene_mart) {
   if(is.null(gene_mart)) paste0("/!\\ no genes found for:", paste(omim_ids, collapse = ", "))
 
   if(!is.null(gene_mart)) mim_genes$chromosome_name <- format_chr(chr = mim_genes$chromosome_name)
-  
+
   return(mim_genes)
 }
 
@@ -646,13 +646,13 @@ get_omim_variants <- function(omim_genes, verbose = FALSE){
       gene_variants <- cbind(ensembl_gene_id = omim_genes[gene, "ensembl_gene_id"],
                              hgnc_symbol = omim_genes[gene, "hgnc_symbol"],
                              variants_loc)
-      
+
       gene_variants_df <- format_output(chr = unlist(gene_variants$seq_region_name),
                                         pos =  unlist(gene_variants$start),
                                         rsid = unlist(gene_variants$id),
                                         ensembl_gene_id = gene_variants$ensembl_gene_id,
                                         hgnc_symbol = gene_variants$hgnc_symbol)
-      
+
       list.variants[[gene]] <- gene_variants_df
     }
   }
@@ -791,25 +791,25 @@ get_fantom5_variants <- function(fantom_df, omim_genes, corr_threshold = 0.25,
                             BiocGenerics::end(enhancers_df))
       fantom_locs <- sub("^chr", "", fantom_locs)
 
-      
+
       variants_loc <- get_variants_from_locations(fantom_locs,
                                                   verbose = verbose)
       if(length(variants_loc) != 0){
         enhancer_variants <- cbind(ensembl_gene_id = omim_genes[gene, "ensembl_gene_id"],
                                    hgnc_symbol = omim_genes[gene, "hgnc_symbol"],
                                    variants_loc)
-  
+
         enhancer_variants_df <- format_output(chr = unlist(enhancer_variants$seq_region_name),
                                               pos =  unlist(enhancer_variants$start),
                                               rsid = unlist(enhancer_variants$id),
                                               ensembl_gene_id = enhancer_variants$ensembl_gene_id,
                                               hgnc_symbol = enhancer_variants$hgnc_symbol)
-  
+
         list.variants[[gene]] <- enhancer_variants_df
       }
     }
   }
-  
+
   # Removing the NULL elements of the list if exists
   list.variants <- list.variants[!sapply(list.variants, is.null)]
   # Then concatenate the list into a data.frame
@@ -826,67 +826,63 @@ get_fantom5_variants <- function(fantom_df, omim_genes, corr_threshold = 0.25,
 
 #' @title Create a gwaswloc object
 #' @description Create a gwaswloc object from \code{\link[gwascat]{makeCurrentGwascat}}
-#' or by reading a local file (if "vargen_dir" specified as a parameter). If 
-#' "vargen_dir" contains more than one gwas catalog, the user will be prompted to 
+#' or by reading a local file (if "vargen_dir" specified as a parameter). If
+#' "vargen_dir" contains more than one gwas catalog, the user will be prompted to
 #' choose one.
 #' The function will use the filename to determine the extract date, please have
 #' it in the format: \[filename\]_r**YYYYY**-**MM**-**DD**.tsv
 #' eg: "gwas_catalog_v1.0.2-associations_e96_r2019-07-30.tsv"
 #'
-#' @param vargen_dir (optional) a path to vargen data directory, created 
+#' @param vargen_dir (optional) a path to vargen data directory, created
 #' during \code{\link{vargen_install}}. If not specified, the gwas object will
 #' be created with \code{\link[gwascat]{makeCurrentGwascat}}. If specified, this
-#' function will look for files that begin with "gwas_catalog". If more than one 
-#' is found, the user will have to choose one via a text menu 
+#' function will look for files that begin with "gwas_catalog". If more than one
+#' is found, the user will have to choose one via a text menu
 #' @param verbose if true, will print progress information (default: FALSE)
 #'
 #' @examples
 #' gwas_cat <- create_gwas()
 #' @export
 create_gwas <- function(vargen_dir, verbose = FALSE){
-  # If usemakegwas is true (user choice or no local gwas file found, then we 
-  # download the catalog with gwascat::makeCurrentGwascat())
-  usemakegwas <- FALSE
-  
+  # If useURL is TRUE (user choice or no local gwas file found, then we download
+  # the catalog from the URL)
+  useURL <- FALSE
+
   if(missing(vargen_dir)){
-    usemakegwas <- TRUE
+    # If the vargen_dir is not specified, we use the url instead
+    useURL <- TRUE
   } else{
     # Listing the list of gwas catalogs in "vargen_dir"
-    gwasfiles <- list.files(path = vargen_dir, pattern = "gwas_catalog*", 
+    gwasfiles <- list.files(path = vargen_dir, pattern = "gwas_catalog*",
                             full.names = TRUE, include.dirs = FALSE)
-    
+
     # If more than one catalog found, we let the user choose
     if(length(gwasfiles) > 1){
       print(paste0("More than 1 gwas catalog found in ", vargen_dir))
       print("Please choose one of the file (type 0 to use gwascat::makeCurrentGwascat")
-      # Choice can only get indexes belonging to the menu, so no need to check for
-      # out of array indexes.
+      # Choice can only get indexes belonging to the menu (no need to check out of array)
       choice <- utils::menu(choices = gwasfiles)
       if(choice == 0){
         print("No correct choice made, downloading gwas catalog with gwascat::makeCurrentGwascat")
-        usemakegwas <- TRUE
+        useURL <- TRUE
       } else {
         gwascat_file <- gwasfiles[choice]
       }
-      
-    } else if(length(gwasfiles) == 1){
+    } else if(length(gwasfiles) == 1) {
+      # If there is only one gwas catalog in the directory, we use it directly
       gwascat_file <- gwasfiles
     } else {
-      # Any other option we use "gwascat::makeCurrentGwascat()"
-      if(verbose) print(paste0("No gwas catalogs detected in ", vargen_dir, 
-                               ". Downloading gwas catalog with gwascat::makeCurrentGwascat"))
-      usemakegwas <- TRUE
+      # Any other option we get the gwas cat from the URL
+      if(verbose) print(paste0("No gwas catalogs detected in ", vargen_dir,
+                               ". Downloading the gwas catalog..."))
+      useURL <- TRUE
     }
   }
-  
-  if(usemakegwas == TRUE){
-    require("gwascat")
-    utils::data("ebicat38")
-    # The following line downloads file and build the gwasloc object all in one step
-    gwas_cat <- gwascat::makeCurrentGwascat(table.url = "http://www.ebi.ac.uk/gwas/api/search/downloads/alternative",
-                                            fixNonASCII = TRUE,
-                                            genome = "GRCh38",
-                                            withOnt = TRUE)
+
+  table.url <- "http://www.ebi.ac.uk/gwas/api/search/downloads/alternative"
+  if(useURL == TRUE){
+    gwas_cat <- utils::read.delim(file = url(table.url), check.names = FALSE, quote = "",
+                                  stringsAsFactors = FALSE, header = TRUE, sep = "\t")
     extract_date <- as.character(Sys.Date())
   } else {
     # File from "https://www.ebi.ac.uk/gwas/api/search/downloads/full"
@@ -897,7 +893,7 @@ create_gwas <- function(vargen_dir, verbose = FALSE){
     extract_date <- sub(".*_r", "", gwascat_file)
     extract_date <- sub(".tsv", "", extract_date)
   }
-  
+
   # We transform the gwas cat object into a GRanges object:
   gwas_cat <- gwascat:::gwdf2GRanges(df = gwas_cat, extractDate = extract_date)
   rtracklayer::genome(gwas_cat) <- "GRCh38"
@@ -913,11 +909,11 @@ create_gwas <- function(vargen_dir, verbose = FALSE){
 #' Output can be used as parameter for \code{\link{vargen_pipeline}}
 #'
 #' @param keywords a vector of keywords to grep the traits from the gwas catalog. (default: "")
-#' @param vargen_dir (optional) a path to vargen data directory, created 
+#' @param vargen_dir (optional) a path to vargen data directory, created
 #' during \code{\link{vargen_install}}. If not specified, the gwas object will
 #' be created with \code{\link[gwascat]{makeCurrentGwascat}}. If specified, this
-#' function will look for files that begin with "gwas_catalog". If more than one 
-#' is found, the user will have to choose one via a text menu 
+#' function will look for files that begin with "gwas_catalog". If more than one
+#' is found, the user will have to choose one via a text menu
 #' @return a vector of traits
 #'
 #' @examples
@@ -925,7 +921,7 @@ create_gwas <- function(vargen_dir, verbose = FALSE){
 #' @export
 list_gwas_traits <- function(keywords = "", vargen_dir) {
   traits <- c()
-  
+
   # If the user prefers to create a gwasloc object from gwascat::makeCurrentGwascat()
   # instead of using the local catalog in "vargen_dir" he can use "makegwas = TRUE"
   if(missing(vargen_dir)){
@@ -964,7 +960,6 @@ list_gwas_traits <- function(keywords = "", vargen_dir) {
 #' }
 #'
 #' @examples
-#' gwas_cat <- create_gwas()
 #' # if you need to get the list of gwas traits:
 #' # list_gwas_traits(keywords = c("Obesity"))
 #' obesity_gwas <- c("Obesity (extreme)", "Obesity-related traits", "Obesity")
@@ -979,11 +974,11 @@ get_gwas_variants <- function(gwas_cat, gwas_traits){
 
   # "gwas_variants@ranges" contains "start" "stop" "width", that is why we only
   # select columns c(1,2,5,6,7,8).
-  gwas_variants_df <- unique(data.frame(chr = gwas_variants@seqnames, 
+  gwas_variants_df <- unique(data.frame(chr = gwas_variants@seqnames,
                                         pos = gwas_variants@ranges,
-                                        rsid = gwas_variants$SNPS, 
+                                        rsid = gwas_variants$SNPS,
                                         ensembl_gene_id = gwas_variants$SNP_GENE_IDS,
-                                        hgnc_symbol = gwas_variants$MAPPED_GENE, 
+                                        hgnc_symbol = gwas_variants$MAPPED_GENE,
                                         source = "gwas")[,c(1,2,5,6,7,8)])
   colnames(gwas_variants_df)[2] <- "pos"
 
@@ -1289,7 +1284,7 @@ get_gtex_variants <- function(tissue_files, omim_genes, hg19ToHg38.over.chain,
       i <- i + 1
     }
   }
-  
+
   # Removing the NULL elements of the list if exists
   list.variants <- list.variants[!sapply(list.variants, is.null)]
   # Then concatenate the list into a data.frame
@@ -1345,7 +1340,7 @@ vargen_install <- function(install_dir = "./", gtex_version = "v8", verbose = FA
   R.utils::gunzip(filename = paste0(install_dir, "/hg19ToHg38.over.chain.gz"),
                   skip = TRUE, remove = TRUE)
 
-  
+
   # download gwas file:
   if(verbose) print("Downloading the gwas catalog file from ebi")
   gwasurl <- "https://www.ebi.ac.uk/gwas/api/search/downloads/full"
@@ -1358,13 +1353,13 @@ vargen_install <- function(install_dir = "./", gtex_version = "v8", verbose = FA
   gwasfilename <- unlist(strsplit(x = gwasheaders, split = "filename="))[2]
   # This should remove new lines "\r", "\r\n" or "\n"
   gwasfilename <- gsub("\r?\n|\r", "", gwasfilename)
-  
+
   # Now that we have the gwas catalog filename, we can download it:
-  utils::download.file(url = gwasurl, 
+  utils::download.file(url = gwasurl,
                        destfile = paste0(install_dir, "/", gwasfilename))
-  
+
   cat("\n")
-  
+
   # Add gtex folder
   if(verbose) print("Download GTEx variant association file... This may take a while")
   if(gtex_version == "v7") {
@@ -1411,7 +1406,7 @@ vargen_install <- function(install_dir = "./", gtex_version = "v8", verbose = FA
 #'
 #' @param vargen_dir directory with the following file (can be generated with
 #' \code{\link{vargen_install}})
-#' @param omim_morbid_ids a vector containing the omim morbid id(s) of the phenotype(s) 
+#' @param omim_morbid_ids a vector containing the omim morbid id(s) of the phenotype(s)
 #' of interest. You can search on the Online Mendelian Inheritance in Man website
 #' (https://www.omim.org/) or use \code{\link{list_omim_accessions}}
 #' @param fantom_corr the minimum correlation (z-score) to consider a FANTOM5
@@ -1455,7 +1450,7 @@ vargen_install <- function(install_dir = "./", gtex_version = "v8", verbose = FA
 #'                        gtex_tissues = pancreas_tissues,
 #'                        gwas_traits = "Type 1 diabetes", verbose = TRUE)
 #' @export
-vargen_pipeline <- function(vargen_dir, omim_morbid_ids, fantom_corr = 0.25, 
+vargen_pipeline <- function(vargen_dir, omim_morbid_ids, fantom_corr = 0.25,
                             outdir = "./", gtex_tissues, gwas_traits, verbose = FALSE) {
   if(missing(omim_morbid_ids)){
     stop("Please provide OMIM morbid ids. Stopping now")
@@ -1472,7 +1467,7 @@ vargen_pipeline <- function(vargen_dir, omim_morbid_ids, fantom_corr = 0.25,
   if(verbose) print("Connection to gene and snp marts...")
   gene_mart <- connect_to_gene_ensembl()
   snp_mart <- connect_to_snp_ensembl()
-  
+
   # no gwas traits = no need to generate the gwas object
   if(!missing(gwas_traits)){
     if(verbose) print("Building the gwascat object...")
@@ -1481,13 +1476,13 @@ vargen_pipeline <- function(vargen_dir, omim_morbid_ids, fantom_corr = 0.25,
     for(trait in gwas_traits){
       if(!(trait %in% gwas_cat$`DISEASE/TRAIT`)){
         stop(paste0("gwas trait '", trait, "' not found in gwas catalog, stopping now."))
-      } 
+      }
     }
   }
 
   if(verbose) print(paste0("Reading the enhancer tss association file for FANTOM5... '" ,
                            vargen_dir, "/enhancer_tss_associations.bed'"))
-  fantom_df <- prepare_fantom(enhancer_tss_association = paste0(vargen_dir, 
+  fantom_df <- prepare_fantom(enhancer_tss_association = paste0(vargen_dir,
                                                                 "/enhancer_tss_associations.bed"))
 
   if(verbose) print(paste0("Reading the liftOver chain file... '",
@@ -1508,15 +1503,15 @@ vargen_pipeline <- function(vargen_dir, omim_morbid_ids, fantom_corr = 0.25,
     if(nrow(omim_genes) == 0){
       if(verbose) print(paste0("warning: no genes found for omim id: ", omim_morbid))
     } else {
-      
+
       omim_all_genes <- rbind(omim_all_genes, omim_genes)
-      
+
       # We get the variants on the genes:
-      genes_variants <- get_omim_variants(omim_genes = omim_genes, 
+      genes_variants <- get_omim_variants(omim_genes = omim_genes,
                                           verbose = verbose)
-      
+
       if(length(genes_variants) != 0) master_variants <- rbind(master_variants, genes_variants)
-      
+
       # We get the variants on the enhancers of the genes:
       fantom_variants <- get_fantom5_variants(fantom_df = fantom_df,
                                               omim_genes = omim_genes,
@@ -1527,7 +1522,7 @@ vargen_pipeline <- function(vargen_dir, omim_morbid_ids, fantom_corr = 0.25,
       if(length(fantom_variants) != 0) master_variants <- rbind(master_variants, fantom_variants)
     }
   }
-  
+
   # We write the list of genes in a file.
   utils::write.table(x = omim_all_genes, quote = FALSE, sep = "\t", row.names = FALSE,
                      file = paste0(outdir, "/genes_info.tsv"))

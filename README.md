@@ -271,8 +271,8 @@ the *annotate_variants* function with the list of rsids obtained with the vargen
 to annotate the variants and may take some time depending on your internet connection.
 
 The annotation contains:
- - ref: the reference allele in the human reference (GRCh38)
- - alt: the alternative reference for this rsid. Some rsid are multi-allelic and
+ - **ref**: the reference allele in the human reference (GRCh38)
+ - **alt**: the alternative reference for this rsid. Some rsid are multi-allelic and
  can have more than one alternative allele. In this case VarGen creates one line 
  per alternative allele and annotates them separately (as some alleles are more 
  deleterious than others for a single rsid).
