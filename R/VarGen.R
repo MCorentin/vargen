@@ -825,19 +825,19 @@ get_fantom5_variants <- function(fantom_df, omim_genes, corr_threshold = 0.25,
 # ---- GWAS ----
 
 #' @title Create a gwaswloc object
-#' @description Create a gwaswloc object from \code{\link[gwascat]{makeCurrentGwascat}}
-#' or by reading a local file (if "vargen_dir" specified as a parameter). If
-#' "vargen_dir" contains more than one gwas catalog, the user will be prompted to
-#' choose one.
-#' The function will use the filename to determine the extract date, please have
-#' it in the format: \[filename\]_r**YYYYY**-**MM**-**DD**.tsv
+#' @description Create a gwaswloc object by reading the file at
+#' "http://www.ebi.ac.uk/gwas/api/search/downloads/alternative"
+#' or by reading a local gwas catalog (if "vargen_dir" specified as a parameter).
+#' If "vargen_dir" contains more than one gwas catalog, the user will be prompted to
+#' choose one. The function will use the filename to determine the extract date,
+#' please have it in the format: \[filename\]_r**YYYYY**-**MM**-**DD**.tsv
 #' eg: "gwas_catalog_v1.0.2-associations_e96_r2019-07-30.tsv"
 #'
 #' @param vargen_dir (optional) a path to vargen data directory, created
 #' during \code{\link{vargen_install}}. If not specified, the gwas object will
-#' be created with \code{\link[gwascat]{makeCurrentGwascat}}. If specified, this
-#' function will look for files that begin with "gwas_catalog". If more than one
-#' is found, the user will have to choose one via a text menu
+#' be created by reading the file at "http://www.ebi.ac.uk/gwas/api/search/downloads/alternative".
+#' If specified, this function will look for files that begin with "gwas_catalog".
+#' If more than one is found, the user will have to choose one via a text menu
 #' @param verbose if true, will print progress information (default: FALSE)
 #'
 #' @examples
@@ -968,7 +968,7 @@ list_gwas_traits <- function(keywords = "", vargen_dir) {
 #' gwas_variants <- get_gwas_variants(gwas_cat, obesity_gwas)
 #' @export
 get_gwas_variants <- function(gwas_cat, gwas_traits){
-  require("gwascat")
+  #require("gwascat")
   gwas_variants <- gwascat::subsetByTraits(x = gwas_cat, tr = gwas_traits)
   GenomeInfoDb::seqlevelsStyle(gwas_variants) <- "UCSC"
 
