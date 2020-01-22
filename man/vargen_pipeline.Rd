@@ -5,13 +5,14 @@
 \title{Main vargen function, to get the list of variants}
 \usage{
 vargen_pipeline(vargen_dir, omim_morbid_ids, fantom_corr = 0.25,
-  outdir = "./", gtex_tissues, gwas_traits, verbose = FALSE)
+  outdir = "./", gtex_tissues, gwas_traits, gene_mart, snp_mart,
+  verbose = FALSE)
 }
 \arguments{
 \item{vargen_dir}{directory with the following file (can be generated with
 \code{\link{vargen_install}})}
 
-\item{omim_morbid_ids}{a vector containing the omim morbid id(s) of the phenotype(s) 
+\item{omim_morbid_ids}{a vector containing the omim morbid id(s) of the phenotype(s)
 of interest. You can search on the Online Mendelian Inheritance in Man website
 (https://www.omim.org/) or use \code{\link{list_omim_accessions}}}
 
@@ -28,6 +29,14 @@ files. Output from \code{\link{select_gtex_tissues}} can be used.}
 
 \item{gwas_traits}{a vector with the trait of interest (as characters). The list
 of available traits can be obtained with \code{\link{list_gwas_traits}}}
+
+\item{gene_mart}{optional, a connection to ensembl gene mart, can be created
+using \code{\link{connect_to_gene_ensembl}} (If missing this function will be
+used to create the connection).}
+
+\item{snp_mart}{optional, a connection to ensembl snp mart, can be created
+using \code{\link{connect_to_snp_ensembl}} (If missing this function will be
+used to create the connection).}
 
 \item{verbose}{if TRUE, will print progress messages (default: FALSE)}
 }
@@ -62,7 +71,7 @@ The pipeline will also annotate the variants using \code{\link[myvariant]{getVar
 vargen_install("./vargen_data/")
 
 # Simple query
-DM1_simple <- vargen_pipeline(vargen_dir = "./vargen_data/", omim_morbid = "222100",
+DM1_simple <- vargen_pipeline(vargen_dir = "./vargen_data/", omim_morbid_ids = "222100",
                               fantom_corr = 0.25, outdir = "./", verbose = TRUE)
 
 
@@ -72,7 +81,7 @@ pancreas_tissues <- select_gtex_tissues(gtex_dir = "./vargen_data/GTEx_Analysis_
 
 # list_gwas_traits("diabetes")
 
-DM1 <- vargen_pipeline(vargen_dir = "./vargen_data/", omim_morbid = "222100",
+DM1 <- vargen_pipeline(vargen_dir = "./vargen_data/", omim_morbid_ids = "222100",
                        fantom_corr = 0.25, outdir = "./",
                        gtex_tissues = pancreas_tissues,
                        gwas_traits = "Type 1 diabetes", verbose = TRUE)

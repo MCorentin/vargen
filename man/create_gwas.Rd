@@ -7,21 +7,21 @@
 create_gwas(vargen_dir, verbose = FALSE)
 }
 \arguments{
-\item{vargen_dir}{(optional) a path to vargen data directory, created 
+\item{vargen_dir}{(optional) a path to vargen data directory, created
 during \code{\link{vargen_install}}. If not specified, the gwas object will
-be created with \code{\link[gwascat]{makeCurrentGwascat}}. If specified, this
-function will look for files that begin with "gwas_catalog". If more than one 
-is found, the user will have to choose one via a text menu}
+be created by reading the file at "http://www.ebi.ac.uk/gwas/api/search/downloads/alternative".
+If specified, this function will look for files that begin with "gwas_catalog".
+If more than one is found, the user will have to choose one via a text menu}
 
 \item{verbose}{if true, will print progress information (default: FALSE)}
 }
 \description{
-Create a gwaswloc object from \code{\link[gwascat]{makeCurrentGwascat}}
-or by reading a local file (if "vargen_dir" specified as a parameter). If 
-"vargen_dir" contains more than one gwas catalog, the user will be prompted to 
-choose one.
-The function will use the filename to determine the extract date, please have
-it in the format: \[filename\]_r**YYYYY**-**MM**-**DD**.tsv
+Create a gwaswloc object by reading the file at
+"http://www.ebi.ac.uk/gwas/api/search/downloads/alternative"
+or by reading a local gwas catalog (if "vargen_dir" specified as a parameter).
+If "vargen_dir" contains more than one gwas catalog, the user will be prompted to
+choose one. The function will use the filename to determine the extract date,
+please have it in the format: \[filename\]_r**YYYYY**-**MM**-**DD**.tsv
 eg: "gwas_catalog_v1.0.2-associations_e96_r2019-07-30.tsv"
 }
 \examples{

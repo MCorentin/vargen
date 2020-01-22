@@ -9,10 +9,10 @@ list_gwas_traits(keywords = "", vargen_dir)
 \arguments{
 \item{keywords}{a vector of keywords to grep the traits from the gwas catalog. (default: "")}
 
-\item{vargen_dir}{(optional) a path to vargen data directory, created 
+\item{vargen_dir}{(optional) a path to vargen data directory, created
 during \code{\link{vargen_install}}. If not specified, the gwas object will
 be created with \code{\link[gwascat]{makeCurrentGwascat}}. If specified, this
-function will look for files that begin with "gwas_catalog". If more than one 
+function will look for files that begin with "gwas_catalog". If more than one
 is found, the user will have to choose one via a text menu}
 }
 \value{

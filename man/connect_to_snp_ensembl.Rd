@@ -21,6 +21,6 @@ database, using \code{\link[biomaRt]{useEnsembl}}
 # Connect with the default mirror
 ensembl <- connect_to_snp_ensembl()
 
-# Connect with the "uswest" mirror
-uswest_ensembl <- connect_to_snp_ensembl(mirror="uswest")
+# Connect with the "useast" mirror
+uswest_ensembl <- connect_to_snp_ensembl(mirror="useast")
 }

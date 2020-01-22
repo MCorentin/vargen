@@ -12,8 +12,8 @@
 #' # Connect with the default mirror
 #' gene_mart <- connect_to_gene_ensembl()
 #'
-#' # Connect with the "uswest" mirror
-#' uswest_gene_mart <- connect_to_gene_ensembl(mirror="uswest")
+#' # Connect with the "useast" mirror
+#' uswest_gene_mart <- connect_to_gene_ensembl(mirror="useast")
 #' @export
 connect_to_gene_ensembl <- function(mirror = "www"){
   gene_mart <- biomaRt::useEnsembl(biomart = "ENSEMBL_MART_ENSEMBL",
@@ -36,8 +36,8 @@ connect_to_gene_ensembl <- function(mirror = "www"){
 #' # Connect with the default mirror
 #' ensembl <- connect_to_snp_ensembl()
 #'
-#' # Connect with the "uswest" mirror
-#' uswest_ensembl <- connect_to_snp_ensembl(mirror="uswest")
+#' # Connect with the "useast" mirror
+#' uswest_ensembl <- connect_to_snp_ensembl(mirror="useast")
 #' @export
 connect_to_snp_ensembl <- function(mirror = "www"){
   snp_mart <- biomaRt::useEnsembl(biomart = "snp",
@@ -309,7 +309,11 @@ vargen_visualisation <- function(annotated_snps, outdir = "./", rsid_highlight,
     if(verbose) print(paste0("Creating folder '", outdir, "'"))
     dir.create(outdir)
   }
-  if(missing(gene_mart)) gene_mart <- connect_to_gene_ensembl()
+
+  if(missing(gene_mart) || class(gene_mart) != 'Mart'){
+    warning("The gene mart is not provided, or not valid, created one with connect_to_gene_ensembl()")
+    gene_mart <- connect_to_gene_ensembl()
+  }
 
   bckg_col <- "#D95F02"
 
@@ -448,8 +452,9 @@ vargen_visualisation <- function(annotated_snps, outdir = "./", rsid_highlight,
 #'
 #' @param keywords a keyword, all the phenotypes contaning this keyword will be
 #' returned (based on \code{\link[base]{grep}} with ignore.case)
-#' @param snp_mart a connection to ensembl snp mart, can be generated from
-#' \code{\link{connect_to_snp_ensembl}}
+#' @param snp_mart optional, a connection to ensembl snp mart, can be created
+#' using \code{\link{connect_to_snp_ensembl}} (If missing this function will be
+#' used to create the connection).
 #' @return a vector of phenotype names
 #'
 #' @examples
@@ -461,7 +466,11 @@ vargen_visualisation <- function(annotated_snps, outdir = "./", rsid_highlight,
 #' @export
 get_phenotype_terms <- function(keywords, snp_mart) {
   if(missing(keywords)) keywords <- ""
-  if(missing(snp_mart)) snp_mart <- connect_to_snp_ensembl()
+
+  if(missing(snp_mart) || class(snp_mart) != 'Mart'){
+    warning("The snp mart is not provided, or not valid, created one with connect_to_snp_ensembl()")
+    snp_mart <- connect_to_snp_ensembl()
+  }
 
   # Get all the possible values for the phenotype filter:
   biomart_filters <- biomaRt::filterOptions(filter = "phenotype_description",
@@ -506,8 +515,10 @@ get_phenotype_terms <- function(keywords, snp_mart) {
 #' get_variants_from_phenotypes(phenotypes = DM_phen, snp_mart = snp_mart)
 #' @export
 get_variants_from_phenotypes <- function(phenotypes, snp_mart) {
-
-  if(missing(snp_mart)) snp_mart <- connect_to_snp_ensembl()
+  if( missing(snp_mart) || class(snp_mart) != 'Mart'){
+    warning("The snp mart is not provided, or not valid, created one with connect_to_snp_ensembl()")
+    snp_mart <- connect_to_snp_ensembl()
+  }
 
   pheno_variants <- biomaRt::getBM(attributes = c("chr_name", "chrom_start",
                                                   "refsnp_id", "refsnp_source",
@@ -546,7 +557,10 @@ get_variants_from_phenotypes <- function(phenotypes, snp_mart) {
 #' list_omim_accessions(gene_mart, c("alzheimer", "obesity"))
 #' @export
 list_omim_accessions <- function(gene_mart, keywords){
-  if(missing(gene_mart)) gene_mart <- connect_to_gene_ensembl()
+  if(missing(gene_mart) || class(gene_mart) != 'Mart'){
+    warning("The gene mart is not provided, or not valid, created one with connect_to_gene_ensembl()")
+    gene_mart <- connect_to_gene_ensembl()
+  }
 
   omim_list <- biomaRt::getBM(mart = gene_mart,
                               attributes = c("mim_morbid_accession",
@@ -594,7 +608,10 @@ list_omim_accessions <- function(gene_mart, keywords){
 #' DM_genes <- get_omim_genes(c("125853","222100"), gene_mart)
 #' @export
 get_omim_genes <- function(omim_ids, gene_mart) {
-  if(missing(gene_mart)) gene_mart <- connect_to_gene_ensembl()
+  if(missing(gene_mart) || class(gene_mart) != 'Mart'){
+    warning("The gene mart is not provided, or not valid, created one with connect_to_gene_ensembl()")
+    gene_mart <- connect_to_gene_ensembl()
+  }
 
   mim_genes <- biomaRt::getBM(attributes = c("ensembl_gene_id", "chromosome_name",
                                              "start_position", "end_position",
@@ -990,13 +1007,13 @@ get_gwas_variants <- function(gwas_cat, gwas_traits){
 #' @title Manhattan plot for variants found in GWAS
 #' @description Display a manhattan plot. Only the variants related to the traits
 #' given as parameter will be displayed. The two horizontal lines on the plot
-#' correspond to the "suggestive" and "significant" threshold in genome wide
+#' correspond to the "suggestive" and "significant" thresholds in genome wide
 #' studies.
 #'
-#' @param gwas_cat a gwaswloc object obtained from \code{\link[gwascat]{makeCurrentGwascat}}
+#' @param gwas_cat a gwaswloc object obtained from \code{\link{create_gwas}}
 #' @param traits a vector with the trait of interest (as characters). The list
 #' of available traits can be obtained with \code{\link{list_gwas_traits}}
-#' @return nothing, diplay the plot
+#' @return nothing (just display the plot)
 #'
 #' @references
 #' Lander E, Kruglyak L. Genetic dissection of complex traits: guidelines for
@@ -1013,37 +1030,54 @@ plot_manhattan_gwas <- function(gwas_cat, traits) {
     if(!(trait %in% gwas_cat$`DISEASE/TRAIT`)) stop(paste0("gwas trait '", trait, "' not found in gwas catalog, stopping now."))
   }
 
-  # Need ggbio for manhattan plot in gwascat
-  require("ggbio")
   # These are the two standard gwas thresholds, they will be plotted as lines
   # on the manhattan plot.
   suggestive  <- 1*(10^-5)
   significant <- 5*(10^-8)
 
-  # Just select a subset of all the variants in the gwas catalog (those related
-  # to the traits of interest)
+  # Just select the variants  related to the traits of interest
   variants_traits <- gwascat::subsetByTraits(x = gwas_cat, tr = traits)
 
-  gwascat::traitsManh(gwr = variants_traits, sel = gwas_cat, traits = traits) +
-    # genome-wide significant threshold (p-value < 1 x 10-8)
-    # because : -log10(5*10^-8) = 7.30
-    ggplot2::geom_hline(ggplot2::aes(yintercept = -log10(suggestive),
-                                     linetype = paste0("Suggestive: ",  suggestive)),
-                        color = "blue",  size = 0.3) +
-    ggplot2::geom_hline(ggplot2::aes(yintercept = -log10(significant),
-                                     linetype = paste0("Significant: ", significant)),
-                        color = "red", size = 0.3) +
+  # The next 9 commands below are from the traitsManh function from the gwascat package.
+  # I do not use the function directly because it throws an error if ggplot is
+  # required after ggbio. (because ggplot2::autoplot will be called instead of
+  # ggbio::autoplot, and ggplot2::autoplot does not handle gwaswloc objects).
+  #   gwascat::traitsManh(gwr = variants_traits, selr = gwas_cat, traits = traits)
+  variants_traits = variants_traits[which(IRanges::overlapsAny(variants_traits,
+                                                               gwas_cat))]
+  availtr = as.character(variants_traits$`DISEASE/TRAIT`)
+  oth = which(!(availtr %in% traits))
+  availtr[oth] = "Other"
+  variants_traits$Trait = availtr
+  pv = variants_traits$PVALUE_MLOG
+  variants_traits$PVALUE_MLOG = ifelse(pv > 25, 25, pv)
+  sn = paste(GenomeInfoDb::genome(variants_traits)[1],
+             as.character(GenomeInfoDb::seqnames(variants_traits))[1],
+             sep = " ")
 
-    ggplot2::xlab("Genomic Coordinates") + ggplot2::ylab("-log10(p-value)") +
+  # Generate the plot
+  ggbio::autoplot(variants_traits, geom = "point", xlab = sn,
+                  ggplot2::aes(y = variants_traits$PVALUE_MLOG,
+                               color = variants_traits$Trait)) +
 
-    ggplot2::theme(strip.text.x = ggplot2::element_text(size=6),
-                   axis.text.x  = ggplot2::element_blank(),
-                   axis.ticks.x = ggplot2::element_blank()) +
+  # genome-wide significant threshold (p-value < 1 x 10-8)
+  # because : -log10(5*10^-8) = 7.30
+  ggplot2::geom_hline(ggplot2::aes(yintercept = -log10(suggestive),
+                                   linetype = paste0("Suggestive: ",  suggestive)),
+                      color = "blue",  size = 0.3) +
+  ggplot2::geom_hline(ggplot2::aes(yintercept = -log10(significant),
+                                   linetype = paste0("Significant: ", significant)),
+                      color = "red", size = 0.3) +
 
-    # Overriding the guide legend for the linetype
-    # To allow for a legend for "geom_hline"
-    ggplot2::scale_linetype_manual(name = "Thresholds p-values\n", values = c(2,2),
-                                   guide = ggplot2::guide_legend(override.aes = list(color = c("red", "blue"))))
+  ggplot2::xlab("Genomic Coordinates") + ggplot2::ylab("-log10(p-value)") +
+
+  ggplot2::theme(strip.text.x = ggplot2::element_text(size=6),
+                 axis.text.x  = ggplot2::element_blank(),
+                 axis.ticks.x = ggplot2::element_blank()) +
+
+  # Overriding the guide legend for the linetype to allow for geom_hline's legend
+  ggplot2::scale_linetype_manual(name = "Thresholds p-values\n", values = c(2,2),
+                                 guide = ggplot2::guide_legend(override.aes = list(color = c("red", "blue"))))
 }
 
 
@@ -1419,6 +1453,12 @@ vargen_install <- function(install_dir = "./", gtex_version = "v8", verbose = FA
 #' files. Output from \code{\link{select_gtex_tissues}} can be used.
 #' @param gwas_traits a vector with the trait of interest (as characters). The list
 #' of available traits can be obtained with \code{\link{list_gwas_traits}}
+#' @param gene_mart optional, a connection to ensembl gene mart, can be created
+#' using \code{\link{connect_to_gene_ensembl}} (If missing this function will be
+#' used to create the connection).
+#' @param snp_mart optional, a connection to ensembl snp mart, can be created
+#' using \code{\link{connect_to_snp_ensembl}} (If missing this function will be
+#' used to create the connection).
 #' @param verbose if TRUE, will print progress messages (default: FALSE)
 #' @return a data.frame with the variants fetched from OMIM, FANTOM5, GTEx and GWAS.
 #' The data.frame will contain the following columns:
@@ -1451,7 +1491,8 @@ vargen_install <- function(install_dir = "./", gtex_version = "v8", verbose = FA
 #'                        gwas_traits = "Type 1 diabetes", verbose = TRUE)
 #' @export
 vargen_pipeline <- function(vargen_dir, omim_morbid_ids, fantom_corr = 0.25,
-                            outdir = "./", gtex_tissues, gwas_traits, verbose = FALSE) {
+                            outdir = "./", gtex_tissues, gwas_traits,
+                            gene_mart, snp_mart, verbose = FALSE) {
   if(missing(omim_morbid_ids)){
     stop("Please provide OMIM morbid ids. Stopping now")
   }
@@ -1464,9 +1505,16 @@ vargen_pipeline <- function(vargen_dir, omim_morbid_ids, fantom_corr = 0.25,
   #_____________________________________________________________________________
   # Loading the necessary resources
   #_____________________________________________________________________________
-  if(verbose) print("Connection to gene and snp marts...")
-  gene_mart <- connect_to_gene_ensembl()
-  snp_mart <- connect_to_snp_ensembl()
+  if(missing(gene_mart) || class(gene_mart) != 'Mart'){
+    warning("The gene mart is not provided, or not valid, created one with connect_to_gene_ensembl()")
+    gene_mart <- connect_to_gene_ensembl()
+  }
+
+  if(missing(snp_mart) || class(snp_mart) != 'Mart'){
+    warning("The snp mart is not provided, or not valid, created one with connect_to_snp_ensembl()")
+    snp_mart <- connect_to_snp_ensembl()
+  }
+
 
   # no gwas traits = no need to generate the gwas object
   if(!missing(gwas_traits)){
@@ -1584,6 +1632,12 @@ vargen_pipeline <- function(vargen_dir, omim_morbid_ids, fantom_corr = 0.25,
 #' files. Output from \code{\link{select_gtex_tissues}} can be used.
 #' @param gwas_traits a vector with the trait of interest (as characters). The list
 #' of available traits can be obtained with \code{\link{list_gwas_traits}}
+#' @param gene_mart optional, a connection to ensembl gene mart, can be created
+#' using \code{\link{connect_to_gene_ensembl}} (If missing this function will be
+#' used to create the connection).
+#' @param snp_mart optional, a connection to ensembl snp mart, can be created
+#' using \code{\link{connect_to_snp_ensembl}} (If missing this function will be
+#' used to create the connection).
 #' @param verbose if TRUE, will print progress messages (default: FALSE)
 #'
 #' @return a data.frame with the variants fetched from OMIM, FANTOM5, GTEx and GWAS.
@@ -1615,7 +1669,7 @@ vargen_pipeline <- function(vargen_dir, omim_morbid_ids, fantom_corr = 0.25,
 #'               gwas_traits = "Obesity")
 #' @export
 vargen_custom <- function(vargen_dir, gene_ids, fantom_corr = 0.25, outdir = "./",
-                          gtex_tissues, gwas_traits, verbose = FALSE) {
+                          gtex_tissues, gwas_traits, gene_mart, snp_mart, verbose = FALSE) {
   if (!file.exists(outdir)){
     if(verbose) print(paste0("Creating folder '", outdir, "'"))
     dir.create(outdir)
@@ -1624,9 +1678,15 @@ vargen_custom <- function(vargen_dir, gene_ids, fantom_corr = 0.25, outdir = "./
   #_____________________________________________________________________________
   # Loading the necessary resources
   #_____________________________________________________________________________
-  if(verbose) print("Connection to gene and snp marts...")
-  gene_mart <- connect_to_gene_ensembl()
-  snp_mart <- connect_to_snp_ensembl()
+  if(missing(gene_mart) || class(gene_mart) != 'Mart'){
+    warning("The gene mart is not provided, or not valid, created one with connect_to_gene_ensembl()")
+    gene_mart <- connect_to_gene_ensembl()
+  }
+
+  if(missing(snp_mart) || class(snp_mart) != 'Mart'){
+    warning("The snp mart is not provided, or not valid, created one with connect_to_snp_ensembl()")
+    snp_mart <- connect_to_snp_ensembl()
+  }
 
   # no gwas traits = no need to generate the gwas object
   if(!missing(gwas_traits)){

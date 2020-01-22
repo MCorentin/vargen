@@ -11,8 +11,8 @@ list_omim_accessions(gene_mart, keywords)
 from \code{\link{connect_to_gene_ensembl}} (which will be used if this argument
 if not specified).}
 
-\item{keywords}{a vector containing a list of keywords. This will be grepped 
-(case insensitive) against the list of omim descriptions to retrieve a list of 
+\item{keywords}{a vector containing a list of keywords. This will be grepped
+(case insensitive) against the list of omim descriptions to retrieve a list of
 omim IDs.}
 }
 \value{

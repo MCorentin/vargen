@@ -10,8 +10,9 @@ get_phenotype_terms(keywords, snp_mart)
 \item{keywords}{a keyword, all the phenotypes contaning this keyword will be
 returned (based on \code{\link[base]{grep}} with ignore.case)}
 
-\item{snp_mart}{a connection to ensembl snp mart, can be generated from
-\code{\link{connect_to_snp_ensembl}}}
+\item{snp_mart}{optional, a connection to ensembl snp mart, can be created
+using \code{\link{connect_to_snp_ensembl}} (If missing this function will be
+used to create the connection).}
 }
 \value{
 a vector of phenotype names

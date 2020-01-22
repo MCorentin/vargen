@@ -5,7 +5,7 @@
 \title{Get variants related to specific genes.}
 \usage{
 vargen_custom(vargen_dir, gene_ids, fantom_corr = 0.25, outdir = "./",
-  gtex_tissues, gwas_traits, verbose = FALSE)
+  gtex_tissues, gwas_traits, gene_mart, snp_mart, verbose = FALSE)
 }
 \arguments{
 \item{vargen_dir}{directory with the following file (can be generated with
@@ -26,6 +26,14 @@ files. Output from \code{\link{select_gtex_tissues}} can be used.}
 
 \item{gwas_traits}{a vector with the trait of interest (as characters). The list
 of available traits can be obtained with \code{\link{list_gwas_traits}}}
+
+\item{gene_mart}{optional, a connection to ensembl gene mart, can be created
+using \code{\link{connect_to_gene_ensembl}} (If missing this function will be
+used to create the connection).}
+
+\item{snp_mart}{optional, a connection to ensembl snp mart, can be created
+using \code{\link{connect_to_snp_ensembl}} (If missing this function will be
+used to create the connection).}
 
 \item{verbose}{if TRUE, will print progress messages (default: FALSE)}
 }

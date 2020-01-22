@@ -21,6 +21,6 @@ BioMart database, using \code{\link[biomaRt]{useEnsembl}}
 # Connect with the default mirror
 gene_mart <- connect_to_gene_ensembl()
 
-# Connect with the "uswest" mirror
-uswest_gene_mart <- connect_to_gene_ensembl(mirror="uswest")
+# Connect with the "useast" mirror
+uswest_gene_mart <- connect_to_gene_ensembl(mirror="useast")
 }

@@ -7,18 +7,18 @@
 plot_manhattan_gwas(gwas_cat, traits)
 }
 \arguments{
-\item{gwas_cat}{a gwaswloc object obtained from \code{\link[gwascat]{makeCurrentGwascat}}}
+\item{gwas_cat}{a gwaswloc object obtained from \code{\link{create_gwas}}}
 
 \item{traits}{a vector with the trait of interest (as characters). The list
 of available traits can be obtained with \code{\link{list_gwas_traits}}}
 }
 \value{
-nothing, diplay the plot
+nothing (just display the plot)
 }
 \description{
 Display a manhattan plot. Only the variants related to the traits
 given as parameter will be displayed. The two horizontal lines on the plot
-correspond to the "suggestive" and "significant" threshold in genome wide
+correspond to the "suggestive" and "significant" thresholds in genome wide
 studies.
 }
 \examples{

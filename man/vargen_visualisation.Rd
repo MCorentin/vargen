@@ -44,7 +44,7 @@ vargen_install("./vargen_data/")
 
 # Simple query
 gene_mart <- connect_to_gene_ensembl()
-DM1_simple <- vargen_pipeline(vargen_dir = "./vargen_data/", omim_morbid = "222100",
+DM1_simple <- vargen_pipeline(vargen_dir = "./vargen_data/", omim_morbid_ids = "222100",
                               fantom_corr = 0.25, outdir = "./", verbose = TRUE)
 
 vargen_visualisation(annotated_snps = DM1_simple, verbose = TRUE,

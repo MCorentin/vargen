@@ -28,7 +28,6 @@ The data.frame contains the following columns:
 uses \code{\link[gwascat]{subsetByTraits}} to get the variants.
 }
 \examples{
-gwas_cat <- create_gwas()
 # if you need to get the list of gwas traits:
 # list_gwas_traits(keywords = c("Obesity"))
 obesity_gwas <- c("Obesity (extreme)", "Obesity-related traits", "Obesity")
