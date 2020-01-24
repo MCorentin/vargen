@@ -164,7 +164,15 @@ gene_mart <- connect_to_gene_ensembl()
 View(list_omim_accessions(gene_mart))
 
 # You can search using list of keywords as well:
-View(list_omim_accessions(gene_mart, c("alzheimer", "neurodegeneration")))
+list_omim_accessions(gene_mart, c("alzheimer", "neurodegeneration"))
+
+#>      mim_morbid_accession    mim_morbid_description
+#> [1]  606889                  ALZHEIMER DISEASE 4;;AD4;;ALZHEIMER DISEASE, FAMILIAL, 4
+#> [2]  618476                  BRAIN ABNORMALITIES, NEURODEGENERATION, AND DYSOSTEOSCLEROSIS;BANDDOS
+#> [3]  615643                  NEURODEGENERATION WITH BRAIN IRON ACCUMULATION 6; NBIA6
+#> [4]  618276                  NEURODEGENERATION, CHILDHOOD-ONSET, WITH CEREBELLAR ATROPHY; CONDCA
+#> [5]  618278                  FIBROSIS, NEURODEGENERATION, AND CEREBRAL ANGIOMATOSIS; FINCA
+#> ...
 ````
 
 ### Getting the GTEx tissues
@@ -175,11 +183,11 @@ disease. You can obtain the list of files with the *list_gtex_tissues* function.
 ````
 list_gtex_tissues(gtex_dir = "./vargen_data/GTEx_Analysis_v8_eQTL/")
 
-#>       keywords                     filepaths
-#> 1     Adipose_Subcutaneous         vargen_data/GTEx_Analysis_v8_eQTL/Adipose_Subcutaneous.v8.signif_variant_gene_pairs.txt.gz
-#> 2     Adipose_Visceral_Omentum     vargen_data/GTEx_Analysis_v8_eQTL/Adipose_Visceral_Omentum.v8.signif_variant_gene_pairs.txt.gz
-#> 3     Adrenal_Gland                vargen_data/GTEx_Analysis_v8_eQTL/Adrenal_Gland.v8.signif_variant_gene_pairs.txt.gz
-#> 4     Artery_Aorta                 vargen_data/GTEx_Analysis_v8_eQTL/Artery_Aorta.v8.signif_variant_gene_pairs.txt.gz
+#>      keywords                     filepaths
+#> [1]  Adipose_Subcutaneous         vargen_data/GTEx_Analysis_v8_eQTL/Adipose_Subcutaneous.v8.signif_variant_gene_pairs.txt.gz
+#> [2]  Adipose_Visceral_Omentum     vargen_data/GTEx_Analysis_v8_eQTL/Adipose_Visceral_Omentum.v8.signif_variant_gene_pairs.txt.gz
+#> [3]  Adrenal_Gland                vargen_data/GTEx_Analysis_v8_eQTL/Adrenal_Gland.v8.signif_variant_gene_pairs.txt.gz
+#> [4]  Artery_Aorta                 vargen_data/GTEx_Analysis_v8_eQTL/Artery_Aorta.v8.signif_variant_gene_pairs.txt.gz
 #> ...
 ````
 
