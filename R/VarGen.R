@@ -118,6 +118,7 @@ format_chr <- function(chr){
   return(chr)
 }
 
+
 #' @title Format the variants data.frame
 #' @description Used to have consistent output for the variants from OMIM, FANTOM5,
 #' GTEx and GWAS.
@@ -177,7 +178,6 @@ annotate_variants <- function(rsid, verbose = FALSE) {
   # Then, format the output as a data.frame
   # Checking "is.null" is needed to avoid errors when there is a list of variants
   # without some features (eg: no cadd.phred scores). Can happen for small lists.
-
   if(is.null(rsid_annotated$cadd.phred)){
     cadd_phred <- NA
   } else {
@@ -232,7 +232,6 @@ annotate_variants <- function(rsid, verbose = FALSE) {
                                     paste, collapse = ";", USE.NAMES = FALSE)
   }
 
-
   rsid_annotated_df <- data.frame(rsid = unlist(rsid_annotated$query),
                                   ref = rsid_annotated$vcf.ref,
                                   alt = rsid_annotated$vcf.alt,
@@ -245,8 +244,7 @@ annotate_variants <- function(rsid, verbose = FALSE) {
                                   snpeff_ann = snpeff,
                                   stringsAsFactors = FALSE)
 
-
-  #Replacing the snp eff annotation from "c(\"MODIFIER\", \"MODIFIER\")" to "MODIFIER;MODIFIER"
+  #Replacing the snpeff annotation from "c(\"MODIFIER\", \"MODIFIER\")" to "MODIFIER;MODIFIER"
   rsid_annotated_df$snpeff_ann <- gsub(pattern = "\"|c\\(|\\)", replacement = "",
                                        x = rsid_annotated_df$snpeff_ann)
   rsid_annotated_df$snpeff_ann <- noquote(gsub(pattern = ", ", replacement = ";",
@@ -443,7 +441,7 @@ vargen_visualisation <- function(annotated_snps, outdir = "./", rsid_highlight,
 }
 
 
-# ---- varphen Pipeline ----
+# ---- VarPhen Pipeline ----
 
 #' @title From keywords, get a list of phenotypes to use with snp mart
 #' @description The list of phenotypes obtained can be used with
@@ -748,7 +746,7 @@ get_fantom5_enhancers_from_hgnc <- function(fantom_df, hgnc_symbols, corr_thresh
   # https://genomebiology.biomedcentral.com/articles/10.1186/s13059-014-0560-6
   # A z-score greater than 0 represents an element greater than the mean = more correlation than random motifs ?
   enhancers_corr <- unique(subset(fantom_df,
-                                  corr >= corr_threshold,# & fdr < fdr_threshold,
+                                  fantom_df$corr >= corr_threshold,# & fdr < fdr_threshold,
                                   select = c("chr", "start", "end", "symbol", "corr", "fdr"))
   )
   # Get list of enhancer related to list of genes
