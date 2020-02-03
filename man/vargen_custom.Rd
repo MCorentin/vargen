@@ -56,6 +56,7 @@ The variants are fetched from the following sources:
   \item get variants on the genes
   \item get the variants on the enhancers / promoters of the genes
   \item GTEx: get variants impacting the expression of the genes in specific tissues.
+  \item GWAS: get variants related to the phenotype of interest from the gwas catalog
 }
 }
 \examples{

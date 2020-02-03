@@ -619,9 +619,10 @@ get_omim_genes <- function(omim_ids, gene_mart) {
                               values = c(omim_ids),
                               mart = gene_mart, uniqueRows = TRUE)
 
-  if(is.null(gene_mart)) paste0("/!\\ no genes found for:", paste(omim_ids, collapse = ", "))
+  if(is.null(mim_genes)) print(paste0("No genes found for:", paste(omim_ids, collapse = ", ")))
+  if(!is.null(mim_genes) && nrow(mim_genes) == 0) print(paste0("No genes found for: ", paste(omim_ids, collapse = ", ")))
 
-  if(!is.null(gene_mart)) mim_genes$chromosome_name <- format_chr(chr = mim_genes$chromosome_name)
+  if(!is.null(mim_genes)) mim_genes$chromosome_name <- format_chr(chr = mim_genes$chromosome_name)
 
   return(mim_genes)
 }
@@ -1175,7 +1176,7 @@ convert_gtex_id_to_granges <- function(gtex_ids, hg19ToHg38.over.chain, verbose 
   gtex_build <- unique(sub(".*_", "", gtex_ids))
 
   if(length(gtex_build) > 1){
-    stop(paste0("All the variants are not in the same build, builds detected: ",
+    stop(paste0("All the GTEx variants are not in the same build, builds detected: ",
                 paste(gtex_build, collapse = ", ")))
   }
 
@@ -1276,45 +1277,50 @@ convert_gtex_to_rsids <- function(gtex_ids, hg19ToHg38.over.chain, verbose = FAL
 #                                      verbose = TRUE)
 get_gtex_variants <- function(tissue_files, omim_genes, hg19ToHg38.over.chain,
                               verbose = FALSE){
-  # This will contain the master vector of variants obtained from the different tissues
-  gtex_master <- c()
 
-  list.tissues <- vector('list', length(tissue_files))
+  list.variants <- vector('list', length(tissue_files))
   i <- 1
+  # We do it one tissue at a time so we can add the specific tissue for each
+  # variant in the "source" column of the data.frame
   for(file in tissue_files){
-    list.tissues[[i]] <- utils::read.delim(gzfile(file), stringsAsFactors = FALSE)
-    i <- i + 1
-  }
-  gtex_master <- do.call('rbind', list.tissues)
+    tissue_variants <- utils::read.delim(gzfile(file), stringsAsFactors = FALSE)
+    # We get the tissue name from the filename
+    tissue <- sub(pattern = ".v[78].*",  replacement = "", x = basename(file))
 
-  # Tranforming the "ensembl ID" from GTEx to "stable ensembl gene id"
-  # eg: ENSG00000135100.17 to ENSG00000135100 (the ".17" correspond to the version number)
-  gtex_master$stable_gene_id <- stringr::str_replace(gtex_master$gene_id,
-                                                     pattern = ".[0-9]+$",
-                                                     replacement = "")
+    # Tranforming the "ensembl ID" from GTEx to "stable ensembl gene id"
+    # eg: ENSG00000135100.17 to ENSG00000135100 (the ".17" correspond to the version number)
+    tissue_variants$stable_gene_id <- stringr::str_replace(tissue_variants$gene_id,
+                                                           pattern = ".[0-9]+$",
+                                                           replacement = "")
+    # We need to search for each gene specifically to be able to add the
+    # "ensembl_gene_id" column in the output
+    list.variants.genes <- vector('list', nrow(omim_genes))
+    j <- 1
+    for(gene in omim_genes$ensembl_gene_id){
+      gene_variants <- tissue_variants[tissue_variants$stable_gene_id %in% gene, ]
 
-  gtex_variants <- data.frame()
-  list.variants <- vector('list', nrow(omim_genes))
-  i <- 1
-  for(gene in omim_genes$ensembl_gene_id){
-    # Get gtex variants that alter the expression of a specific gene
-    gene_variants <- gtex_master[gtex_master$stable_gene_id %in% gene, ]
+      if(nrow(gene_variants) > 0){
+        gene_variants <- convert_gtex_to_rsids(gtex_ids = gene_variants$variant_id,
+                                               hg19ToHg38.over.chain = hg19ToHg38.over.chain,
+                                               verbose = verbose)
 
-    if(nrow(gene_variants) > 0){
-      # GTEx ids are =/= to rsid, we need to convert them to have consistency
-      gene_variants <- convert_gtex_to_rsids(gtex_ids = gene_variants$variant_id,
-                                             hg19ToHg38.over.chain = hg19ToHg38.over.chain,
-                                             verbose = verbose)
+        gene_variants_df <- format_output(chr = unlist(gene_variants$seq_region_name),
+                                          pos =  unlist(gene_variants$start),
+                                          rsid = unlist(gene_variants$id),
+                                          ensembl_gene_id = omim_genes[omim_genes$ensembl_gene_id == gene, "ensembl_gene_id"],
+                                          hgnc_symbol = omim_genes[omim_genes$ensembl_gene_id == gene, "hgnc_symbol"])
 
-      gene_variants_df <- format_output(chr = unlist(gene_variants$seq_region_name),
-                                        pos =  unlist(gene_variants$start),
-                                        rsid = unlist(gene_variants$id),
-                                        ensembl_gene_id = omim_genes[omim_genes$ensembl_gene_id == gene, "ensembl_gene_id"],
-                                        hgnc_symbol = omim_genes[omim_genes$ensembl_gene_id == gene, "hgnc_symbol"])
-
-      list.variants[[i]] <- gene_variants_df
-      i <- i + 1
+        # More efficient than just rbind:
+        list.variants.genes[[j]] <- gene_variants_df
+        list.variants.genes[[j]]$source <- paste0("gtex (", tissue, ")")
+        j <- j + 1
+      }
     }
+    # Removing the NULL elements of the list if exists
+    list.variants.genes <- list.variants.genes[!sapply(list.variants.genes, is.null)]
+
+    list.variants[[i]] <- do.call('rbind', list.variants.genes)
+    i <- i + 1
   }
 
   # Removing the NULL elements of the list if exists
@@ -1322,11 +1328,9 @@ get_gtex_variants <- function(tissue_files, omim_genes, hg19ToHg38.over.chain,
   # Then concatenate the list into a data.frame
   gtex_variants <- do.call('rbind', list.variants)
 
-  # If no variants are found, we do not add the source
-  if(length(gtex_variants) != 0)  gtex_variants$source <- "gtex"
-
-  return(gtex_variants)
+  return(unique(gtex_variants))
 }
+
 
 
 # ---- vargen Pipeline ----
@@ -1615,6 +1619,7 @@ vargen_pipeline <- function(vargen_dir, omim_morbid_ids, fantom_corr = 0.25,
 #'   \item get variants on the genes
 #'   \item get the variants on the enhancers / promoters of the genes
 #'   \item GTEx: get variants impacting the expression of the genes in specific tissues.
+#'   \item GWAS: get variants related to the phenotype of interest from the gwas catalog
 #' }
 #'
 #' @param vargen_dir directory with the following file (can be generated with

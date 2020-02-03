@@ -98,7 +98,6 @@ BiocManager::install(c("biomaRt", "gtools", "GenomicRanges", "gwascat", "jsonlit
 ### Install VarGen with devtools
 
 The easiest way to get VarGen is to install it directly from R using “devtools”:
-To install devtools:
 ````
 install.packages("devtools")
 library(devtools)
@@ -257,7 +256,8 @@ obesity_variants <- vargen_pipeline(vargen_dir = "./vargen_data/",
 ````
 
 You will obtain a data.frame with the list of variants, their position on GRCh38, the ensembl id and hgnc gene symbol of
-the gene associated with the variant and the source (omim, fantom5, gtex or gwas).
+the gene associated with the variant and the source (omim, fantom5, gtex or gwas). For gtex, the name of the tissue from
+which the variant was found is written in parenthesis, for example: "gtex (Adipose_Subcutaneous)"
 
 ````
 head(obesity_variants)
