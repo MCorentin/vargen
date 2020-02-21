@@ -263,7 +263,6 @@ annotate_variants <- function(rsid, verbose = FALSE) {
 #' @title Generate a plot of the variants on the OMIM genes
 #' @description The plot contains 4 tracks:
 #' \itemize{
-#'   \item
 #'   \item  The chromosome, with a red marker on the gene location
 #'   \item  The ensembl transcripts
 #'   \item  The variant consequences, grouped by type (eg: INTRONIC, STOP LOST etc...),
@@ -863,6 +862,7 @@ create_gwas <- function(vargen_dir, verbose = FALSE){
   # If useURL is TRUE (user choice or no local gwas file found, then we download
   # the catalog from the URL)
   useURL <- FALSE
+  table.url <- "http://www.ebi.ac.uk/gwas/api/search/downloads/alternative"
 
   if(missing(vargen_dir)){
     # If the vargen_dir is not specified, we use the url instead
@@ -875,11 +875,11 @@ create_gwas <- function(vargen_dir, verbose = FALSE){
     # If more than one catalog found, we let the user choose
     if(length(gwasfiles) > 1){
       print(paste0("More than 1 gwas catalog found in ", vargen_dir))
-      print("Please choose one of the file (type 0 to use gwascat::makeCurrentGwascat")
+      print(paste0("Please choose one of the file (type 0 to read the latest gwas catalog from: ", table.url))
       # Choice can only get indexes belonging to the menu (no need to check out of array)
       choice <- utils::menu(choices = gwasfiles)
       if(choice == 0){
-        print("No correct choice made, downloading gwas catalog with gwascat::makeCurrentGwascat")
+        print(paste0("No correct choice made, reading the gwas catalog from: ", table.url))
         useURL <- TRUE
       } else {
         gwascat_file <- gwasfiles[choice]
@@ -895,7 +895,6 @@ create_gwas <- function(vargen_dir, verbose = FALSE){
     }
   }
 
-  table.url <- "http://www.ebi.ac.uk/gwas/api/search/downloads/alternative"
   if(useURL == TRUE){
     gwas_cat <- utils::read.delim(file = url(table.url), check.names = FALSE, quote = "",
                                   stringsAsFactors = FALSE, header = TRUE, sep = "\t")
@@ -921,15 +920,15 @@ create_gwas <- function(vargen_dir, verbose = FALSE){
 #' @title List the available gwas traits
 #' @description Return the gwas traits available in the gwas catalog, based on keywords.
 #' The traits are found using \code{\link[base]{grep}} on the `DISEASE/TRAIT`
-#' column from the gwas object produced by \code{\link[gwascat]{makeCurrentGwascat}}.
+#' column from the gwas object produced by \code{\link{create_gwas}}.
 #' Output can be used as parameter for \code{\link{vargen_pipeline}}
 #'
 #' @param keywords a vector of keywords to grep the traits from the gwas catalog. (default: "")
 #' @param vargen_dir (optional) a path to vargen data directory, created
 #' during \code{\link{vargen_install}}. If not specified, the gwas object will
-#' be created with \code{\link[gwascat]{makeCurrentGwascat}}. If specified, this
-#' function will look for files that begin with "gwas_catalog". If more than one
-#' is found, the user will have to choose one via a text menu
+#' be created by reading the file at "http://www.ebi.ac.uk/gwas/api/search/downloads/alternative".
+#' If specified, this function will look for files that begin with "gwas_catalog".
+#' If more than one is found, the user will have to choose one via a text menu
 #' @return a vector of traits
 #'
 #' @examples
@@ -938,8 +937,9 @@ create_gwas <- function(vargen_dir, verbose = FALSE){
 list_gwas_traits <- function(keywords = "", vargen_dir) {
   traits <- c()
 
-  # If the user prefers to create a gwasloc object from gwascat::makeCurrentGwascat()
-  # instead of using the local catalog in "vargen_dir" he can use "makegwas = TRUE"
+  # If the vargen directory is not specified the gwas catalog will be read from
+  # the following URL: "http://www.ebi.ac.uk/gwas/api/search/downloads/alternative"
+  # cf the "create_gwas" function.
   if(missing(vargen_dir)){
     gwas_cat <- create_gwas()
   } else{
@@ -1616,8 +1616,8 @@ vargen_pipeline <- function(vargen_dir, omim_morbid_ids, fantom_corr = 0.25,
 #' @description Alternative to vargen_pipeline for a set of custom genes.
 #' The variants are fetched from the following sources:
 #' \itemize{
-#'   \item get variants on the genes
-#'   \item get the variants on the enhancers / promoters of the genes
+#'   \item GENE: get variants on the genes
+#'   \item FANTOM5: get the variants on the enhancers / promoters of the genes
 #'   \item GTEx: get variants impacting the expression of the genes in specific tissues.
 #'   \item GWAS: get variants related to the phenotype of interest from the gwas catalog
 #' }
