@@ -53,8 +53,8 @@ The data.frame will contain the following columns:
 Alternative to vargen_pipeline for a set of custom genes.
 The variants are fetched from the following sources:
 \itemize{
-  \item get variants on the genes
-  \item get the variants on the enhancers / promoters of the genes
+  \item GENE: get variants on the genes
+  \item FANTOM5: get the variants on the enhancers / promoters of the genes
   \item GTEx: get variants impacting the expression of the genes in specific tissues.
   \item GWAS: get variants related to the phenotype of interest from the gwas catalog
 }

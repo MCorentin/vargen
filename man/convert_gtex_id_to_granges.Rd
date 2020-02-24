@@ -11,7 +11,8 @@ convert_gtex_id_to_granges(gtex_ids, hg19ToHg38.over.chain,
 \item{gtex_ids}{a vector of gtex_ids in the format "chr_pos_ref_alt_build"}
 
 \item{hg19ToHg38.over.chain}{the chain file to liftOver locations from
-hg19 to hg38. GTEx reports positions based on hg19.}
+hg19 to hg38. GTEx reports positions based on hg19. Only needed for GTEx
+versions < 7}
 
 \item{verbose}{if true, will print information about the conversion (default: FALSE)}
 }
@@ -22,4 +23,6 @@ a GRanges object, with the variant locations on hg38.
 GTEx IDs are in the format "chr_pos_ref_alt_build".
 Transform the IDs to a GRanges object and get the rsids based on the position.
 If the build is equals to "b37", then liftOver is performed.
+If the GTEx variant is an InDel (ref or alt) then we do position+1 to make it
+compatible with ensembl positions.
 }

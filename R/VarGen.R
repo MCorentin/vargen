@@ -1165,10 +1165,13 @@ select_gtex_tissues <- function(gtex_dir, tissues_query = ""){
 #' @description GTEx IDs are in the format "chr_pos_ref_alt_build".
 #' Transform the IDs to a GRanges object and get the rsids based on the position.
 #' If the build is equals to "b37", then liftOver is performed.
+#' If the GTEx variant is an InDel (ref or alt) then we do position+1 to make it
+#' compatible with ensembl positions.
 #'
 #' @param gtex_ids a vector of gtex_ids in the format "chr_pos_ref_alt_build"
 #' @param hg19ToHg38.over.chain the chain file to liftOver locations from
-#' hg19 to hg38. GTEx reports positions based on hg19.
+#' hg19 to hg38. GTEx reports positions based on hg19. Only needed for GTEx
+#' versions < 7
 #' @param verbose if true, will print information about the conversion (default: FALSE)
 #'
 #' @return a GRanges object, with the variant locations on hg38.
@@ -1181,22 +1184,39 @@ convert_gtex_id_to_granges <- function(gtex_ids, hg19ToHg38.over.chain, verbose 
   }
 
   locs <- strsplit(as.character(gtex_ids), "_")
-  # This is a variants, so start and stop are the same (even for Indels)
+
+  # This is a variants, so start and stop are the same (/!\ for InDels, GTEx is
+  # not using the same index position)
   # Lines from https://f1000researchdata.s3.amazonaws.com/manuscripts/15281/
   # 05161f5a-754b-4c56-acf5-8d3da7ee1583_13577_-_enrico_ferrero_v2.pdf?doi=10.12688/f1000research.13577.2
   # &numberOfBrowsableCollections=17&numberOfBrowsableGateways=23
   gtex_df <- data.frame(chr = sapply(locs, "[",1),
-                        start = sapply(locs, "[", 2),
-                        stop = sapply(locs, "[", 2))
+                        start = as.numeric(sapply(locs, "[", 2)),
+                        stop = as.numeric(sapply(locs, "[", 2)),
+                        ref = sapply(locs, "[", 3),
+                        alt = sapply(locs, "[", 4),
+                        stringsAsFactors = F)
 
-  gtex_GRanges <- GenomicRanges::makeGRangesFromDataFrame(gtex_df,
+  # InDels does not have the same coordinates between GTEx and ensembl.
+  # Need to add a base (+1) to the GTEx coordinates to get the correct RSID
+  # (or at least the same one as the one on the GTEx website)
+
+  # Example with: 1_760811_CTCTT_C_b37 (rs200712425)
+    # GTEx format: CTCTT_C, CTCTT becomes C means that "TCTT" gets deleted
+    # ensembl format: TCTTTCTTT becomes TCTTT means that "TCTT" gets deleted
+    # SO we have the same deletion even if ref and alt are different
+  gtex_df[nchar(gtex_df$ref)>1, "start"] <- gtex_df[nchar(gtex_df$ref)>1, "start"] + 1
+  gtex_df[nchar(gtex_df$ref)>1, "stop"] <- gtex_df[nchar(gtex_df$ref)>1, "stop"] + 1
+  gtex_df[nchar(gtex_df$alt)>1, "start"] <- gtex_df[nchar(gtex_df$alt)>1, "start"] + 1
+  gtex_df[nchar(gtex_df$alt)>1, "stop"] <- gtex_df[nchar(gtex_df$alt)>1, "stop"] + 1
+
+  gtex_GRanges <- GenomicRanges::makeGRangesFromDataFrame(gtex_df[,c(1,2,3)],
                                                           keep.extra.columns = TRUE)
   GenomeInfoDb::seqlevelsStyle(gtex_GRanges) <- "UCSC"
 
   # If build if hg19, liftOver to hg38
   if(gtex_build == "b37"){
     if(verbose) print("b37 build detected, performing liftOver")
-
     gtex_GRanges <- unlist(rtracklayer::liftOver(gtex_GRanges,
                                                  rtracklayer::import.chain(hg19ToHg38.over.chain)))
   }
@@ -1225,7 +1245,9 @@ convert_gtex_id_to_granges <- function(gtex_ids, hg19ToHg38.over.chain, verbose 
 #'
 #' @export
 convert_gtex_to_rsids <- function(gtex_ids, hg19ToHg38.over.chain, verbose = FALSE) {
-  gtex_GRanges <- convert_gtex_id_to_granges(gtex_ids, hg19ToHg38.over.chain, verbose)
+
+  gtex_GRanges <- convert_gtex_id_to_granges(gtex_ids, hg19ToHg38.over.chain,
+                                             verbose)
 
   return(get_variants_from_locations(paste0(gtex_GRanges@seqnames, ":",
                                             gtex_GRanges@ranges, ":",
@@ -1303,17 +1325,18 @@ get_gtex_variants <- function(tissue_files, omim_genes, hg19ToHg38.over.chain,
         gene_variants <- convert_gtex_to_rsids(gtex_ids = gene_variants$variant_id,
                                                hg19ToHg38.over.chain = hg19ToHg38.over.chain,
                                                verbose = verbose)
+        if(nrow(gene_variants) >0) {
+          gene_variants_df <- format_output(chr = unlist(gene_variants$seq_region_name),
+                                            pos =  unlist(gene_variants$start),
+                                            rsid = unlist(gene_variants$id),
+                                            ensembl_gene_id = omim_genes[omim_genes$ensembl_gene_id == gene, "ensembl_gene_id"],
+                                            hgnc_symbol = omim_genes[omim_genes$ensembl_gene_id == gene, "hgnc_symbol"])
 
-        gene_variants_df <- format_output(chr = unlist(gene_variants$seq_region_name),
-                                          pos =  unlist(gene_variants$start),
-                                          rsid = unlist(gene_variants$id),
-                                          ensembl_gene_id = omim_genes[omim_genes$ensembl_gene_id == gene, "ensembl_gene_id"],
-                                          hgnc_symbol = omim_genes[omim_genes$ensembl_gene_id == gene, "hgnc_symbol"])
-
-        # More efficient than just rbind:
-        list.variants.genes[[j]] <- gene_variants_df
-        list.variants.genes[[j]]$source <- paste0("gtex (", tissue, ")")
-        j <- j + 1
+          # More efficient than just rbind:
+          list.variants.genes[[j]] <- gene_variants_df
+          list.variants.genes[[j]]$source <- paste0("gtex (", tissue, ")")
+          j <- j + 1
+        }
       }
     }
     # Removing the NULL elements of the list if exists

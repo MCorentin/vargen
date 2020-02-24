@@ -11,9 +11,9 @@ list_gwas_traits(keywords = "", vargen_dir)
 
 \item{vargen_dir}{(optional) a path to vargen data directory, created
 during \code{\link{vargen_install}}. If not specified, the gwas object will
-be created with \code{\link[gwascat]{makeCurrentGwascat}}. If specified, this
-function will look for files that begin with "gwas_catalog". If more than one
-is found, the user will have to choose one via a text menu}
+be created by reading the file at "http://www.ebi.ac.uk/gwas/api/search/downloads/alternative".
+If specified, this function will look for files that begin with "gwas_catalog".
+If more than one is found, the user will have to choose one via a text menu}
 }
 \value{
 a vector of traits
@@ -21,7 +21,7 @@ a vector of traits
 \description{
 Return the gwas traits available in the gwas catalog, based on keywords.
 The traits are found using \code{\link[base]{grep}} on the `DISEASE/TRAIT`
-column from the gwas object produced by \code{\link[gwascat]{makeCurrentGwascat}}.
+column from the gwas object produced by \code{\link{create_gwas}}.
 Output can be used as parameter for \code{\link{vargen_pipeline}}
 }
 \examples{

@@ -31,7 +31,6 @@ is <hgnc_symbol>_<ensembl_id>_GVIZ
 \description{
 The plot contains 4 tracks:
 \itemize{
-  \item
   \item  The chromosome, with a red marker on the gene location
   \item  The ensembl transcripts
   \item  The variant consequences, grouped by type (eg: INTRONIC, STOP LOST etc...),
