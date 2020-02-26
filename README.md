@@ -41,6 +41,7 @@ Corentin Molitor, Matt Brember, Fady Mohareb, VarGen: An R package for disease-a
 - [Tips](#tips)
     - [How to plot the gwas variants](#how-to-plot-the-gwas-variants)
     - [How to plot the omim variants](#how-to-plot-the-omim-variants)
+    - [Ensembl mirrors](#ensembl-mirrors)
 - [Some Examples](#some-examples)
 
 ## VarGen workflow
@@ -447,7 +448,7 @@ vargen_visualisation(annotated_snps = obesity_vargen_ann, verbose = T,
 ````
 ![vargen visualisation with highlighted variants](./images/SIM1_ENSG00000112246_GVIZ_highlighted.png?raw=true)
 
-### ensembl
+### ensembl mirrors
 
 If you come accross the following error when trying to use VarGen:
 ````

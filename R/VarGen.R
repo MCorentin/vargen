@@ -308,7 +308,7 @@ vargen_visualisation <- function(annotated_snps, outdir = "./", rsid_highlight,
   }
 
   if(missing(gene_mart) || class(gene_mart) != 'Mart'){
-    warning("The gene mart is not provided, or not valid, created one with connect_to_gene_ensembl()")
+    warning("Gene mart not provided (or not a valid Mart object). We used one from connect_to_gene_ensembl() instead.")
     gene_mart <- connect_to_gene_ensembl()
   }
 
@@ -465,7 +465,7 @@ get_phenotype_terms <- function(keywords, snp_mart) {
   if(missing(keywords)) keywords <- ""
 
   if(missing(snp_mart) || class(snp_mart) != 'Mart'){
-    warning("The snp mart is not provided, or not valid, created one with connect_to_snp_ensembl()")
+    warning("Snp mart not provided (or not a valid Mart object). We used one from connect_to_snp_ensembl() instead.")
     snp_mart <- connect_to_snp_ensembl()
   }
 
@@ -513,7 +513,7 @@ get_phenotype_terms <- function(keywords, snp_mart) {
 #' @export
 get_variants_from_phenotypes <- function(phenotypes, snp_mart) {
   if( missing(snp_mart) || class(snp_mart) != 'Mart'){
-    warning("The snp mart is not provided, or not valid, created one with connect_to_snp_ensembl()")
+    warning("Snp mart not provided (or not a valid Mart object). We used one from connect_to_snp_ensembl() instead.")
     snp_mart <- connect_to_snp_ensembl()
   }
 
@@ -555,7 +555,7 @@ get_variants_from_phenotypes <- function(phenotypes, snp_mart) {
 #' @export
 list_omim_accessions <- function(gene_mart, keywords){
   if(missing(gene_mart) || class(gene_mart) != 'Mart'){
-    warning("The gene mart is not provided, or not valid, created one with connect_to_gene_ensembl()")
+    warning("Gene mart not provided (or not a valid Mart object). We used one from connect_to_gene_ensembl() instead.")
     gene_mart <- connect_to_gene_ensembl()
   }
 
@@ -606,7 +606,7 @@ list_omim_accessions <- function(gene_mart, keywords){
 #' @export
 get_omim_genes <- function(omim_ids, gene_mart) {
   if(missing(gene_mart) || class(gene_mart) != 'Mart'){
-    warning("The gene mart is not provided, or not valid, created one with connect_to_gene_ensembl()")
+    warning("Gene mart not provided (or not a valid Mart object). We used one from connect_to_gene_ensembl() instead.")
     gene_mart <- connect_to_gene_ensembl()
   }
 
@@ -1531,12 +1531,12 @@ vargen_pipeline <- function(vargen_dir, omim_morbid_ids, fantom_corr = 0.25,
   # Loading the necessary resources
   #_____________________________________________________________________________
   if(missing(gene_mart) || class(gene_mart) != 'Mart'){
-    warning("The gene mart is not provided, or not valid, created one with connect_to_gene_ensembl()")
+    warning("Gene mart not provided (or not a valid Mart object). We used one from connect_to_gene_ensembl() instead.")
     gene_mart <- connect_to_gene_ensembl()
   }
 
   if(missing(snp_mart) || class(snp_mart) != 'Mart'){
-    warning("The snp mart is not provided, or not valid, created one with connect_to_snp_ensembl()")
+    warning("Snp mart not provided (or not a valid Mart object). We used one from connect_to_snp_ensembl() instead.")
     snp_mart <- connect_to_snp_ensembl()
   }
 
@@ -1705,12 +1705,12 @@ vargen_custom <- function(vargen_dir, gene_ids, fantom_corr = 0.25, outdir = "./
   # Loading the necessary resources
   #_____________________________________________________________________________
   if(missing(gene_mart) || class(gene_mart) != 'Mart'){
-    warning("The gene mart is not provided, or not valid, created one with connect_to_gene_ensembl()")
+    warning("Gene mart not provided (or not a valid Mart object). We used one from connect_to_gene_ensembl() instead.")
     gene_mart <- connect_to_gene_ensembl()
   }
 
   if(missing(snp_mart) || class(snp_mart) != 'Mart'){
-    warning("The snp mart is not provided, or not valid, created one with connect_to_snp_ensembl()")
+    warning("Snp mart not provided (or not a valid Mart object). We used one from connect_to_snp_ensembl() instead.")
     snp_mart <- connect_to_snp_ensembl()
   }
 
