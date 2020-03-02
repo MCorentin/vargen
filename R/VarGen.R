@@ -94,7 +94,6 @@ get_variants_from_locations <- function(locations, verbose = FALSE) {
                           jsonlite::toJSON(httr::content(get_output))))
 
     #if(verbose) print(paste0("location '", curr_loc, "' done !"))
-
     ensembl_rest_limit <- ensembl_rest_limit + 1
   }
 
@@ -665,8 +664,8 @@ get_omim_variants <- function(omim_genes, verbose = FALSE){
       gene_variants_df <- format_output(chr = unlist(gene_variants$seq_region_name),
                                         pos =  unlist(gene_variants$start),
                                         rsid = unlist(gene_variants$id),
-                                        ensembl_gene_id = gene_variants$ensembl_gene_id,
-                                        hgnc_symbol = gene_variants$hgnc_symbol)
+                                        ensembl_gene_id = unique(gene_variants$ensembl_gene_id),
+                                        hgnc_symbol = unique(gene_variants$hgnc_symbol))
 
       list.variants[[gene]] <- gene_variants_df
     }
@@ -817,8 +816,8 @@ get_fantom5_variants <- function(fantom_df, omim_genes, corr_threshold = 0.25,
         enhancer_variants_df <- format_output(chr = unlist(enhancer_variants$seq_region_name),
                                               pos =  unlist(enhancer_variants$start),
                                               rsid = unlist(enhancer_variants$id),
-                                              ensembl_gene_id = enhancer_variants$ensembl_gene_id,
-                                              hgnc_symbol = enhancer_variants$hgnc_symbol)
+                                              ensembl_gene_id = unique(enhancer_variants$ensembl_gene_id),
+                                              hgnc_symbol = unique(enhancer_variants$hgnc_symbo))
 
         list.variants[[gene]] <- enhancer_variants_df
       }
@@ -1329,8 +1328,8 @@ get_gtex_variants <- function(tissue_files, omim_genes, hg19ToHg38.over.chain,
           gene_variants_df <- format_output(chr = unlist(gene_variants$seq_region_name),
                                             pos =  unlist(gene_variants$start),
                                             rsid = unlist(gene_variants$id),
-                                            ensembl_gene_id = omim_genes[omim_genes$ensembl_gene_id == gene, "ensembl_gene_id"],
-                                            hgnc_symbol = omim_genes[omim_genes$ensembl_gene_id == gene, "hgnc_symbol"])
+                                            ensembl_gene_id = unique(omim_genes[omim_genes$ensembl_gene_id == gene, "ensembl_gene_id"]),
+                                            hgnc_symbol = unique(omim_genes[omim_genes$ensembl_gene_id == gene, "hgnc_symbol"]))
 
           # More efficient than just rbind:
           list.variants.genes[[j]] <- gene_variants_df
@@ -1596,6 +1595,7 @@ vargen_pipeline <- function(vargen_dir, omim_morbid_ids, fantom_corr = 0.25,
     }
   }
 
+  if(verbose) print(paste0("Writing the list of genes to: ", outdir, "/genes_info.tsv"))
   # We write the list of genes in a file.
   utils::write.table(x = omim_all_genes, quote = FALSE, sep = "\t", row.names = FALSE,
                      file = paste0(outdir, "/genes_info.tsv"))
@@ -1604,6 +1604,7 @@ vargen_pipeline <- function(vargen_dir, omim_morbid_ids, fantom_corr = 0.25,
   # Getting variants associated with change of expression in GTEx (need tissues as input)
   #_____________________________________________________________________________
   if(!missing(gtex_tissues)){
+    if(verbose) print("Getting the GTEx variants...")
     gtex_variants <- get_gtex_variants(tissue_files = gtex_tissues,
                                        omim_genes = omim_all_genes,
                                        hg19ToHg38.over.chain = hg19ToHg38.over.chain,
@@ -1620,6 +1621,7 @@ vargen_pipeline <- function(vargen_dir, omim_morbid_ids, fantom_corr = 0.25,
   #_____________________________________________________________________________
   # GWAS variants (only if list of gwas traits were given)
   if(!missing(gwas_traits)){
+    if(verbose) print("Getting the gwas variants,,,")
     master_variants <- rbind(master_variants, get_gwas_variants(gwas_cat, gwas_traits))
   } else{
     if(verbose) print("No values for 'gwas_traits', skipping gwas step...")
@@ -1628,7 +1630,8 @@ vargen_pipeline <- function(vargen_dir, omim_morbid_ids, fantom_corr = 0.25,
   # writing the variants data.frame to a file
   if(verbose) print(paste0("Writing the variants to ",
                            paste0(outdir, "/vargen_variants.tsv")))
-  utils::write.table(x = master_variants, append = FALSE, quote = FALSE, sep = "\t", row.names = FALSE,
+  utils::write.table(x = unique(master_variants), append = FALSE, quote = FALSE,
+                     sep = "\t", row.names = FALSE,
                      file = paste0(outdir, "/vargen_variants.tsv"))
 
   return(unique(master_variants))
@@ -1747,6 +1750,7 @@ vargen_custom <- function(vargen_dir, gene_ids, fantom_corr = 0.25, outdir = "./
                               values = c(gene_ids),
                               mart = gene_mart, uniqueRows = TRUE)
 
+  if(verbose) print(paste0("Writing the list of genes to: ", outdir, "/custom_genes_info.tsv"))
   utils::write.table(x = genes_info, quote = FALSE, sep = "\t", row.names = FALSE,
                      file = paste0(outdir, "/custom_genes_info.tsv"))
 
@@ -1770,6 +1774,7 @@ vargen_custom <- function(vargen_dir, gene_ids, fantom_corr = 0.25, outdir = "./
   # Getting variants associated with change of expression in GTEx (need tissues as input)
   #_____________________________________________________________________________
   if(!missing(gtex_tissues)){
+    if(verbose) print("Getting the GTEx variants...")
     gtex_variants <- get_gtex_variants(tissue_files = gtex_tissues,
                                        omim_genes = genes_info,
                                        hg19ToHg38.over.chain = hg19ToHg38.over.chain,
@@ -1787,6 +1792,7 @@ vargen_custom <- function(vargen_dir, gene_ids, fantom_corr = 0.25, outdir = "./
   #_____________________________________________________________________________
   # GWAS variants (only if list of gwas traits were given)
   if(!missing(gwas_traits)){
+    if(verbose) print("Getting the gwas variants...")
     master_variants <- rbind(master_variants, get_gwas_variants(gwas_cat, gwas_traits))
   } else{
     if(verbose) print("No values for 'gwas_traits', skipping gwas step...")
@@ -1794,8 +1800,8 @@ vargen_custom <- function(vargen_dir, gene_ids, fantom_corr = 0.25, outdir = "./
 
   # writing the variants data.frame to a file
   if(verbose) print(paste0("Writing the variants to ", paste0(outdir, "/custom_vargen_variants.tsv")))
-  utils::write.table(x = master_variants, append = FALSE, quote = FALSE, sep = "\t",
+  utils::write.table(x = unique(master_variants), append = FALSE, quote = FALSE, sep = "\t",
                      row.names = FALSE, file = paste0(outdir, "/custom_vargen_variants.tsv"))
 
-  return(master_variants)
+  return(unique(master_variants))
 }

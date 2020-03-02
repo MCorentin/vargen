@@ -1,7 +1,7 @@
 Type: Package
 Package: VarGen
 Title: Fetching Variants Related to Phenotypes Using Public Databases
-Version: 0.1.3
+Version: 0.1.4
 Authors@R: c(
     person("Corentin", "Molitor", email = "c.molitor@cranfield.ac.uk", role = c("aut", "cre")),
 	person("Matt", "Brember", role = "aut"),
