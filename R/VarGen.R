@@ -817,7 +817,7 @@ get_fantom5_variants <- function(fantom_df, omim_genes, corr_threshold = 0.25,
                                               pos =  unlist(enhancer_variants$start),
                                               rsid = unlist(enhancer_variants$id),
                                               ensembl_gene_id = unique(enhancer_variants$ensembl_gene_id),
-                                              hgnc_symbol = unique(enhancer_variants$hgnc_symbo))
+                                              hgnc_symbol = unique(enhancer_variants$hgnc_symbol))
 
         list.variants[[gene]] <- enhancer_variants_df
       }

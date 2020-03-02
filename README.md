@@ -470,16 +470,16 @@ gene_ensembl <- connect_to_gene_ensembl(mirror = "useast")
 GTEx and Ensembl do not use the same position to refer to the same InDel.
 
 For example with 1_760811_CTCTT_C_b37 (rs200712425):
-    - GTEx format: C**TCTT** becomes C.
-    - Ensembl format: **TCTT**TCTTT becomes TCTTT.
+ - GTEx format: C**TCTT** becomes C.
+ - Ensembl format: **TCTT**TCTTT becomes TCTTT.
 
-In both cases "TCTT" gets deleted, but GTEx refers it from the left (position 760811) and ensembl from the right (position 760812).
+In both cases **TCTT** gets deleted, but GTEx refers it from the left (position 760811) and ensembl from the right (position 760812).
 
 Since VarGen was using the position to translate the GTEx id to rsid, "convert_gtex_to_rsids" did not work for InDels. 
 This was corrected in VarGen v0.1.3 (commit: 2ed3488d5976275104647eeae2c87a5f759a0c1a) and now the correct rsids are 
 retrieved. 
 
-However, if there is a SNP at the same position than the InDel, it will also be retrieved.
+/!\ However, if there is a SNP at the same position than the InDel, it will also be retrieved.
 
 ## Some examples
 
