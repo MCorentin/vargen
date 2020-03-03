@@ -75,26 +75,54 @@ connect_to_snp_ensembl <- function(mirror = "www"){
 #' get_variants_from_locations(c("chr1:100:1000", "chr10:2004:12042"))
 #' @export
 get_variants_from_locations <- function(locations, verbose = FALSE) {
+  # We use: https://rest.ensembl.org/
   variants_at_loc <- data.frame()
-  ensembl_rest_limit <- 0
+
+  # On top of "x-ratelimit-remaining", we also try to do less than 14 request
+  # per seconds. higher rate seems to throw a 429 error (undocumented rate limit?)
+  reqs_per_sec_limit <- 14
+  n_reqs <- 1
 
   for(curr_loc in locations){
-    # ensembl has a limit of 15 requests / seconds
-    if(ensembl_rest_limit >= 14){
-      #if(verbose) print("waiting... (to not reach the limit of queries on ensembl REST API)")
+
+    # The 14 request per seconds limit
+    if(n_reqs >= reqs_per_sec_limit){
       Sys.sleep(1)
-      ensembl_rest_limit <- 0
+      n_reqs <- 1
     }
 
     query <- paste0("/overlap/region/human/",curr_loc, "?content-type=application/json;feature=variation")
     get_output <- httr::GET(paste("https://rest.ensembl.org", query, sep = ""),
                             httr::content_type("application/json"))
+
+    # We get the header to check for query limits
+    header <- httr::headers(get_output)
+
+    while(get_output$status_code == "429"){
+      print(paste0("Hit 429 error, waiting for ", header$`Retry-After`, " seconds"))
+      Sys.sleep(header$`Retry-After`)
+
+      get_output <- httr::GET(paste("https://rest.ensembl.org", query, sep = ""),
+                              httr::content_type("application/json"))
+
+      # We get the header to check for query limits
+      header <- httr::headers(get_output)
+    }
+
+    # Transform status to R error
     httr::stop_for_status(get_output)
+
+    # If the number of allowed queries is lower than 2:
+    if(header$`x-ratelimit-remaining` < 2){
+      # We wait until the rate limit is reset (in seconds)
+      if(verbose) print(paste0("Waiting ", header$`x-ratelimit-reset`, " seconds for ensembl rate limit to reset"))
+      Sys.sleep(header$`x-ratelimit-reset`)
+    }
+
     variants_at_loc <- rbind(variants_at_loc, jsonlite::fromJSON(
                           jsonlite::toJSON(httr::content(get_output))))
 
-    #if(verbose) print(paste0("location '", curr_loc, "' done !"))
-    ensembl_rest_limit <- ensembl_rest_limit + 1
+    n_reqs <- n_reqs + 1
   }
 
   return(variants_at_loc)

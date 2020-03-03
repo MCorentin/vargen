@@ -4,8 +4,7 @@
 \alias{get_fantom5_enhancers_from_hgnc}
 \title{Get the enhancers associated to certain genes from FANTOM5}
 \usage{
-get_fantom5_enhancers_from_hgnc(fantom_df, hgnc_symbols,
-  corr_threshold = 0.25)
+get_fantom5_enhancers_from_hgnc(fantom_df, hgnc_symbols, corr_threshold = 0.25)
 }
 \arguments{
 \item{fantom_df}{the output of \code{\link{prepare_fantom}}}

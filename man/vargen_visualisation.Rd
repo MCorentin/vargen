@@ -4,8 +4,14 @@
 \alias{vargen_visualisation}
 \title{Generate a plot of the variants on the OMIM genes}
 \usage{
-vargen_visualisation(annotated_snps, outdir = "./", rsid_highlight,
-  device = "pdf", verbose = FALSE, gene_mart)
+vargen_visualisation(
+  annotated_snps,
+  outdir = "./",
+  rsid_highlight,
+  device = "pdf",
+  verbose = FALSE,
+  gene_mart
+)
 }
 \arguments{
 \item{annotated_snps}{a data.frame from the merging of the outputs of

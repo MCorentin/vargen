@@ -4,8 +4,12 @@
 \alias{get_gtex_variants}
 \title{Get variants from GTEx linked to the given ensembl genes}
 \usage{
-get_gtex_variants(tissue_files, omim_genes, hg19ToHg38.over.chain,
-  verbose = FALSE)
+get_gtex_variants(
+  tissue_files,
+  omim_genes,
+  hg19ToHg38.over.chain,
+  verbose = FALSE
+)
 }
 \arguments{
 \item{tissue_files}{a vector containing the name of the "signif_variant_gene_pairs.txt.gz"

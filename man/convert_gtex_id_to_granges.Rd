@@ -4,8 +4,7 @@
 \alias{convert_gtex_id_to_granges}
 \title{Convert GTEx IDs to GRanges}
 \usage{
-convert_gtex_id_to_granges(gtex_ids, hg19ToHg38.over.chain,
-  verbose = FALSE)
+convert_gtex_id_to_granges(gtex_ids, hg19ToHg38.over.chain, verbose = FALSE)
 }
 \arguments{
 \item{gtex_ids}{a vector of gtex_ids in the format "chr_pos_ref_alt_build"}

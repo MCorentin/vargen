@@ -4,8 +4,17 @@
 \alias{vargen_custom}
 \title{Get variants related to specific genes.}
 \usage{
-vargen_custom(vargen_dir, gene_ids, fantom_corr = 0.25, outdir = "./",
-  gtex_tissues, gwas_traits, gene_mart, snp_mart, verbose = FALSE)
+vargen_custom(
+  vargen_dir,
+  gene_ids,
+  fantom_corr = 0.25,
+  outdir = "./",
+  gtex_tissues,
+  gwas_traits,
+  gene_mart,
+  snp_mart,
+  verbose = FALSE
+)
 }
 \arguments{
 \item{vargen_dir}{directory with the following file (can be generated with

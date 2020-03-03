@@ -4,8 +4,7 @@
 \alias{vargen_install}
 \title{Download the files needed to run \code{\link{vargen_pipeline}}}
 \usage{
-vargen_install(install_dir = "./", gtex_version = "v8",
-  verbose = FALSE)
+vargen_install(install_dir = "./", gtex_version = "v8", verbose = FALSE)
 }
 \arguments{
 \item{install_dir}{the path to the installation folder (default = "./")}

@@ -4,8 +4,13 @@
 \alias{get_fantom5_variants}
 \title{Get variants on the enhancers of the list of genes given as input}
 \usage{
-get_fantom5_variants(fantom_df, omim_genes, corr_threshold = 0.25,
-  hg19ToHg38.over.chain, verbose = FALSE)
+get_fantom5_variants(
+  fantom_df,
+  omim_genes,
+  corr_threshold = 0.25,
+  hg19ToHg38.over.chain,
+  verbose = FALSE
+)
 }
 \arguments{
 \item{fantom_df}{the output of \code{\link{prepare_fantom}}}

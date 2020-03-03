@@ -4,9 +4,17 @@
 \alias{vargen_pipeline}
 \title{Main vargen function, to get the list of variants}
 \usage{
-vargen_pipeline(vargen_dir, omim_morbid_ids, fantom_corr = 0.25,
-  outdir = "./", gtex_tissues, gwas_traits, gene_mart, snp_mart,
-  verbose = FALSE)
+vargen_pipeline(
+  vargen_dir,
+  omim_morbid_ids,
+  fantom_corr = 0.25,
+  outdir = "./",
+  gtex_tissues,
+  gwas_traits,
+  gene_mart,
+  snp_mart,
+  verbose = FALSE
+)
 }
 \arguments{
 \item{vargen_dir}{directory with the following file (can be generated with
