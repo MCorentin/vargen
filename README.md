@@ -42,7 +42,7 @@ Corentin Molitor, Matt Brember, Fady Mohareb, VarGen: An R package for disease-a
     - [How to plot the gwas variants](#how-to-plot-the-gwas-variants)
     - [How to plot the omim variants](#how-to-plot-the-omim-variants)
     - [Ensembl mirrors](#ensembl-mirrors)
-    - [GTEx InDels](#gtex-indels)
+    - [GTEx InDels](#gtex-indels-(prior-to-vargen-v0.1.6))
 - [Some Examples](#some-examples)
 
 ## VarGen workflow
@@ -78,6 +78,7 @@ VarGen needs the following:
     stringr (1.4.0)         utils (3.6.0)           splitstackshape (1.4.8)
     ggplot2 (3.2.1)         rtracklayer (1.44.2)    BiocManager (1.30.4)
     R.utils (2.9.0)         myvariant (1.14.0)      GenomicRanges (1.36.0)
+    data.table (1.12.8)
 ````
 
 - Optional R libraries (needed for the visualisation functions: *vargen_visualisation* and *plot_manhattan_gwas*):
@@ -93,7 +94,7 @@ install.packages("BiocManager")
 BiocManager::install(c("biomaRt", "gtools", "GenomicRanges", "gwascat", "jsonlite",
                        "GenomeInfoDb", "IRanges", "httr", "BiocGenerics", "stringr",
                        "utils", "splitstackshape", "ggplot2", "rtracklayer",
-                       "R.utils", "myvariant"), dependencies = TRUE)
+                       "R.utils", "myvariant", "data.table"), dependencies = TRUE)
 ````
 **note:** "R.methodsS3" and "R.oo" will be installed as dependencies of "R.utils"
 
@@ -146,6 +147,10 @@ database (GTEx) (available at: https://gtexportal.org/home/datasets). v7 and v8 
     Direct link for v7: https://storage.googleapis.com/gtex_analysis_v7/single_tissue_eqtl_data/GTEx_Analysis_v7_eQTL.tar.gz
 
     Direct link for v8: https://storage.googleapis.com/gtex_analysis_v8/single_tissue_qtl_data/GTEx_Analysis_v8_eQTL.tar
+
+- __GTEx_Analysis_2017-06-05_v8_WholeGenomeSeq_838Indiv_Analysis_Freeze.lookup_table.txt.gz__ (~800 Mb), this is a lookup table between GTEx ids and rsids. Contains GTEx ids for v7 and v8.
+
+    Direct link: https://storage.googleapis.com/gtex_analysis_v8/reference/GTEx_Analysis_2017-06-05_v8_WholeGenomeSeq_838Indiv_Analysis_Freeze.lookup_table.txt.gz
 
 - __gwas catalog file__ (~90 Mb), this is an optional file. Depending on your connection, creating the lastest gwas catalog using 
 *makeCurrentGwascat* function can take a long time. You can instead download a gwas catalog file from http://www.ebi.ac.uk/gwas/api/search/downloads/alternative 
@@ -262,8 +267,6 @@ the gene associated with the variant and the source (omim, fantom5, gtex or gwas
 which the variant was found is written in parenthesis, for example: "gtex (Adipose_Subcutaneous)"
 
 ````
-head(obesity_variants)
-
 #  chr     pos         rsid           ensembl_gene_id    hgnc_symbol  source
 #> chr2    25160855    rs777983882    ENSG00000115138    POMC         omim
 #> chr2    25160866    rs1480805741   ENSG00000115138    POMC         omim
@@ -271,6 +274,8 @@ head(obesity_variants)
 #> chr2    25160872    rs1219237056   ENSG00000115138    POMC         omim
 #> chr2    25160877    rs1453226041   ENSG00000115138    POMC         omim
 #> chr2    25160879    rs566456581    ENSG00000115138    POMC         omim
+...
+#> chr5    96442329    rs6879048      ENSG00000175426    PCSK1        gtex (Adipose_Visceral_Omentum)
 ````
 
 ### Annotating the variants
@@ -465,7 +470,7 @@ To solve this issue, you can try to connect with a different mirror ("useast", "
 gene_ensembl <- connect_to_gene_ensembl(mirror = "useast")
 ````
 
-### GTEx InDels
+### GTEx InDels (prior to VarGen v0.1.6)
 
 GTEx and Ensembl do not use the same position to refer to the same InDel.
 
@@ -480,6 +485,8 @@ This was corrected in VarGen v0.1.3 (commit: 2ed3488d5976275104647eeae2c87a5f759
 retrieved. 
 
 /!\ However, if there is a SNP at the same position than the InDel, it will also be retrieved.
+
+**Update:** Since VarGen v0.1.6, the GTEx rsids are retrieved from a lookup table, so this issue is now irrelevant.
 
 ## Some examples
 

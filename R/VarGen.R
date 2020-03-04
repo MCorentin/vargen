@@ -335,8 +335,8 @@ vargen_visualisation <- function(annotated_snps, outdir = "./", rsid_highlight,
   }
 
   if(missing(gene_mart) || class(gene_mart) != 'Mart'){
-    warning("Gene mart not provided (or not a valid Mart object). We used one from connect_to_gene_ensembl() instead.")
     gene_mart <- connect_to_gene_ensembl()
+    warning("Gene mart not provided (or not a valid Mart object). We used one from connect_to_gene_ensembl() instead.")
   }
 
   bckg_col <- "#D95F02"
@@ -492,8 +492,8 @@ get_phenotype_terms <- function(keywords, snp_mart) {
   if(missing(keywords)) keywords <- ""
 
   if(missing(snp_mart) || class(snp_mart) != 'Mart'){
-    warning("Snp mart not provided (or not a valid Mart object). We used one from connect_to_snp_ensembl() instead.")
     snp_mart <- connect_to_snp_ensembl()
+    warning("Snp mart not provided (or not a valid Mart object). We used one from connect_to_snp_ensembl() instead.")
   }
 
   # Get all the possible values for the phenotype filter:
@@ -540,8 +540,8 @@ get_phenotype_terms <- function(keywords, snp_mart) {
 #' @export
 get_variants_from_phenotypes <- function(phenotypes, snp_mart) {
   if( missing(snp_mart) || class(snp_mart) != 'Mart'){
-    warning("Snp mart not provided (or not a valid Mart object). We used one from connect_to_snp_ensembl() instead.")
     snp_mart <- connect_to_snp_ensembl()
+    warning("Snp mart not provided (or not a valid Mart object). We used one from connect_to_snp_ensembl() instead.")
   }
 
   pheno_variants <- biomaRt::getBM(attributes = c("chr_name", "chrom_start",
@@ -582,8 +582,8 @@ get_variants_from_phenotypes <- function(phenotypes, snp_mart) {
 #' @export
 list_omim_accessions <- function(gene_mart, keywords){
   if(missing(gene_mart) || class(gene_mart) != 'Mart'){
-    warning("Gene mart not provided (or not a valid Mart object). We used one from connect_to_gene_ensembl() instead.")
     gene_mart <- connect_to_gene_ensembl()
+    warning("Gene mart not provided (or not a valid Mart object). We used one from connect_to_gene_ensembl() instead.")
   }
 
   omim_list <- biomaRt::getBM(mart = gene_mart,
@@ -633,8 +633,8 @@ list_omim_accessions <- function(gene_mart, keywords){
 #' @export
 get_omim_genes <- function(omim_ids, gene_mart) {
   if(missing(gene_mart) || class(gene_mart) != 'Mart'){
-    warning("Gene mart not provided (or not a valid Mart object). We used one from connect_to_gene_ensembl() instead.")
     gene_mart <- connect_to_gene_ensembl()
+    warning("Gene mart not provided (or not a valid Mart object). We used one from connect_to_gene_ensembl() instead.")
   }
 
   mim_genes <- biomaRt::getBM(attributes = c("ensembl_gene_id", "chromosome_name",
@@ -1188,118 +1188,69 @@ select_gtex_tissues <- function(gtex_dir, tissues_query = ""){
 }
 
 
-#' @title Convert GTEx IDs to GRanges
-#' @description GTEx IDs are in the format "chr_pos_ref_alt_build".
-#' Transform the IDs to a GRanges object and get the rsids based on the position.
-#' If the build is equals to "b37", then liftOver is performed.
-#' If the GTEx variant is an InDel (ref or alt) then we do position+1 to make it
-#' compatible with ensembl positions.
-#'
-#' @param gtex_ids a vector of gtex_ids in the format "chr_pos_ref_alt_build"
-#' @param hg19ToHg38.over.chain the chain file to liftOver locations from
-#' hg19 to hg38. GTEx reports positions based on hg19. Only needed for GTEx
-#' versions < 7
-#' @param verbose if true, will print information about the conversion (default: FALSE)
-#'
-#' @return a GRanges object, with the variant locations on hg38.
-convert_gtex_id_to_granges <- function(gtex_ids, hg19ToHg38.over.chain, verbose = FALSE) {
-  gtex_build <- unique(sub(".*_", "", gtex_ids))
-
-  if(length(gtex_build) > 1){
-    stop(paste0("All the GTEx variants are not in the same build, builds detected: ",
-                paste(gtex_build, collapse = ", ")))
-  }
-
-  locs <- strsplit(as.character(gtex_ids), "_")
-
-  # This is a variants, so start and stop are the same (/!\ for InDels, GTEx is
-  # not using the same index position)
-  # Lines from https://f1000researchdata.s3.amazonaws.com/manuscripts/15281/
-  # 05161f5a-754b-4c56-acf5-8d3da7ee1583_13577_-_enrico_ferrero_v2.pdf?doi=10.12688/f1000research.13577.2
-  # &numberOfBrowsableCollections=17&numberOfBrowsableGateways=23
-  gtex_df <- data.frame(chr = sapply(locs, "[",1),
-                        start = as.numeric(sapply(locs, "[", 2)),
-                        stop = as.numeric(sapply(locs, "[", 2)),
-                        ref = sapply(locs, "[", 3),
-                        alt = sapply(locs, "[", 4),
-                        stringsAsFactors = F)
-
-  # InDels does not have the same coordinates between GTEx and ensembl.
-  # Need to add a base (+1) to the GTEx coordinates to get the correct RSID
-  # (or at least the same one as the one on the GTEx website)
-
-  # Example with: 1_760811_CTCTT_C_b37 (rs200712425)
-    # GTEx format: CTCTT_C, CTCTT becomes C means that "TCTT" gets deleted
-    # ensembl format: TCTTTCTTT becomes TCTTT means that "TCTT" gets deleted
-    # SO we have the same deletion even if ref and alt are different
-  gtex_df[nchar(gtex_df$ref)>1, "start"] <- gtex_df[nchar(gtex_df$ref)>1, "start"] + 1
-  gtex_df[nchar(gtex_df$ref)>1, "stop"] <- gtex_df[nchar(gtex_df$ref)>1, "stop"] + 1
-  gtex_df[nchar(gtex_df$alt)>1, "start"] <- gtex_df[nchar(gtex_df$alt)>1, "start"] + 1
-  gtex_df[nchar(gtex_df$alt)>1, "stop"] <- gtex_df[nchar(gtex_df$alt)>1, "stop"] + 1
-
-  gtex_GRanges <- GenomicRanges::makeGRangesFromDataFrame(gtex_df[,c(1,2,3)],
-                                                          keep.extra.columns = TRUE)
-  GenomeInfoDb::seqlevelsStyle(gtex_GRanges) <- "UCSC"
-
-  # If build if hg19, liftOver to hg38
-  if(gtex_build == "b37"){
-    if(verbose) print("b37 build detected, performing liftOver")
-    gtex_GRanges <- unlist(rtracklayer::liftOver(gtex_GRanges,
-                                                 rtracklayer::import.chain(hg19ToHg38.over.chain)))
-  }
-
-  return(gtex_GRanges)
-}
-
-
 #' @title Convert GTEx IDs to rsid
-#' @description GTEx IDs are in the format "chr_pos_ref_alt_build".
-#' Transform the IDs to a dataframe and get the rsids based on the position.
-#' If the build is equals to "b37", then liftOver is performed.
-#' Use \code{\link{convert_gtex_id_to_granges}}
+#' @description GTEx IDs are in the format "chr_pos_ref_alt_build". To make it
+#' consistent with the rest of the package, we are converting them to rsids.
+#' We us the "gtex_lookup" which is a data.frame created by reading the gtex lookup file.
+#' (see: get_gtex_variants)
 #'
 #' @param gtex_ids a vector of gtex_ids in the format "chr_pos_ref_alt_build"
-#' @param hg19ToHg38.over.chain the chain file to liftOver locations from
-#' hg19 to hg38. GTEx reports positions based on hg19.
+#' @param gtex_lookup a data.frame representing the lookup file. It should contains
+#' three columns: the gtex ids v8, the rsids, the gtex ids v7. The columns should
+#' be respectively called "variant_id", "rs_id_dbSNP151_GRCh38p7" and "variant_id_b37".
+#' This can be created by using fread() on the lookup file (see get_gtex_variants)
 #' @param verbose if true, will print information about the conversion (default: FALSE)
-#' @return the same as \code{\link{get_variants_from_locations}}
-#'
-#' @examples
-#' vargen_install(install_dir = "./vargen_data/")
-#'
-#' convert_gtex_to_rsids(c("1_98929_A_G_b37", "10_61803062_T_G_b37"),
-#'                         "./vargen_data/hg19ToHg38.over.chain", FALSE)
-#'
-#' @export
-convert_gtex_to_rsids <- function(gtex_ids, hg19ToHg38.over.chain, verbose = FALSE) {
+#' @return a vector of rsids (as some gtex ids do not have a corresponding rsid
+#' the output can be smalled than the input)
+convert_gtex_to_rsids <- function(gtex_ids, gtex_lookup, verbose = FALSE) {
+  # Check the gtex build (b37 or b38)
+  gtex_build <- unique(sub(".*_", "", gtex_ids))
+  if(length(gtex_build) > 1){
+  stop(paste0("All the GTEx variants are not in the same build, builds detected: ",
+              paste(gtex_build, collapse = ", ")))
+  }
 
-  gtex_GRanges <- convert_gtex_id_to_granges(gtex_ids, hg19ToHg38.over.chain,
-                                             verbose)
+  # "variant_id" correspond to the variants from b38
+  # "variant_id_b37" correspond to the variants from b37
+  # Column 2 contains the rsids
+  if(gtex_build == "b38"){
+    rsids <- gtex_lookup[gtex_lookup$variant_id %in% gtex_ids,2]
+  }
 
-  return(get_variants_from_locations(paste0(gtex_GRanges@seqnames, ":",
-                                            gtex_GRanges@ranges, ":",
-                                            gtex_GRanges@ranges),
-                                     verbose))
+  if(gtex_build == "b37"){
+    rsids <- gtex_lookup[gtex_lookup$variant_id_b37 %in% gtex_ids,2]
+  }
+
+  # If verbose on, tell the user how many gtex snps have no corresponding rsids
+  if(verbose){
+    n_removed <- nrow(rsids[rsids$rs_id_dbSNP151_GRCh38p7 == "."])
+    print(paste0("Number of GTEx ids removed (no corresponding rsid): ", n_removed))
+  }
+
+  # We remove gtex ids without a rsid:
+  return(rsids[rsids$rs_id_dbSNP151_GRCh38p7 != "."])
 }
 
 
 #' @title Get variants from GTEx linked to the given ensembl genes
 #' @description Take as input one or more tissue files from
-#'  "GTEx_Analysis_v8_eQTL", as well as a vector of ensembl gene ids.
+#'  "GTEx_Analysis_v8_eQTL" (or v7), as well as a vector of ensembl gene ids.
 #'  This function will return the variants that are associated with changes
 #'  in the expression of the selected genes in the selected tissues. The
 #'  assocations are based on the "signif_variant_gene_pairs" files.
-#'  The ensembl ids from the GTEx file will be converted to stable ids, and the
-#'  locations from GTEx translated from hg19 to hg38.
+#'  The ensembl ids from the GTEx file will be converted to stable ids.
 #'
 #' @param tissue_files a vector containing the name of the "signif_variant_gene_pairs.txt.gz"
 #' files. This will be read using \code{\link[base]{gzfile}}. Output from
 #' \code{\link{select_gtex_tissues}} can be used.
 #' @param omim_genes output from \code{\link{get_omim_genes}}
-#' @param hg19ToHg38.over.chain the chain file to liftOver locations from
-#' hg19 to hg38. GTEx reports positions based on hg19.
+#' @param gtex_lookup_file the lookup file, GTEx to rsids. "GTEx_Analysis_2017-06-05_v8_WholeGenomeSeq_838Indiv_Analysis_Freeze.lookup_table.txt.gz"
+#' Can be obtained using \code{\link{vargen_install}}.
+#' @param snp_mart optional, a connection to ensembl snp mart, can be created
+#' using \code{\link{connect_to_snp_ensembl}} (If missing this function will be
+#' used to create the connection).
 #' @param verbose will be given to subsequent functions to print progress.
-#' #' @return a data.frame with information about the variants associated with a
+#' @return a data.frame with information about the variants associated with a
 #' change in expression on the gene of interest.
 #' The data.frame will contain the following columns:
 #' \itemize{
@@ -1310,22 +1261,22 @@ convert_gtex_to_rsids <- function(gtex_ids, hg19ToHg38.over.chain, verbose = FAL
 #'   \item hgnc_symbol ("hgnc symbol" of the gene associated with the variant)
 #'   \item source (here the value will be "gtex")
 #' }
+get_gtex_variants <- function(tissue_files, omim_genes, gtex_lookup_file,
+                              snp_mart, verbose = FALSE){
 
-# vargen_install(install_dir = "./vargen_data/")
-#
-# adipose_tissues <- select_gtex_tissues(gtex_dir = "./vargen_data/GTEx_Analysis_v8_eQTL/",
-#                                     tissues_query = "adipose")
-#
-# gene_mart <-  connect_to_gene_ensembl()
-# DM1_genes <- get_omim_genes(omim_ids = "222100",
-#                            gene_mart = gene_mart)
-#
-# get_gtex_variants(tissue_files = adipose_tissues,
-#                                      omim_genes = DM1_genes,
-#                                      hg19ToHg38.over.chain = "./vargen_data/hg19ToHg38.over.chain",
-#                                      verbose = TRUE)
-get_gtex_variants <- function(tissue_files, omim_genes, hg19ToHg38.over.chain,
-                              verbose = FALSE){
+  if(missing(snp_mart) || class(snp_mart) != 'Mart'){
+    if(verbose) print("Connecting to the snp mart...")
+    snp_mart <- connect_to_snp_ensembl()
+    warning("Snp mart not provided (or not a valid Mart object). We used one from connect_to_snp_ensembl() instead.")
+  }
+
+  if(verbose) print("Loading GTEx lookup table... Please be patient")
+  # Column 1 contains the GTEx id v8
+  # Column 7 contains the rsid
+  # Column 8 contains the GTEx id v7
+  gtex_lookup <- data.table::fread(select = c(1,7,8), sep = "\t",
+                                   file = gtex_lookup_file, header = T,
+                                   stringsAsFactors = F)
 
   list.variants <- vector('list', length(tissue_files))
   i <- 1
@@ -1349,13 +1300,19 @@ get_gtex_variants <- function(tissue_files, omim_genes, hg19ToHg38.over.chain,
       gene_variants <- tissue_variants[tissue_variants$stable_gene_id %in% gene, ]
 
       if(nrow(gene_variants) > 0){
-        gene_variants <- convert_gtex_to_rsids(gtex_ids = gene_variants$variant_id,
-                                               hg19ToHg38.over.chain = hg19ToHg38.over.chain,
-                                               verbose = verbose)
-        if(nrow(gene_variants) >0) {
-          gene_variants_df <- format_output(chr = unlist(gene_variants$seq_region_name),
-                                            pos =  unlist(gene_variants$start),
-                                            rsid = unlist(gene_variants$id),
+        gene_rsids <- convert_gtex_to_rsids(gtex_ids = gene_variants$variant_id,
+                                            gtex_lookup = gtex_lookup,
+                                            verbose = verbose)
+
+        if(length(gene_rsids) >0){
+          # Get the position from the rsids
+          gene_variants <- biomaRt::getBM(attributes = c("refsnp_id", "chr_name", "chrom_start"),
+                                          filters = "snp_filter", values = gene_rsids,
+                                          mart = snp_mart)
+
+          gene_variants_df <- format_output(chr = unlist(gene_variants$chr_name),
+                                            pos =  unlist(gene_variants$chrom_start),
+                                            rsid = unlist(gene_variants$refsnp_id),
                                             ensembl_gene_id = unique(omim_genes[omim_genes$ensembl_gene_id == gene, "ensembl_gene_id"]),
                                             hgnc_symbol = unique(omim_genes[omim_genes$ensembl_gene_id == gene, "hgnc_symbol"]))
 
@@ -1378,6 +1335,8 @@ get_gtex_variants <- function(tissue_files, omim_genes, hg19ToHg38.over.chain,
   # Then concatenate the list into a data.frame
   gtex_variants <- do.call('rbind', list.variants)
 
+  rm(gtex_lookup)
+
   return(unique(gtex_variants))
 }
 
@@ -1392,6 +1351,7 @@ get_gtex_variants <- function(tissue_files, omim_genes, hg19ToHg38.over.chain,
 #'   \item the latest gwas catalog, eg: gwas_catalog_v1.0.2-associations_e93_r2019-01-11.tsv
 #'   \item hg19ToHg38.over.chain.gz (will be unzipped)
 #'   \item GTEx_Analysis_v8_eQTL.tar.gz (will be untared)
+#'   \item GTEx_Analysis_2017-06-05_v8_WholeGenomeSeq_838Indiv_Analysis_Freeze.lookup_table.txt.gz
 #'   \item enhancer_tss_associations.bed
 #' }
 #'
@@ -1447,7 +1407,7 @@ vargen_install <- function(install_dir = "./", gtex_version = "v8", verbose = FA
   cat("\n")
 
   # Add gtex folder
-  if(verbose) print("Download GTEx variant association file... This may take a while")
+  if(verbose) print("Downloading GTEx variant association file... This may take a while")
   if(gtex_version == "v7") {
     gtex_filename = "GTEx_Analysis_v7_eQTL.tar.gz"
     gtex_url = "https://storage.googleapis.com/gtex_analysis_v7/single_tissue_eqtl_data/GTEx_Analysis_v7_eQTL.tar.gz"
@@ -1472,6 +1432,13 @@ vargen_install <- function(install_dir = "./", gtex_version = "v8", verbose = FA
     print(paste0("Error while removing ", gtex_filename))
   }
 
+  # Installing GTEx lookup table
+  if(verbose) print("Downloading GTEx lookup table... This may take a while")
+  gtex_lookup_filename <- "GTEx_Analysis_2017-06-05_v8_WholeGenomeSeq_838Indiv_Analysis_Freeze.lookup_table.txt.gz"
+  gtex_lookup_url <- paste0("https://storage.googleapis.com/gtex_analysis_v8/reference/", gtex_lookup_filename)
+  utils::download.file(url = gtex_lookup_url,
+                       destfile = paste0(install_dir, "/", gtex_lookup_filename),
+                       mode = "wb")
 }
 
 
@@ -1546,10 +1513,10 @@ vargen_pipeline <- function(vargen_dir, omim_morbid_ids, fantom_corr = 0.25,
                             outdir = "./", gtex_tissues, gwas_traits,
                             gene_mart, snp_mart, verbose = FALSE) {
   if(missing(omim_morbid_ids)){
-    stop("Please provide OMIM morbid ids. Stopping now")
+    stop("Please provide at least one OMIM morbid id. Stopping now")
   }
 
-  if(!file.exists(outdir)){
+  if(!dir.exists(outdir)){
     if(verbose) print(paste0("Creating folder '", outdir, "'"))
     dir.create(outdir)
   }
@@ -1558,13 +1525,15 @@ vargen_pipeline <- function(vargen_dir, omim_morbid_ids, fantom_corr = 0.25,
   # Loading the necessary resources
   #_____________________________________________________________________________
   if(missing(gene_mart) || class(gene_mart) != 'Mart'){
-    warning("Gene mart not provided (or not a valid Mart object). We used one from connect_to_gene_ensembl() instead.")
+    if(verbose) print("Connecting to the gene mart...")
     gene_mart <- connect_to_gene_ensembl()
+    warning("Gene mart not provided (or not a valid Mart object). We used one from connect_to_gene_ensembl() instead.")
   }
 
   if(missing(snp_mart) || class(snp_mart) != 'Mart'){
-    warning("Snp mart not provided (or not a valid Mart object). We used one from connect_to_snp_ensembl() instead.")
+    if(verbose) print("Connecting to the snp mart...")
     snp_mart <- connect_to_snp_ensembl()
+    warning("Snp mart not provided (or not a valid Mart object). We used one from connect_to_snp_ensembl() instead.")
   }
 
 
@@ -1585,10 +1554,15 @@ vargen_pipeline <- function(vargen_dir, omim_morbid_ids, fantom_corr = 0.25,
   fantom_df <- prepare_fantom(enhancer_tss_association = paste0(vargen_dir,
                                                                 "/enhancer_tss_associations.bed"))
 
-  if(verbose) print(paste0("Reading the liftOver chain file... '",
-                           vargen_dir, "/hg19ToHg38.over.chain'"))
   hg19ToHg38.over.chain <- paste0(vargen_dir, "/hg19ToHg38.over.chain")
+  if(!file.exists(hg19ToHg38.over.chain)){
+    stop(paste0("Can not read: ", hg19ToHg38.over.chain, ", stopping now."))
+  }
 
+  gtex_lookup_file <- paste0(vargen_dir, "/GTEx_Analysis_2017-06-05_v8_WholeGenomeSeq_838Indiv_Analysis_Freeze.lookup_table.txt.gz")
+  if(!file.exists(gtex_lookup_file)){
+    stop(paste0("Can not read: ", gtex_lookup_file, ", stopping now."))
+  }
 
   #_____________________________________________________________________________
   # Getting variants from genes related to OMIM disease
@@ -1635,7 +1609,8 @@ vargen_pipeline <- function(vargen_dir, omim_morbid_ids, fantom_corr = 0.25,
     if(verbose) print("Getting the GTEx variants...")
     gtex_variants <- get_gtex_variants(tissue_files = gtex_tissues,
                                        omim_genes = omim_all_genes,
-                                       hg19ToHg38.over.chain = hg19ToHg38.over.chain,
+                                       gtex_lookup_file = gtex_lookup_file,
+                                       snp_mart = snp_mart,
                                        verbose = verbose)
 
     if(length(gtex_variants) != 0) master_variants <- rbind(master_variants, gtex_variants)
@@ -1727,7 +1702,8 @@ vargen_pipeline <- function(vargen_dir, omim_morbid_ids, fantom_corr = 0.25,
 #' @export
 vargen_custom <- function(vargen_dir, gene_ids, fantom_corr = 0.25, outdir = "./",
                           gtex_tissues, gwas_traits, gene_mart, snp_mart, verbose = FALSE) {
-  if (!file.exists(outdir)){
+
+  if (!dir.exists(outdir)){
     if(verbose) print(paste0("Creating folder '", outdir, "'"))
     dir.create(outdir)
   }
@@ -1736,23 +1712,21 @@ vargen_custom <- function(vargen_dir, gene_ids, fantom_corr = 0.25, outdir = "./
   # Loading the necessary resources
   #_____________________________________________________________________________
   if(missing(gene_mart) || class(gene_mart) != 'Mart'){
-    warning("Gene mart not provided (or not a valid Mart object). We used one from connect_to_gene_ensembl() instead.")
+    if(verbose) print("Connecting to the gene mart...")
     gene_mart <- connect_to_gene_ensembl()
+    warning("Gene mart not provided (or not a valid Mart object). We used one from connect_to_gene_ensembl() instead.")
   }
 
   if(missing(snp_mart) || class(snp_mart) != 'Mart'){
-    warning("Snp mart not provided (or not a valid Mart object). We used one from connect_to_snp_ensembl() instead.")
+    if(verbose) print("Connecting to the snp mart...")
     snp_mart <- connect_to_snp_ensembl()
+    warning("Snp mart not provided (or not a valid Mart object). We used one from connect_to_snp_ensembl() instead.")
   }
 
   # no gwas traits = no need to generate the gwas object
   if(!missing(gwas_traits)){
     if(verbose) print("Building the gwascat object...")
-    #if(missing(gwascat_file)){
-    #  gwas_cat <- create_gwas()
-    #} else {
     gwas_cat <- create_gwas(vargen_dir)
-    #}
     # Check if the gwas traits are in the gwas catalog:
     for(trait in gwas_traits){
       if(!(trait %in% gwas_cat$`DISEASE/TRAIT`)) stop(paste0("gwas trait '", trait, "' not found in gwas catalog, stopping now."))
@@ -1764,8 +1738,15 @@ vargen_custom <- function(vargen_dir, gene_ids, fantom_corr = 0.25, outdir = "./
   fantom_df <- prepare_fantom(enhancer_tss_association = paste0(vargen_dir, "/enhancer_tss_associations.bed"))
 
 
-  if(verbose) print(paste0("Reading the liftOver chain file... '", vargen_dir, "/hg19ToHg38.over.chain'"))
   hg19ToHg38.over.chain <- paste0(vargen_dir, "/hg19ToHg38.over.chain")
+  if(!file.exists(hg19ToHg38.over.chain)){
+    stop(paste0("Can not read: ", hg19ToHg38.over.chain, ", stopping now."))
+  }
+
+  gtex_lookup_file <- paste0(vargen_dir, "/GTEx_Analysis_2017-06-05_v8_WholeGenomeSeq_838Indiv_Analysis_Freeze.lookup_table.txt.gz")
+  if(!file.exists(gtex_lookup_file)){
+    stop(paste0("Can not read: ", gtex_lookup_file, ", stopping now."))
+  }
 
   #_____________________________________________________________________________
   # Getting variants from genes related to OMIM disease
@@ -1805,7 +1786,8 @@ vargen_custom <- function(vargen_dir, gene_ids, fantom_corr = 0.25, outdir = "./
     if(verbose) print("Getting the GTEx variants...")
     gtex_variants <- get_gtex_variants(tissue_files = gtex_tissues,
                                        omim_genes = genes_info,
-                                       hg19ToHg38.over.chain = hg19ToHg38.over.chain,
+                                       gtex_lookup_file = gtex_lookup_file,
+                                       snp_mart = snp_mart,
                                        verbose = verbose)
 
     if(length(gtex_variants) != 0) master_variants <- rbind(master_variants, gtex_variants)

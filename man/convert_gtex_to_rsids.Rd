@@ -4,29 +4,25 @@
 \alias{convert_gtex_to_rsids}
 \title{Convert GTEx IDs to rsid}
 \usage{
-convert_gtex_to_rsids(gtex_ids, hg19ToHg38.over.chain, verbose = FALSE)
+convert_gtex_to_rsids(gtex_ids, gtex_lookup, verbose = FALSE)
 }
 \arguments{
 \item{gtex_ids}{a vector of gtex_ids in the format "chr_pos_ref_alt_build"}
 
-\item{hg19ToHg38.over.chain}{the chain file to liftOver locations from
-hg19 to hg38. GTEx reports positions based on hg19.}
+\item{gtex_lookup}{a data.frame representing the lookup file. It should contains
+three columns: the gtex ids v8, the rsids, the gtex ids v7. The columns should
+be respectively called "variant_id", "rs_id_dbSNP151_GRCh38p7" and "variant_id_b37".
+This can be created by using fread() on the lookup file (see get_gtex_variants)}
 
 \item{verbose}{if true, will print information about the conversion (default: FALSE)}
 }
 \value{
-the same as \code{\link{get_variants_from_locations}}
+a vector of rsids (as some gtex ids do not have a corresponding rsid
+the output can be smalled than the input)
 }
 \description{
-GTEx IDs are in the format "chr_pos_ref_alt_build".
-Transform the IDs to a dataframe and get the rsids based on the position.
-If the build is equals to "b37", then liftOver is performed.
-Use \code{\link{convert_gtex_id_to_granges}}
-}
-\examples{
-vargen_install(install_dir = "./vargen_data/")
-
-convert_gtex_to_rsids(c("1_98929_A_G_b37", "10_61803062_T_G_b37"),
-                        "./vargen_data/hg19ToHg38.over.chain", FALSE)
-
+GTEx IDs are in the format "chr_pos_ref_alt_build". To make it
+consistent with the rest of the package, we are converting them to rsids.
+We us the "gtex_lookup" which is a data.frame created by reading the gtex lookup file.
+(see: get_gtex_variants)
 }

@@ -7,7 +7,8 @@
 get_gtex_variants(
   tissue_files,
   omim_genes,
-  hg19ToHg38.over.chain,
+  gtex_lookup_file,
+  snp_mart,
   verbose = FALSE
 )
 }
@@ -18,11 +19,17 @@ files. This will be read using \code{\link[base]{gzfile}}. Output from
 
 \item{omim_genes}{output from \code{\link{get_omim_genes}}}
 
-\item{hg19ToHg38.over.chain}{the chain file to liftOver locations from
-hg19 to hg38. GTEx reports positions based on hg19.}
+\item{gtex_lookup_file}{the lookup file, GTEx to rsids. "GTEx_Analysis_2017-06-05_v8_WholeGenomeSeq_838Indiv_Analysis_Freeze.lookup_table.txt.gz"
+Can be obtained using \code{\link{vargen_install}}.}
 
-\item{verbose}{will be given to subsequent functions to print progress.
-#' @return a data.frame with information about the variants associated with a
+\item{snp_mart}{optional, a connection to ensembl snp mart, can be created
+using \code{\link{connect_to_snp_ensembl}} (If missing this function will be
+used to create the connection).}
+
+\item{verbose}{will be given to subsequent functions to print progress.}
+}
+\value{
+a data.frame with information about the variants associated with a
 change in expression on the gene of interest.
 The data.frame will contain the following columns:
 \itemize{
@@ -32,14 +39,13 @@ The data.frame will contain the following columns:
   \item ensembl_gene_id ("gene id" of the gene associated with the variant)
   \item hgnc_symbol ("hgnc symbol" of the gene associated with the variant)
   \item source (here the value will be "gtex")
-}}
+}
 }
 \description{
 Take as input one or more tissue files from
- "GTEx_Analysis_v8_eQTL", as well as a vector of ensembl gene ids.
+ "GTEx_Analysis_v8_eQTL" (or v7), as well as a vector of ensembl gene ids.
  This function will return the variants that are associated with changes
  in the expression of the selected genes in the selected tissues. The
  assocations are based on the "signif_variant_gene_pairs" files.
- The ensembl ids from the GTEx file will be converted to stable ids, and the
- locations from GTEx translated from hg19 to hg38.
+ The ensembl ids from the GTEx file will be converted to stable ids.
 }

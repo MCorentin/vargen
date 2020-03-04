@@ -3,7 +3,6 @@
 export(annotate_variants)
 export(connect_to_gene_ensembl)
 export(connect_to_snp_ensembl)
-export(convert_gtex_to_rsids)
 export(create_gwas)
 export(get_gwas_variants)
 export(get_omim_genes)
