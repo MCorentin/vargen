@@ -1216,21 +1216,21 @@ convert_gtex_to_rsids <- function(gtex_ids, gtex_lookup, verbose = FALSE) {
   # "variant_id_b37" correspond to the variants from b37
   # Column 2 contains the rsids
   if(gtex_build == "b38"){
-    rsids <- gtex_lookup[gtex_lookup$variant_id %in% gtex_ids,2]
+    rsids <- gtex_lookup[gtex_lookup$variant_id %in% gtex_ids,]
   }
 
   if(gtex_build == "b37"){
-    rsids <- gtex_lookup[gtex_lookup$variant_id_b37 %in% gtex_ids,2]
+    rsids <- gtex_lookup[gtex_lookup$variant_id_b37 %in% gtex_ids,]
   }
 
   # If verbose on, tell the user how many gtex snps have no corresponding rsids
   if(verbose){
-    n_removed <- nrow(rsids[rsids$rs_id_dbSNP151_GRCh38p7 == "."])
+    n_removed <- nrow(rsids[rsids$rs_id_dbSNP151_GRCh38p7 == ".",])
     print(paste0("Number of GTEx ids removed (no corresponding rsid): ", n_removed))
   }
 
   # We remove gtex ids without a rsid:
-  return(rsids[rsids$rs_id_dbSNP151_GRCh38p7 != "."])
+  return(rsids[rsids$rs_id_dbSNP151_GRCh38p7 != ".",2])
 }
 
 
