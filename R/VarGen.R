@@ -1210,6 +1210,8 @@ convert_gtex_to_rsids <- function(gtex_ids, gtex_lookup, verbose = FALSE) {
               paste(gtex_build, collapse = ", ")))
   }
 
+  rsids <- data.frame(rs_id_dbSNP151_GRCh38p7 = c())
+
   # "variant_id" correspond to the variants from b38
   # "variant_id_b37" correspond to the variants from b37
   # Column 2 contains the rsids
@@ -1310,16 +1312,18 @@ get_gtex_variants <- function(tissue_files, omim_genes, gtex_lookup_file,
                                           filters = "snp_filter", values = gene_rsids,
                                           mart = snp_mart)
 
-          gene_variants_df <- format_output(chr = unlist(gene_variants$chr_name),
-                                            pos =  unlist(gene_variants$chrom_start),
-                                            rsid = unlist(gene_variants$refsnp_id),
-                                            ensembl_gene_id = unique(omim_genes[omim_genes$ensembl_gene_id == gene, "ensembl_gene_id"]),
-                                            hgnc_symbol = unique(omim_genes[omim_genes$ensembl_gene_id == gene, "hgnc_symbol"]))
+          if(nrow(gene_variants) > 0){
+            gene_variants_df <- format_output(chr = unlist(gene_variants$chr_name),
+                                              pos =  unlist(gene_variants$chrom_start),
+                                              rsid = unlist(gene_variants$refsnp_id),
+                                              ensembl_gene_id = unique(omim_genes[omim_genes$ensembl_gene_id == gene, "ensembl_gene_id"]),
+                                              hgnc_symbol = unique(omim_genes[omim_genes$ensembl_gene_id == gene, "hgnc_symbol"]))
 
-          # More efficient than just rbind:
-          list.variants.genes[[j]] <- gene_variants_df
-          list.variants.genes[[j]]$source <- paste0("gtex (", tissue, ")")
-          j <- j + 1
+            # More efficient than just rbind:
+            list.variants.genes[[j]] <- gene_variants_df
+            list.variants.genes[[j]]$source <- paste0("gtex (", tissue, ")")
+            j <- j + 1
+          }
         }
       }
     }
