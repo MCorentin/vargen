@@ -1194,43 +1194,59 @@ select_gtex_tissues <- function(gtex_dir, tissues_query = ""){
 #' We us the "gtex_lookup" which is a data.frame created by reading the gtex lookup file.
 #' (see: get_gtex_variants)
 #'
-#' @param gtex_ids a vector of gtex_ids in the format "chr_pos_ref_alt_build"
-#' @param gtex_lookup a data.frame representing the lookup file. It should contains
-#' three columns: the gtex ids v8, the rsids, the gtex ids v7. The columns should
-#' be respectively called "variant_id", "rs_id_dbSNP151_GRCh38p7" and "variant_id_b37".
-#' This can be created by using fread() on the lookup file (see get_gtex_variants)
+#' @param gtex_variants a data.frame of gtex variants obtained during "get_gtex_variants"
+#' should contain at least one column with the gtex_id as "chr_pos_alt_ref_build"
+#' @param gtex_lookup_file the lookup file, GTEx to rsids. "GTEx_Analysis_2017-06-05_v8_WholeGenomeSeq_838Indiv_Analysis_Freeze.lookup_table.txt.gz"
+#' Can be obtained using \code{\link{vargen_install}}.
 #' @param verbose if true, will print information about the conversion (default: FALSE)
 #' @return a vector of rsids (as some gtex ids do not have a corresponding rsid
 #' the output can be smalled than the input)
-convert_gtex_to_rsids <- function(gtex_ids, gtex_lookup, verbose = FALSE) {
+convert_gtex_to_rsids <- function(gtex_variants, gtex_lookup_file, verbose = FALSE) {
+
   # Check the gtex build (b37 or b38)
-  gtex_build <- unique(sub(".*_", "", gtex_ids))
+  gtex_build <- unique(sub(".*_", "", gtex_variants$variant_id))
   if(length(gtex_build) > 1){
-  stop(paste0("All the GTEx variants are not in the same build, builds detected: ",
-              paste(gtex_build, collapse = ", ")))
+    stop(paste0("All the GTEx variants are not in the same build, builds detected: ",
+                paste(gtex_build, collapse = ", ")))
   }
 
-  rsids <- data.frame(rs_id_dbSNP151_GRCh38p7 = c())
+  if(verbose) print("Loading GTEx lookup table... Please be patient")
+  # Column 1, 7 and 8 contains the GTEx ids v8, rsids and GTEx ids v7 respectively
+  gtex_lookup <- data.table::fread(select = c(1,7,8), sep = "\t", header = TRUE,
+                                   file = gtex_lookup_file, stringsAsFactors = FALSE)
 
+  # In the GTEx lookup table:
   # "variant_id" correspond to the variants from b38
   # "variant_id_b37" correspond to the variants from b37
-  # Column 2 contains the rsids
+  # However, from the tissue files, the name is always "variant_id" regardless
+  # of the GTEx version
   if(gtex_build == "b38"){
-    rsids <- gtex_lookup[gtex_lookup$variant_id %in% gtex_ids,]
+    # Subsetting the lookup table to make merge faster
+    gtex_lookup <- gtex_lookup[gtex_lookup$variant_id %in% gtex_variants$variant_id,]
+
+    gtex_variants_rsids <- merge(x = gtex_variants, y = gtex_lookup,
+                                 by = "variant_id", all.x = TRUE)
   }
 
   if(gtex_build == "b37"){
-    rsids <- gtex_lookup[gtex_lookup$variant_id_b37 %in% gtex_ids,]
+    # Subsetting the lookup table to make merge faster
+    gtex_lookup <- gtex_lookup[gtex_lookup$variant_id_b37 %in% gtex_variants$variant_id,]
+
+    gtex_variants_rsids <- merge(x = gtex_variants, y = gtex_lookup,
+                                 by.x = "variant_id", by.y = "variant_id_b37",
+                                 all.x = TRUE)
   }
 
   # If verbose on, tell the user how many gtex snps have no corresponding rsids
   if(verbose){
-    n_removed <- nrow(rsids[rsids$rs_id_dbSNP151_GRCh38p7 == ".",])
+    n_removed <- nrow(gtex_variants_rsids[gtex_variants_rsids$rs_id_dbSNP151_GRCh38p7 == ".",])
     print(paste0("Number of GTEx ids removed (no corresponding rsid): ", n_removed))
   }
 
+  rm(gtex_lookup)
+
   # We remove gtex ids without a rsid:
-  return(rsids[rsids$rs_id_dbSNP151_GRCh38p7 != ".",2])
+  return(gtex_variants_rsids[gtex_variants_rsids$rs_id_dbSNP151_GRCh38p7 != ".",])
 }
 
 
@@ -1266,82 +1282,84 @@ convert_gtex_to_rsids <- function(gtex_ids, gtex_lookup, verbose = FALSE) {
 get_gtex_variants <- function(tissue_files, omim_genes, gtex_lookup_file,
                               snp_mart, verbose = FALSE){
 
+  gtex_variants_final <- data.frame()
+
   if(missing(snp_mart) || class(snp_mart) != 'Mart'){
     if(verbose) print("Connecting to the snp mart...")
     snp_mart <- connect_to_snp_ensembl()
     warning("Snp mart not provided (or not a valid Mart object). We used one from connect_to_snp_ensembl() instead.")
   }
 
-  if(verbose) print("Loading GTEx lookup table... Please be patient")
-  # Column 1 contains the GTEx id v8
-  # Column 7 contains the rsid
-  # Column 8 contains the GTEx id v7
-  gtex_lookup <- data.table::fread(select = c(1,7,8), sep = "\t",
-                                   file = gtex_lookup_file, header = T,
-                                   stringsAsFactors = F)
-
-  list.variants <- vector('list', length(tissue_files))
+  # First, get the significant variants from all the tissues
+  list.variants.tissues <- vector('list', length(tissue_files))
   i <- 1
-  # We do it one tissue at a time so we can add the specific tissue for each
-  # variant in the "source" column of the data.frame
   for(file in tissue_files){
-    tissue_variants <- utils::read.delim(gzfile(file), stringsAsFactors = FALSE)
+    tissue_variants <- data.table::fread(select = c(1,2), sep = "\t", header = TRUE,
+                                         file = file, stringsAsFactors = FALSE)
     # We get the tissue name from the filename
     tissue <- sub(pattern = ".v[78].*",  replacement = "", x = basename(file))
+    tissue_variants$tissue <- paste0("gtex (", tissue, ")")
 
     # Tranforming the "ensembl ID" from GTEx to "stable ensembl gene id"
     # eg: ENSG00000135100.17 to ENSG00000135100 (the ".17" correspond to the version number)
     tissue_variants$stable_gene_id <- stringr::str_replace(tissue_variants$gene_id,
                                                            pattern = ".[0-9]+$",
                                                            replacement = "")
-    # We need to search for each gene specifically to be able to add the
-    # "ensembl_gene_id" column in the output
-    list.variants.genes <- vector('list', nrow(omim_genes))
-    j <- 1
-    for(gene in omim_genes$ensembl_gene_id){
-      gene_variants <- tissue_variants[tissue_variants$stable_gene_id %in% gene, ]
-
-      if(nrow(gene_variants) > 0){
-        gene_rsids <- convert_gtex_to_rsids(gtex_ids = gene_variants$variant_id,
-                                            gtex_lookup = gtex_lookup,
-                                            verbose = verbose)
-
-        if(length(gene_rsids) >0){
-          # Get the position from the rsids
-          gene_variants <- biomaRt::getBM(attributes = c("refsnp_id", "chr_name", "chrom_start"),
-                                          filters = "snp_filter", values = gene_rsids,
-                                          mart = snp_mart)
-
-          if(nrow(gene_variants) > 0){
-            gene_variants_df <- format_output(chr = unlist(gene_variants$chr_name),
-                                              pos =  unlist(gene_variants$chrom_start),
-                                              rsid = unlist(gene_variants$refsnp_id),
-                                              ensembl_gene_id = unique(omim_genes[omim_genes$ensembl_gene_id == gene, "ensembl_gene_id"]),
-                                              hgnc_symbol = unique(omim_genes[omim_genes$ensembl_gene_id == gene, "hgnc_symbol"]))
-
-            # More efficient than just rbind:
-            list.variants.genes[[j]] <- gene_variants_df
-            list.variants.genes[[j]]$source <- paste0("gtex (", tissue, ")")
-            j <- j + 1
-          }
-        }
-      }
-    }
-    # Removing the NULL elements of the list if exists
-    list.variants.genes <- list.variants.genes[!sapply(list.variants.genes, is.null)]
-
-    list.variants[[i]] <- do.call('rbind', list.variants.genes)
+    list.variants.tissues[[i]] <- tissue_variants
     i <- i + 1
   }
+  # Removing the NULL elements of the list if exists and transform the list to a DF
+  list.variants.tissues <- list.variants.tissues[!sapply(list.variants.tissues, is.null)]
+  list.variants.tissues <- do.call('rbind', list.variants.tissues)
 
-  # Removing the NULL elements of the list if exists
-  list.variants <- list.variants[!sapply(list.variants, is.null)]
-  # Then concatenate the list into a data.frame
-  gtex_variants <- do.call('rbind', list.variants)
 
-  rm(gtex_lookup)
+  # Select the variants that are affecting our genes of interest (omim_genes)
+  gtex_variants <- list.variants.tissues[list.variants.tissues$stable_gene_id %in%
+                                           omim_genes$ensembl_gene_id,]
 
-  return(unique(gtex_variants))
+  if(nrow(gtex_variants) > 0){
+    gtex_variants <- convert_gtex_to_rsids(gtex_variants = gtex_variants,
+                                           gtex_lookup_file = gtex_lookup_file,
+                                           verbose = verbose)
+    if(nrow(gtex_variants) > 0){
+      # get rsid positions with biomaRt
+      variants_pos <- biomaRt::getBM(attributes = c("refsnp_id", "chr_name", "chrom_start"),
+                                     filters = "snp_filter",
+                                     values = gtex_variants$rs_id_dbSNP151_GRCh38p7,
+                                     mart = snp_mart)
+
+      gtex_variants_pos <- merge(x = gtex_variants, y = variants_pos, all.x = TRUE,
+                                 by.x = "rs_id_dbSNP151_GRCh38p7", by.y = "refsnp_id")
+
+      # To add the hgnc symbol:
+      gtex_variants_hgnc <- merge(x = gtex_variants_pos,
+                                  y = omim_genes[,c("ensembl_gene_id", "hgnc_symbol")],
+                                  by.x = "stable_gene_id",
+                                  by.y = "ensembl_gene_id",
+                                  all.x = TRUE)
+
+      # Use format output and return the variants
+      gtex_variants_formatted <- format_output(chr = gtex_variants_hgnc$chr_name,
+                                               pos =  gtex_variants_hgnc$chrom_start,
+                                               rsid = gtex_variants_hgnc$rs_id_dbSNP151_GRCh38p7,
+                                               ensembl_gene_id = gtex_variants_hgnc$stable_gene_id,
+                                               hgnc_symbol = gtex_variants_hgnc$hgnc_symbol)
+
+      # Merge back the tissue after the formatting
+      gtex_variants_final <- merge(x = gtex_variants_formatted,
+                                   y = gtex_variants_hgnc[,c("rs_id_dbSNP151_GRCh38p7", "stable_gene_id", "tissue")],
+                                   by.x = c("rsid","ensembl_gene_id"),
+                                   by.y = c("rs_id_dbSNP151_GRCh38p7", "stable_gene_id"),
+                                   all.x = TRUE)
+
+      # Reorder and rename the columns to match "master_variants"
+      gtex_variants_final <- gtex_variants_final[c("chr", "pos", "rsid", "ensembl_gene_id",
+                                                   "hgnc_symbol", "tissue")]
+      colnames(gtex_variants_final)[which(names(gtex_variants_final) == "tissue")] <- "source"
+    }
+  }
+
+  return(unique(gtex_variants_final))
 }
 
 

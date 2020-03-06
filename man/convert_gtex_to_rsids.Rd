@@ -4,15 +4,14 @@
 \alias{convert_gtex_to_rsids}
 \title{Convert GTEx IDs to rsid}
 \usage{
-convert_gtex_to_rsids(gtex_ids, gtex_lookup, verbose = FALSE)
+convert_gtex_to_rsids(gtex_variants, gtex_lookup_file, verbose = FALSE)
 }
 \arguments{
-\item{gtex_ids}{a vector of gtex_ids in the format "chr_pos_ref_alt_build"}
+\item{gtex_variants}{a data.frame of gtex variants obtained during "get_gtex_variants"
+should contain at least one column with the gtex_id as "chr_pos_alt_ref_build"}
 
-\item{gtex_lookup}{a data.frame representing the lookup file. It should contains
-three columns: the gtex ids v8, the rsids, the gtex ids v7. The columns should
-be respectively called "variant_id", "rs_id_dbSNP151_GRCh38p7" and "variant_id_b37".
-This can be created by using fread() on the lookup file (see get_gtex_variants)}
+\item{gtex_lookup_file}{the lookup file, GTEx to rsids. "GTEx_Analysis_2017-06-05_v8_WholeGenomeSeq_838Indiv_Analysis_Freeze.lookup_table.txt.gz"
+Can be obtained using \code{\link{vargen_install}}.}
 
 \item{verbose}{if true, will print information about the conversion (default: FALSE)}
 }
