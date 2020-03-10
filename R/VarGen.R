@@ -1340,8 +1340,7 @@ get_gtex_variants <- function(tissue_files, omim_genes, gtex_lookup_file,
      gtex_variants_update[!is.na(gtex_variants_update$refsnp_id),"rsid"] <-
        gtex_variants_update[!is.na(gtex_variants_update$refsnp_id),"refsnp_id"]
      # Then we remove the "refsnp_id" column, we don't need it anymore
-     gtex_variants <- subset(gtex_variants_update, select = -c(refsnp_id))
-
+     gtex_variants <- gtex_variants_update[ ,-which(names(gtex_variants_update) == c("refsnp_id"))]
 
       # get rsid positions with biomaRt
       variants_pos <- biomaRt::getBM(attributes = c("refsnp_id", "chr_name", "chrom_start"),
