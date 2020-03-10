@@ -1322,14 +1322,35 @@ get_gtex_variants <- function(tissue_files, omim_genes, gtex_lookup_file,
                                            gtex_lookup_file = gtex_lookup_file,
                                            verbose = verbose)
     if(nrow(gtex_variants) > 0){
+
+      colnames(gtex_variants)[which(names(gtex_variants) == "rs_id_dbSNP151_GRCh38p7")] <- "rsid"
+
+      # GTEx use dbsnp v151. Some rsids have been merged. We can use biomart with
+      # "synonym" to get the corresponding rsid in the new version:
+      rsid_updated <- biomaRt::getBM(attributes = c("synonym_name", "refsnp_id"),
+                                     filters = "snp_synonym_filter",
+                                     values = gtex_variants$rsid,
+                                     mart = snp_mart)
+
+     # This will add a column to gtex_variants with "<NA>" except where there is
+     # a synonym SNP, if so we will change the rsid by the "ref_snp" from rsid_updated
+     gtex_variants_update <- merge(x = gtex_variants, y = rsid_updated,
+                                   by.x = "rsid", by.y = "synonym_name", all.x = TRUE)
+
+     gtex_variants_update[!is.na(gtex_variants_update$refsnp_id),"rsid"] <-
+       gtex_variants_update[!is.na(gtex_variants_update$refsnp_id),"refsnp_id"]
+     # Then we remove the "refsnp_id" column, we don't need it anymore
+     gtex_variants <- subset(gtex_variants_update, select = -c(refsnp_id))
+
+
       # get rsid positions with biomaRt
       variants_pos <- biomaRt::getBM(attributes = c("refsnp_id", "chr_name", "chrom_start"),
                                      filters = "snp_filter",
-                                     values = gtex_variants$rs_id_dbSNP151_GRCh38p7,
+                                     values = gtex_variants$rsid,
                                      mart = snp_mart)
 
       gtex_variants_pos <- merge(x = gtex_variants, y = variants_pos, all.x = TRUE,
-                                 by.x = "rs_id_dbSNP151_GRCh38p7", by.y = "refsnp_id")
+                                 by.x = "rsid", by.y = "refsnp_id")
 
       # To add the hgnc symbol:
       gtex_variants_hgnc <- merge(x = gtex_variants_pos,
@@ -1341,15 +1362,15 @@ get_gtex_variants <- function(tissue_files, omim_genes, gtex_lookup_file,
       # Use format output and return the variants
       gtex_variants_formatted <- format_output(chr = gtex_variants_hgnc$chr_name,
                                                pos =  gtex_variants_hgnc$chrom_start,
-                                               rsid = gtex_variants_hgnc$rs_id_dbSNP151_GRCh38p7,
+                                               rsid = gtex_variants_hgnc$rsid,
                                                ensembl_gene_id = gtex_variants_hgnc$stable_gene_id,
                                                hgnc_symbol = gtex_variants_hgnc$hgnc_symbol)
 
       # Merge back the tissue after the formatting
       gtex_variants_final <- merge(x = gtex_variants_formatted,
-                                   y = gtex_variants_hgnc[,c("rs_id_dbSNP151_GRCh38p7", "stable_gene_id", "tissue")],
+                                   y = gtex_variants_hgnc[,c("rsid", "stable_gene_id", "tissue")],
                                    by.x = c("rsid","ensembl_gene_id"),
-                                   by.y = c("rs_id_dbSNP151_GRCh38p7", "stable_gene_id"),
+                                   by.y = c("rsid", "stable_gene_id"),
                                    all.x = TRUE)
 
       # Reorder and rename the columns to match "master_variants"
