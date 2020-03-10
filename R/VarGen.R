@@ -1332,15 +1332,19 @@ get_gtex_variants <- function(tissue_files, omim_genes, gtex_lookup_file,
                                      values = gtex_variants$rsid,
                                      mart = snp_mart)
 
-     # This will add a column to gtex_variants with "<NA>" except where there is
-     # a synonym SNP, if so we will change the rsid by the "ref_snp" from rsid_updated
-     gtex_variants_update <- merge(x = gtex_variants, y = rsid_updated,
-                                   by.x = "rsid", by.y = "synonym_name", all.x = TRUE)
+      # If we do not have synonyms to merge we skip the rsid update from db151
+      # since they are all valid
+      if(nrow(rsid_updated) > 0){
+        # This will add a column to gtex_variants with "<NA>" except where there is
+        # a synonym SNP, if so we will change the rsid by the "ref_snp" from rsid_updated
+        gtex_variants_update <- merge(x = gtex_variants, y = rsid_updated,
+                                      by.x = "rsid", by.y = "synonym_name", all.x = TRUE)
 
-     gtex_variants_update[!is.na(gtex_variants_update$refsnp_id),"rsid"] <-
-       gtex_variants_update[!is.na(gtex_variants_update$refsnp_id),"refsnp_id"]
-     # Then we remove the "refsnp_id" column, we don't need it anymore
-     gtex_variants <- gtex_variants_update[ ,-which(names(gtex_variants_update) == c("refsnp_id"))]
+        gtex_variants_update[!is.na(gtex_variants_update$refsnp_id),"rsid"] <-
+          gtex_variants_update[!is.na(gtex_variants_update$refsnp_id),"refsnp_id"]
+        # Then we remove the "refsnp_id" column, we don't need it anymore
+        gtex_variants <- gtex_variants_update[ ,-which(names(gtex_variants_update) == c("refsnp_id"))]
+      }
 
       # get rsid positions with biomaRt
       variants_pos <- biomaRt::getBM(attributes = c("refsnp_id", "chr_name", "chrom_start"),
