@@ -1,5 +1,5 @@
 Type: Package
-Package: VarGen
+Package: vargen
 Title: Fetching Variants Related to Phenotypes Using Public Databases
 Version: 0.1.8
 Authors@R: c(
@@ -16,8 +16,8 @@ Description: Discover and annotate variants related to phenotypes.
 	  the "OMIM genes", in certain tissues.
     - GWAS catalog: Variants associated with the phenotype of interest.
 License: MIT + file LICENSE
-URL: https://github.com/MCorentin/VarGen
-BugReports: https://github.com/MCorentin/VarGen/issues
+URL: https://github.com/MCorentin/vargen
+BugReports: https://github.com/MCorentin/vargen/issues
 Imports:
 	BiocGenerics (>= 0.30.0),
 	BiocManager (>= 1.30.4),

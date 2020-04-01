@@ -7,7 +7,7 @@ impactful ones.
 
 All the coordinates are based on the hg38 version of the human genome.
 
-VarGen is open-source and available on [GitHub](https://github.com/MCorentin/VarGen "GitHub VarGen page")
+VarGen is open-source and available on [GitHub](https://github.com/MCorentin/vargen "GitHub VarGen page")
 
 ## Funding
 
@@ -104,20 +104,20 @@ The easiest way to get VarGen is to install it directly from R using “devtools
 ````
 install.packages("devtools")
 library(devtools)
-install_github(repo = "MCorentin/VarGen", dependencies = TRUE)
-library(VarGen)
+install_github(repo = "MCorentin/vargen", dependencies = TRUE)
+library(vargen)
 ````
 
 ### Install VarGen from source
 
 Alternatively you can clone the GitHub repository:
 ````
-git clone https://github.com/MCorentin/VarGen
+git clone https://github.com/MCorentin/vargen
 ````
 Then open R and install the package script from source:
 ````
 library(utils)
-install.packages("./VarGen/", repos = NULL, type = "source")
+install.packages("./vargen/", repos = NULL, type = "source")
 ````
 
 ## Preparing the input
