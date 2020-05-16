@@ -41,9 +41,9 @@ connect_to_gene_ensembl <- function(mirror = "www"){
 #' @export
 connect_to_snp_ensembl <- function(mirror = "www"){
   snp_mart <- biomaRt::useEnsembl(biomart = "snp",
-                                host = "www.ensembl.org",
-                                mirror = mirror,
-                                dataset = "hsapiens_snp")
+                                  host = "www.ensembl.org",
+                                  mirror = mirror,
+                                  dataset = "hsapiens_snp")
   return(snp_mart)
 }
 
@@ -120,7 +120,7 @@ get_variants_from_locations <- function(locations, verbose = FALSE) {
     }
 
     variants_at_loc <- rbind(variants_at_loc, jsonlite::fromJSON(
-                          jsonlite::toJSON(httr::content(get_output))))
+      jsonlite::toJSON(httr::content(get_output))))
 
     n_reqs <- n_reqs + 1
   }
@@ -218,9 +218,9 @@ annotate_variants <- function(rsid, verbose = FALSE) {
   }
 
   if(is.null(rsid_annotated$dbnsfp.fathmm.xf.coding_pred)){
-     fathmm_pred <- NA
+    fathmm_pred <- NA
   } else {
-     fathmm_pred <- rsid_annotated$dbnsfp.fathmm.xf.coding_pred
+    fathmm_pred <- rsid_annotated$dbnsfp.fathmm.xf.coding_pred
   }
 
   if(is.null(rsid_annotated$cadd.annotype)){
@@ -344,7 +344,7 @@ vargen_visualisation <- function(annotated_snps, outdir = "./", rsid_highlight,
   # Get genes position for omim genes (not gwas / gtex genes as we currently limit
   # the plot to start and stop of the gene, and gwas snps often lies outside these coordinates)
   omim_genes <- annotated_snps[annotated_snps$source == "omim","ensembl_gene_id"]
-  genes_list <- biomaRt::getBM(attributes = c("ensembl_gene_id", "chromosome_name",
+  genes_list <- biomaRt::getBM(attributes = c("ensembl_gene_id",  "chromosome_name",
                                               "start_position", "end_position",
                                               "hgnc_symbol"),
                                filters = c("ensembl_gene_id"),
@@ -821,16 +821,16 @@ get_fantom5_variants <- function(fantom_df, omim_genes, corr_threshold = 0.25,
   list.variants <- vector('list', nrow(omim_genes))
 
   for(gene in 1:nrow(omim_genes)){
-    enhancers_df <- get_fantom5_enhancers_from_hgnc(fantom_df = fantom_df,
+    enhancers_df <- try(get_fantom5_enhancers_from_hgnc(fantom_df = fantom_df,
                                                     hgnc_symbols = omim_genes[gene, "hgnc_symbol"],
-                                                    corr_threshold = corr_threshold)
+                                                    corr_threshold = corr_threshold))
     if(nrow(enhancers_df) != 0) {
-      enhancers_df <- GenomicRanges::makeGRangesFromDataFrame(enhancers_df,
-                                                              keep.extra.columns = TRUE)
+      enhancers_df <- try(GenomicRanges::makeGRangesFromDataFrame(enhancers_df,
+                                                              keep.extra.columns = TRUE))
       enhancers_df <- unlist(rtracklayer::liftOver(enhancers_df, rtracklayer::import.chain(hg19ToHg38.over.chain)))
-      fantom_locs <- paste0(GenomeInfoDb::seqnames(enhancers_df), ":",
+      fantom_locs <- try(paste0(GenomeInfoDb::seqnames(enhancers_df), ":",
                             BiocGenerics::start(enhancers_df)-1, ":",
-                            BiocGenerics::end(enhancers_df))
+                            BiocGenerics::end(enhancers_df)))
       fantom_locs <- sub("^chr", "", fantom_locs)
 
 
@@ -1028,8 +1028,6 @@ get_gwas_variants <- function(gwas_cat, gwas_traits){
   return(gwas_variants_df)
 }
 
-
-
 #' @title Manhattan plot for variants found in GWAS
 #' @description Display a manhattan plot. Only the variants related to the traits
 #' given as parameter will be displayed. The two horizontal lines on the plot
@@ -1086,24 +1084,24 @@ plot_manhattan_gwas <- function(gwas_cat, traits) {
                   ggplot2::aes(y = variants_traits$PVALUE_MLOG,
                                color = variants_traits$Trait)) +
 
-  # genome-wide significant threshold (p-value < 1 x 10-8)
-  # because : -log10(5*10^-8) = 7.30
-  ggplot2::geom_hline(ggplot2::aes(yintercept = -log10(suggestive),
-                                   linetype = paste0("Suggestive: ",  suggestive)),
-                      color = "blue",  size = 0.3) +
-  ggplot2::geom_hline(ggplot2::aes(yintercept = -log10(significant),
-                                   linetype = paste0("Significant: ", significant)),
-                      color = "red", size = 0.3) +
+    # genome-wide significant threshold (p-value < 1 x 10-8)
+    # because : -log10(5*10^-8) = 7.30
+    ggplot2::geom_hline(ggplot2::aes(yintercept = -log10(suggestive),
+                                     linetype = paste0("Suggestive: ",  suggestive)),
+                        color = "blue",  size = 0.3) +
+    ggplot2::geom_hline(ggplot2::aes(yintercept = -log10(significant),
+                                     linetype = paste0("Significant: ", significant)),
+                        color = "red", size = 0.3) +
 
-  ggplot2::xlab("Genomic Coordinates") + ggplot2::ylab("-log10(p-value)") +
+    ggplot2::xlab("Genomic Coordinates") + ggplot2::ylab("-log10(p-value)") +
 
-  ggplot2::theme(strip.text.x = ggplot2::element_text(size=6),
-                 axis.text.x  = ggplot2::element_blank(),
-                 axis.ticks.x = ggplot2::element_blank()) +
+    ggplot2::theme(strip.text.x = ggplot2::element_text(size=6),
+                   axis.text.x  = ggplot2::element_blank(),
+                   axis.ticks.x = ggplot2::element_blank()) +
 
-  # Overriding the guide legend for the linetype to allow for geom_hline's legend
-  ggplot2::scale_linetype_manual(name = "Thresholds p-values\n", values = c(2,2),
-                                 guide = ggplot2::guide_legend(override.aes = list(color = c("red", "blue"))))
+    # Overriding the guide legend for the linetype to allow for geom_hline's legend
+    ggplot2::scale_linetype_manual(name = "Thresholds p-values\n", values = c(2,2),
+                                   guide = ggplot2::guide_legend(override.aes = list(color = c("red", "blue"))))
 }
 
 
@@ -1302,7 +1300,7 @@ get_gtex_variants <- function(tissue_files, omim_genes, gtex_lookup_file,
 
     # Tranforming the "ensembl ID" from GTEx to "stable ensembl gene id"
     # eg: ENSG00000135100.17 to ENSG00000135100 (the ".17" correspond to the version number)
-    tissue_variants$stable_gene_id <- stringr::str_replace(tissue_variants$gene_id,
+    tissue_variants$stable_gene_id <- stringr::str_replace(tissue_variants[["gene_id"]],
                                                            pattern = ".[0-9]+$",
                                                            replacement = "")
     list.variants.tissues[[i]] <- tissue_variants
@@ -1314,8 +1312,8 @@ get_gtex_variants <- function(tissue_files, omim_genes, gtex_lookup_file,
 
 
   # Select the variants that are affecting our genes of interest (omim_genes)
-  gtex_variants <- list.variants.tissues[list.variants.tissues$stable_gene_id %in%
-                                           omim_genes$ensembl_gene_id,]
+  gtex_variants <- list.variants.tissues[list.variants.tissues[["stable_gene_id"]] %in%
+                                           omim_genes[["ensembl_gene_id"]],]
 
   if(nrow(gtex_variants) > 0){
     gtex_variants <- convert_gtex_to_rsids(gtex_variants = gtex_variants,
@@ -1329,7 +1327,7 @@ get_gtex_variants <- function(tissue_files, omim_genes, gtex_lookup_file,
       # "synonym" to get the corresponding rsid in the new version:
       rsid_updated <- biomaRt::getBM(attributes = c("synonym_name", "refsnp_id"),
                                      filters = "snp_synonym_filter",
-                                     values = gtex_variants$rsid,
+                                     values = gtex_variants[["rsid"]],
                                      mart = snp_mart)
 
       # If we do not have synonyms to merge we skip the rsid update from db151
@@ -1340,18 +1338,20 @@ get_gtex_variants <- function(tissue_files, omim_genes, gtex_lookup_file,
         gtex_variants_update <- merge(x = gtex_variants, y = rsid_updated,
                                       by.x = "rsid", by.y = "synonym_name", all.x = TRUE)
 
-        gtex_variants_update[!is.na(gtex_variants_update$refsnp_id),"rsid"] <-
-          gtex_variants_update[!is.na(gtex_variants_update$refsnp_id),"refsnp_id"]
+        gtex_variants_update[!is.na(gtex_variants_update[["refsnp_id"]]),"rsid"] <-
+          gtex_variants_update[!is.na(gtex_variants_update[["refsnp_id"]]),"refsnp_id"]
         # Then we remove the "refsnp_id" column, we don't need it anymore
-        gtex_variants <- gtex_variants_update[ ,-which(names(gtex_variants_update) == c("refsnp_id"))]
+        #gtex_variants <- gtex_variants_update[ ,-which(names(gtex_variants_update) == c("refsnp_id"))]
+        gtex_variants_update[["refsnp_id"]] <- NULL
+        gtex_variants <- gtex_variants_update
       }
 
       # get rsid positions with biomaRt
+      print(gtex_variants)
       variants_pos <- biomaRt::getBM(attributes = c("refsnp_id", "chr_name", "chrom_start"),
                                      filters = "snp_filter",
-                                     values = gtex_variants$rsid,
+                                     values = gtex_variants[["rsid"]],
                                      mart = snp_mart)
-
       gtex_variants_pos <- merge(x = gtex_variants, y = variants_pos, all.x = TRUE,
                                  by.x = "rsid", by.y = "refsnp_id")
 
@@ -1582,11 +1582,10 @@ vargen_pipeline <- function(vargen_dir, omim_morbid_ids, fantom_corr = 0.25,
     warning("Snp mart not provided (or not a valid Mart object). We used one from connect_to_snp_ensembl() instead.")
   }
 
-
   # no gwas traits = no need to generate the gwas object
   if(!missing(gwas_traits)){
     if(verbose) print("Building the gwascat object...")
-      gwas_cat <- create_gwas(vargen_dir)
+    gwas_cat <- create_gwas(vargen_dir)
     # Check if the gwas traits are in the gwas catalog:
     for(trait in gwas_traits){
       if(!(trait %in% gwas_cat$`DISEASE/TRAIT`)){
@@ -1644,12 +1643,13 @@ vargen_pipeline <- function(vargen_dir, omim_morbid_ids, fantom_corr = 0.25,
   }
 
   if(verbose) print(paste0("Writing the list of genes to: ", outdir, "/genes_info.tsv"))
-  # We write the list of genes in a file.
+  # We write the list of genes in a file.s
   utils::write.table(x = omim_all_genes, quote = FALSE, sep = "\t", row.names = FALSE,
                      file = paste0(outdir, "/genes_info.tsv"))
 
   #_____________________________________________________________________________
-  # Getting variants associated with change of expression in GTEx (need tissues as input)
+  # Getting variants associated with change of expression in GTEx
+  # (need tissues as input)
   #_____________________________________________________________________________
   if(!missing(gtex_tissues)){
     if(verbose) print("Getting the GTEx variants...")
@@ -1670,7 +1670,7 @@ vargen_pipeline <- function(vargen_dir, omim_morbid_ids, fantom_corr = 0.25,
   #_____________________________________________________________________________
   # GWAS variants (only if list of gwas traits were given)
   if(!missing(gwas_traits)){
-    if(verbose) print("Getting the gwas variants,,,")
+    if(verbose) print("Getting the gwas variants...")
     master_variants <- rbind(master_variants, get_gwas_variants(gwas_cat, gwas_traits))
   } else{
     if(verbose) print("No values for 'gwas_traits', skipping gwas step...")
@@ -1801,9 +1801,9 @@ vargen_custom <- function(vargen_dir, gene_ids, fantom_corr = 0.25, outdir = "./
   genes_info <- biomaRt::getBM(attributes = c("ensembl_gene_id", "chromosome_name",
                                               "start_position", "end_position",
                                               "hgnc_symbol"),
-                              filters = c("ensembl_gene_id"),
-                              values = c(gene_ids),
-                              mart = gene_mart, uniqueRows = TRUE)
+                               filters = c("ensembl_gene_id"),
+                               values = c(gene_ids),
+                               mart = gene_mart, uniqueRows = TRUE)
 
   if(verbose) print(paste0("Writing the list of genes to: ", outdir, "/custom_genes_info.tsv"))
   utils::write.table(x = genes_info, quote = FALSE, sep = "\t", row.names = FALSE,
@@ -1861,3 +1861,91 @@ vargen_custom <- function(vargen_dir, gene_ids, fantom_corr = 0.25, outdir = "./
 
   return(unique(master_variants))
 }
+
+# Start of new Functions --------------
+#' Gets the uniprot ids that correlate to the ensemble ids and
+#' adds them to the master_variants info dataframe:
+#' @param gene_mart: The DB in which the KEGG information is searched for
+#' @param gene_ids: The list of ensembl gene IDs
+#' @return nothing, saves the separate pathway ID and images
+get_entrez_ids <- function(gene_ids, master_variants){
+  #1. Connect to biomaRt to retrieve the uniprot ids.
+  entrez_variants <- biomaRt::getBM(
+    attributes = c("hgnc_symbol", "entrezgene_id", "ensembl_gene_id"),
+    filters = c("ensembl_gene_id"),
+    values = gene_ids,
+    mart = gene_mart, uniqueRows = TRUE)
+
+  #2. Merge the datasets with the new ensemble information.
+  master_variants <- merge(x = master_variants, y = entrez_variants, by.x = c("ensembl_gene_id", "hgnc_symbol"),
+                           by.y = c("ensembl_gene_id", "hgnc_symbol"), all.x = TRUE)
+
+  #3. Get the variants that have duplicates to their assigned variables as
+  # they don't match as they currently are.
+  multi_variants <- multi_var_mart_helper(gene_ids, master_variants)
+
+  #4. Reorganize the columns.
+  master_variants <- master_variants[,c(5,1,7,2,3,4,6)]
+  cnt = 0
+  entrezgene_bundle = ""
+  for (variant_bundle in multi_variants[["ensembl_gene_id"]]) {
+    variantLST = strsplit(variant_bundle, ",")
+    entrez_variants <- biomaRt::getBM(
+      attributes = c("hgnc_symbol", "entrezgene_id", "ensembl_gene_id"),
+      filters = c("ensembl_gene_id"),
+      values = c(variantLST),
+      mart = gene_mart,
+      uniqueRows = TRUE)
+
+    # Add the variants to the missing place in the merged data columns.
+    if(cnt <= length(variant_bundle)){
+      print(entrez_variants[["entrezgene_id"]])
+
+      # Avoid Null values as it's redundant to replace those.
+      if(is.null(entrez_variants[["entrezgene_id"]]) == FALSE){
+        # Build the Entrezgene ID bundles.
+        if(nchar(entrezgene_bundle) != 0){
+          entrezgene_bundle = paste(paste(entrezgene_bundle, ","), entrez_variants[["entrezgene"]])
+        } else {
+          entrezgene_bundle = paste(entrez_variants[["entrezgene"]], ",")
+        }
+      }
+
+      if(cnt == length(variant_bundle)) {
+        # Todo find where the variants match in the dataframe and
+        # replace the missing values with the found ids.
+        cnt = 0
+        entrezgene_bundle = ""
+      }
+    }
+    cnt = cnt + 1
+  }
+
+  return(master_variants)
+}
+
+#' Gets the uniprot ids that correlate to the ensemble ids and
+#' adds them to the master_variants info dataframe:
+#' @param gene_ids: The list of ensembl gene IDs
+#' @param master_variants: The DB in which the information is stored
+#' @return The subsetted dataframe containing only variants with two or more IDs
+multi_var_mart_helper <- function(gene_ids, master_variants){
+  size = 0
+  #Get the size for a single ensembe_gene_id
+  for(gene_id in gene_ids){
+    tryCatch({
+      if(is.null(strsplit(gene_id, ",")[[1]]) == FALSE || strsplit(gene_id, ",")[[1]] == ""){
+        print(strsplit(gene_id, ",")[[1]])
+        size = nchar(strsplit(gene_id, ",")[[1]])
+        break;
+      }
+    }, error = function(e) {
+
+    })
+  }
+  # Subset the data based on those only with multiple values.
+  master_variants <- master_variants[nchar(master_variants[["ensembl_gene_id"]]) > size*2,]
+
+  return(master_variants)
+}
+
