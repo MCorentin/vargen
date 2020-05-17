@@ -1862,7 +1862,6 @@ vargen_custom <- function(vargen_dir, gene_ids, fantom_corr = 0.25, outdir = "./
   return(unique(master_variants))
 }
 
-# Start of new Functions --------------
 #' Gets the uniprot ids that correlate to the ensemble ids and
 #' adds them to the master_variants info dataframe:
 #' @param gene_mart: The DB in which the KEGG information is searched for
@@ -1879,46 +1878,56 @@ get_entrez_ids <- function(gene_ids, master_variants){
   #2. Merge the datasets with the new ensemble information.
   master_variants <- merge(x = master_variants, y = entrez_variants, by.x = c("ensembl_gene_id", "hgnc_symbol"),
                            by.y = c("ensembl_gene_id", "hgnc_symbol"), all.x = TRUE)
-
   #3. Get the variants that have duplicates to their assigned variables as
   # they don't match as they currently are.
   multi_variants <- multi_var_mart_helper(gene_ids, master_variants)
 
   #4. Reorganize the columns.
-  master_variants <- master_variants[,c(5,1,7,2,3,4,6)]
-  cnt = 0
+  master_variants <- master_variants[,c(3,5,1,16,2,3,4,6,7,8,9,10,11,12,13,14,15)]
+
+  #5. Replace and Find the ID for the ensemble IDs that have multiple ones per variant.
+  cnt = 1
   entrezgene_bundle = ""
   for (variant_bundle in multi_variants[["ensembl_gene_id"]]) {
     variantLST = strsplit(variant_bundle, ",")
-    entrez_variants <- biomaRt::getBM(
-      attributes = c("hgnc_symbol", "entrezgene_id", "ensembl_gene_id"),
-      filters = c("ensembl_gene_id"),
-      values = c(variantLST),
-      mart = gene_mart,
-      uniqueRows = TRUE)
-
-    # Add the variants to the missing place in the merged data columns.
-    if(cnt <= length(variant_bundle)){
-      print(entrez_variants[["entrezgene_id"]])
-
-      # Avoid Null values as it's redundant to replace those.
-      if(is.null(entrez_variants[["entrezgene_id"]]) == FALSE){
-        # Build the Entrezgene ID bundles.
+    # Look through the bundles to find each one in the mart and then
+    # add it to the master_variants.
+    while(cnt <= lengths(variantLST)){
+      entrez_variants <- biomaRt::getBM(
+        attributes = c("hgnc_symbol", "entrezgene_id", "ensembl_gene_id"),
+        filters = c("ensembl_gene_id"),
+        values = c(variantLST[[1]][[cnt]]),
+        mart = gene_mart,
+        uniqueRows = TRUE)
+      # If the datasethas no value for the entrezgene ID then it
+      # has an NA added to that position in the string.  If it
+      # does then it adds the ID.
+      if(dim(entrez_variants)[[1]] != 0){
         if(nchar(entrezgene_bundle) != 0){
-          entrezgene_bundle = paste(paste(entrezgene_bundle, ","), entrez_variants[["entrezgene"]])
+          entrezgene_bundle = paste((paste(paste(entrezgene_bundle, ","),
+                                           entrez_variants[["entrezgene_id"]])), ",")
         } else {
-          entrezgene_bundle = paste(entrez_variants[["entrezgene"]], ",")
+          entrezgene_bundle = paste(entrez_variants[["entrezgene_id"]], ",")
+        }
+      } else {
+        if(nchar(entrezgene_bundle) != 0){
+          entrezgene_bundle = paste(paste(entrezgene_bundle, "NA"), ",")
+        } else {
+          entrezgene_bundle = paste("NA", ",")
         }
       }
 
-      if(cnt == length(variant_bundle)) {
+      if(cnt == lengths(variantLST)) {
         # Todo find where the variants match in the dataframe and
         # replace the missing values with the found ids.
-        cnt = 0
+        entrezgene_bundle <- substr(entrezgene_bundle, 1, nchar(entrezgene_bundle) -1)
+        master_variants[["entrezgene_id"]][which(master_variants[["ensembl_gene_id"]] == variant_bundle)] <- entrezgene_bundle
+        cnt = 1
         entrezgene_bundle = ""
+        break;
       }
+      cnt = cnt + 1
     }
-    cnt = cnt + 1
   }
 
   return(master_variants)
@@ -1935,7 +1944,6 @@ multi_var_mart_helper <- function(gene_ids, master_variants){
   for(gene_id in gene_ids){
     tryCatch({
       if(is.null(strsplit(gene_id, ",")[[1]]) == FALSE || strsplit(gene_id, ",")[[1]] == ""){
-        print(strsplit(gene_id, ",")[[1]])
         size = nchar(strsplit(gene_id, ",")[[1]])
         break;
       }
@@ -1948,4 +1956,6 @@ multi_var_mart_helper <- function(gene_ids, master_variants){
 
   return(master_variants)
 }
+
+
 
