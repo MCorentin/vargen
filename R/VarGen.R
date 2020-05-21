@@ -23,7 +23,6 @@ connect_to_gene_ensembl <- function(mirror = "www"){
   return(gene_mart)
 }
 
-
 #' @title Connect to snp Mart
 #' @description Connect to the "hsapiens_snp" dataset in the "snp" BioMart
 #' database, using \code{\link[biomaRt]{useEnsembl}}
@@ -465,6 +464,244 @@ vargen_visualisation <- function(annotated_snps, outdir = "./", rsid_highlight,
     }
   }
 }
+
+#' @title Add Entrez IDs to the master info data file list
+#' @description Gets the uniprot ids that correlate to the
+#' ensemble ids and adds them to the master_variants info dataframe:
+#' @param gene_mart: The DB in which the KEGG information is searched for
+#' @param gene_ids: The list of ensembl gene IDs
+#' @return nothing, saves the separate pathway ID and images
+get_pathview_info <- function(gene_ids, master_variants){
+
+  print("Connecting to biomaRt to retrieve information.")
+  #1. Connect to biomaRt to retrieve the uniprot ids.
+  entrez_variants <- biomaRt::getBM(
+    attributes = c("hgnc_symbol", "entrezgene_id", "ensembl_gene_id", "kegg_enzyme"),
+    filters = c("ensembl_gene_id"),
+    values = gene_ids,
+    mart = gene_mart, uniqueRows = TRUE)
+
+  print("Merging the datasets with the new ensemble information.")
+  #2. Merge the datasets with the new ensemble information.
+  master_variants <- merge(x = master_variants, y = entrez_variants, by.x = c("ensembl_gene_id", "hgnc_symbol"),
+                           by.y = c("ensembl_gene_id", "hgnc_symbol"), all.x = TRUE)
+
+  print("Getting the variants that have duplicates.")
+  #3. Get the variants that have duplicates to their assigned variables as
+  # they don't match as they currently are.
+  multi_variants <- multi_var_mart_helper(gene_ids, master_variants)
+
+  print("Reorganizing the columns.")
+  #4. Reorganize the columns.
+  master_variants <- master_variants[,c(3,5,1,16,2,3,4,6,7,8,9,10,11,12,13,14,15,16,17)]
+
+  print("Replacing the ID for sepcial cases.")
+  #5. Replace and Find the ID for the ensemble IDs that have multiple ones per variant.
+  cnt = 1
+  printCnt = 1
+  entrezgene_bundle = ""
+  for (variant_bundle in multi_variants[["ensembl_gene_id"]]) {
+    variantLST = strsplit(variant_bundle, ",")
+    # Look through the bundles to find each one in the mart and then
+    # add it to the master_variants.
+    while(cnt <= lengths(variantLST)){
+      entrez_variants <- biomaRt::getBM(
+        attributes = c("hgnc_symbol", "entrezgene_id", "ensembl_gene_id"),
+        filters = c("ensembl_gene_id"),
+        values = c(variantLST[[1]][[cnt]]),
+        mart = gene_mart,
+        uniqueRows = TRUE)
+      # If the datasethas no value for the entrezgene ID then it
+      # has an NA added to that position in the string.  If it
+      # does then it adds the ID.
+      if(dim(entrez_variants)[[1]] != 0){
+        if(nchar(entrezgene_bundle) != 0){
+          entrezgene_bundle = paste((paste(paste(entrezgene_bundle, ","),
+                                           entrez_variants[["entrezgene_id"]])), ",")
+        } else {
+          entrezgene_bundle = paste(entrez_variants[["entrezgene_id"]], ",")
+        }
+      } else {
+        if(nchar(entrezgene_bundle) != 0){
+          entrezgene_bundle = paste(paste(entrezgene_bundle, "NA"), ",")
+        } else {
+          entrezgene_bundle = paste("NA", ",")
+        }
+      }
+
+      if(cnt == lengths(variantLST)) {
+        print(paste0("finished changing ", printCnt, " out of ", nrow(multi_variants)))
+        # Todo find where the variants match in the dataframe and
+        # replace the missing values with the found ids.
+        entrezgene_bundle <- substr(entrezgene_bundle, 1, nchar(entrezgene_bundle) -1)
+        master_variants[["entrezgene_id"]][which(master_variants[["ensembl_gene_id"]] == variant_bundle)] <- entrezgene_bundle
+        cnt = 1
+        printCnt = printCnt + 1
+        entrezgene_bundle = ""
+        break;
+      }
+      cnt = cnt + 1
+    }
+  }
+
+  master_variants[["rsid.1"]] <- NULL
+  master_variants[["entrezgene_id.1"]] <- NULL
+
+  return(master_variants)
+}
+
+#' Gets the uniprot ids that correlate to the ensemble ids and
+#' adds them to the master_variants info dataframe:
+#' @param gene_ids: The list of ensembl gene IDs
+#' @param master_variants: The DB in which the information is stored
+#' @return The subsetted dataframe containing only variants with two or more IDs
+multi_var_mart_helper <- function(gene_ids, master_variants){
+  size = 0
+  #Get the size for a single ensembe_gene_id
+  for(gene_id in gene_ids){
+    tryCatch({
+      if(is.null(strsplit(gene_id, ",")[[1]]) == FALSE || strsplit(gene_id, ",")[[1]] == ""){
+        size = nchar(strsplit(gene_id, ",")[[1]])
+        break;
+      }
+    }, error = function(e) {
+
+    })
+  }
+  # Subset the data based on those only with multiple values.
+  master_variants <- master_variants[nchar(master_variants[["ensembl_gene_id"]]) > size*2,]
+
+  return(master_variants)
+}
+
+#' @title Makes the KEGG graphs for a selected graph
+#' @description Allows for the KEGG graphs to be output into a directory, but
+#' also allows for KEGG graphs to be generated based upon a seach of a gene/genes,
+#' or by the fathmm score threshold. The default name of the image will be the
+#' name of the kegg_id unless other wise specfied.  They will be
+#' placed into a directory made labeled KEGG_images.
+#' @param dataset: The dataset that holds the KEGG pathways and rsid IDs
+#' @param title: The title that each of the graphics will be given with a
+#' counter added.
+#' @param output_dir: The directory where the files will be put as given by
+#' the user.
+#' @param gene_name: The name of names of the genes that are in the master
+#' information file.This can given as a single gene variable or as a vector
+#' of gene names.
+#' @param snp_fx: The cut off for the number of variants that should be output
+#' as a pathview for a figure. The default will be all variants found for the
+#' specified gene.
+#' @param snp_fx_threshold: Sets the threshold for the fathmm phred score as
+#' defined by the user.
+#' @return The subsetted dataframe containing only variants with two or more IDs.
+kegg_graph <- function(dataset, title = NULL, output_dir = NULL, gene_name = NULL, snp_fx = NULL, snp_fx_threshold = NULL) {
+  # Check if the directory is a real directory and if the title was given.
+  if(is.null(output_dir) || output_dir == " " || (dir.create(file.path(main_dir, sub_dir), showWarnings = FALSE))){
+    # Make the proper output directory if one isn't given.
+    if(.Platform$OS.type == "windows"){
+      dir.create("KEGG_images")
+      output_dir <- paste0(getwd(), "\\", "KEGG_images\\")
+    } else {
+      dir.create("KEGG_images")
+      output_dir <- paste0(getwd(), "/", "KEGG_images/")
+    }
+  } else {
+    output_dir <- paste0(output_dir, "/", "KEGG_images/")
+  }
+
+  titleKey = FALSE
+  if(is.null(title)){
+    titleKey = TRUE
+  }
+
+  if(nrow(dataset) > 0){
+    #Remove values without a KEGG pathway
+    dataset <- subset(dataset, is.na(dataset[["kegg_enzyme"]]) == FALSE)
+    dataset <- subset(dataset, dataset[["kegg_enzyme"]] != "")
+
+    if(is.null(gene_name) == FALSE){
+      if(is.character(gene_name) == TRUE && length(gene_name) == 1) {
+        cnt = 1
+        # 1. Subset the dataset to only have data containing the genename
+        dataset <- subset(dataset, dataset["hgnc_symbol"] == gene_name)
+        dataset <- dataset[order(dataset[,"fathmm_xf_score"], decreasing = TRUE),]
+        # 2. For the limit set for number of most signififcant scores subset
+        if(is.null(snp_fx) == FALSE){
+          dataset <- dataset[c(1:snp_fx),]
+        }
+        # 3. Remove any that fall above the threshold.
+        if(is.null(snp_fx_threshold) == FALSE){
+          dataset <- subset(dataset, dataset[["fathmm_xf_score"]] >= snp_fx_threshold)
+        }
+
+        for(kegg_pathway in dataset[["kegg_enzyme"]]){
+          # Separate pathway ID from the enzyme/s
+          kegg_id <- unlist(strsplit(kegg_pathway, "\\+"))[1]
+          png <- KEGGREST::keggGet(paste0("map", kegg_id), option = "image")
+          # Make the default title.
+          if(titleKey == TRUE){
+            title <- paste0("map_", kegg_id, "_", dataset[["rsid"]][cnt], "_kegg.png")
+          } else {
+            title <- paste0(cnt, "_", title)
+          }
+
+          print(paste0("Making figure ", cnt, " out of ", nrow(dataset)))
+          png::writePNG(image = png, target = paste(output_dir, title, sep = ""))
+          cnt = cnt + 1
+        }
+      } else if(is.vector(gene_name) & !is.list(gene_name)){
+        cnt = 1
+        for(gene in gene_name){
+          # 1. Subset the dataset to only have data containing the genename
+          dataset <- subset(dataset, dataset["hgnc_symbol"] == gene)
+          dataset <- dataset[order(dataset[,"fathmm_xf_score"], decreasing = TRUE),]
+          # 2. For the limit set for number of most signififcant scores subset
+          if(is.null(snp_fx) == FALSE){
+            dataset <- dataset[c(1:snp_fx),]
+          }
+          # 3. Remove any that fall above the threshold.
+          if(is.null(snp_fx_threshold) == FALSE){
+            dataset <- subset(dataset, dataset[["fathmm_xf_score"]] >= snp_fx_threshold)
+          }
+
+          for(kegg_pathway in dataset[["kegg_enzyme"]]){
+            # Separate pathway ID from the enzyme/s
+            kegg_id <- unlist(strsplit(kegg_pathway, "\\+"))[1]
+            png <- KEGGREST::keggGet(paste0("map", kegg_id), option = "image")
+            # Make the default title.
+            if(titleKey == TRUE){
+              title <- paste0("map_", kegg_id, "_", dataset[["rsid"]][cnt], "_kegg.png")
+            } else {
+              title <- paste(cnt, title)
+            }
+
+            print(paste0("Making figure ", cnt, " out of ", nrow(dataset)))
+            png::writePNG(image = png, target = paste(output_dir, title, sep = ""))
+            cnt = cnt + 1
+          }
+        }
+      }
+    } else {
+      cnt = 1
+      for(kegg_pathway in dataset[["kegg_enzyme"]]){
+        # Separate pathway ID from the enzyme/s
+        kegg_id <- unlist(strsplit(kegg_pathway, "\\+"))[1]
+        png <- KEGGREST::keggGet(paste0("map", kegg_id), option = "image")
+        # Make the default title.
+        if(titleKey == TRUE){
+          title <- paste0("map_", kegg_id, "_", dataset[["rsid"]][cnt], "_kegg.png")
+        } else {
+          title <- paste(cnt, title)
+        }
+
+        print(paste0("Making figure ", cnt, " out of ", nrow(dataset)))
+        png::writePNG(image = png, target = paste(output_dir, title, sep = ""))
+        cnt = cnt + 1
+      }
+    }
+  }
+}
+
 
 
 # ---- VarPhen Pipeline ----
@@ -1861,101 +2098,5 @@ vargen_custom <- function(vargen_dir, gene_ids, fantom_corr = 0.25, outdir = "./
 
   return(unique(master_variants))
 }
-
-#' Gets the uniprot ids that correlate to the ensemble ids and
-#' adds them to the master_variants info dataframe:
-#' @param gene_mart: The DB in which the KEGG information is searched for
-#' @param gene_ids: The list of ensembl gene IDs
-#' @return nothing, saves the separate pathway ID and images
-get_entrez_ids <- function(gene_ids, master_variants){
-  #1. Connect to biomaRt to retrieve the uniprot ids.
-  entrez_variants <- biomaRt::getBM(
-    attributes = c("hgnc_symbol", "entrezgene_id", "ensembl_gene_id"),
-    filters = c("ensembl_gene_id"),
-    values = gene_ids,
-    mart = gene_mart, uniqueRows = TRUE)
-
-  #2. Merge the datasets with the new ensemble information.
-  master_variants <- merge(x = master_variants, y = entrez_variants, by.x = c("ensembl_gene_id", "hgnc_symbol"),
-                           by.y = c("ensembl_gene_id", "hgnc_symbol"), all.x = TRUE)
-  #3. Get the variants that have duplicates to their assigned variables as
-  # they don't match as they currently are.
-  multi_variants <- multi_var_mart_helper(gene_ids, master_variants)
-
-  #4. Reorganize the columns.
-  master_variants <- master_variants[,c(3,5,1,16,2,3,4,6,7,8,9,10,11,12,13,14,15)]
-
-  #5. Replace and Find the ID for the ensemble IDs that have multiple ones per variant.
-  cnt = 1
-  entrezgene_bundle = ""
-  for (variant_bundle in multi_variants[["ensembl_gene_id"]]) {
-    variantLST = strsplit(variant_bundle, ",")
-    # Look through the bundles to find each one in the mart and then
-    # add it to the master_variants.
-    while(cnt <= lengths(variantLST)){
-      entrez_variants <- biomaRt::getBM(
-        attributes = c("hgnc_symbol", "entrezgene_id", "ensembl_gene_id"),
-        filters = c("ensembl_gene_id"),
-        values = c(variantLST[[1]][[cnt]]),
-        mart = gene_mart,
-        uniqueRows = TRUE)
-      # If the datasethas no value for the entrezgene ID then it
-      # has an NA added to that position in the string.  If it
-      # does then it adds the ID.
-      if(dim(entrez_variants)[[1]] != 0){
-        if(nchar(entrezgene_bundle) != 0){
-          entrezgene_bundle = paste((paste(paste(entrezgene_bundle, ","),
-                                           entrez_variants[["entrezgene_id"]])), ",")
-        } else {
-          entrezgene_bundle = paste(entrez_variants[["entrezgene_id"]], ",")
-        }
-      } else {
-        if(nchar(entrezgene_bundle) != 0){
-          entrezgene_bundle = paste(paste(entrezgene_bundle, "NA"), ",")
-        } else {
-          entrezgene_bundle = paste("NA", ",")
-        }
-      }
-
-      if(cnt == lengths(variantLST)) {
-        # Todo find where the variants match in the dataframe and
-        # replace the missing values with the found ids.
-        entrezgene_bundle <- substr(entrezgene_bundle, 1, nchar(entrezgene_bundle) -1)
-        master_variants[["entrezgene_id"]][which(master_variants[["ensembl_gene_id"]] == variant_bundle)] <- entrezgene_bundle
-        cnt = 1
-        entrezgene_bundle = ""
-        break;
-      }
-      cnt = cnt + 1
-    }
-  }
-
-  return(master_variants)
-}
-
-#' Gets the uniprot ids that correlate to the ensemble ids and
-#' adds them to the master_variants info dataframe:
-#' @param gene_ids: The list of ensembl gene IDs
-#' @param master_variants: The DB in which the information is stored
-#' @return The subsetted dataframe containing only variants with two or more IDs
-multi_var_mart_helper <- function(gene_ids, master_variants){
-  size = 0
-  #Get the size for a single ensembe_gene_id
-  for(gene_id in gene_ids){
-    tryCatch({
-      if(is.null(strsplit(gene_id, ",")[[1]]) == FALSE || strsplit(gene_id, ",")[[1]] == ""){
-        size = nchar(strsplit(gene_id, ",")[[1]])
-        break;
-      }
-    }, error = function(e) {
-
-    })
-  }
-  # Subset the data based on those only with multiple values.
-  master_variants <- master_variants[nchar(master_variants[["ensembl_gene_id"]]) > size*2,]
-
-  return(master_variants)
-}
-
 
 
