@@ -4,13 +4,13 @@
 \alias{get_gwas_variants}
 \title{Get the variants from the gwas catalog associated to the traits of interest}
 \usage{
-get_gwas_variants(gwas_cat, gwas_traits)
+get_gwas_variants(gwas_traits, gwas_cat)
 }
 \arguments{
-\item{gwas_cat}{output from \code{\link{create_gwas}}}
-
 \item{gwas_traits}{a vector of gwas traits, can be obtained from
 \code{\link{list_gwas_traits}}}
+
+\item{gwas_cat}{output from \code{\link{create_gwas}}}
 }
 \value{
 a data.frame contaning the variants linked to the traits in the gwas catalog
@@ -33,5 +33,5 @@ uses \code{\link[gwascat]{subsetByTraits}} to get the variants.
 obesity_gwas <- c("Obesity (extreme)", "Obesity-related traits", "Obesity")
 gwas_cat <- create_gwas()
 
-gwas_variants <- get_gwas_variants(gwas_cat, obesity_gwas)
+gwas_variants <- get_gwas_variants(obesity_gwas, gwas_cat)
 }

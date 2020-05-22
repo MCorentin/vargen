@@ -1,4 +1,4 @@
-#---- Utils ----
+# --- Utils ----
 
 #' @title Connect to gene Mart
 #' @description Connect to the "hsapiens_gene_ensembl" dataset in the "ENSEMBL_MART_ENSEMBL"
@@ -12,8 +12,8 @@
 #' # Connect with the default mirror
 #' gene_mart <- connect_to_gene_ensembl()
 #'
-#' # Connect with the "useast" mirror
-#' uswest_gene_mart <- connect_to_gene_ensembl(mirror="useast")
+#' # Connect with the "www" mirror
+#' gene_mart <- connect_to_gene_ensembl(mirror="www")
 #' @export
 connect_to_gene_ensembl <- function(mirror = "www"){
   gene_mart <- biomaRt::useEnsembl(biomart = "ENSEMBL_MART_ENSEMBL",
@@ -36,8 +36,8 @@ connect_to_gene_ensembl <- function(mirror = "www"){
 #' # Connect with the default mirror
 #' ensembl <- connect_to_snp_ensembl()
 #'
-#' # Connect with the "useast" mirror
-#' uswest_ensembl <- connect_to_snp_ensembl(mirror="useast")
+#' # Connect with the "www" mirror
+#' www_ensembl <- connect_to_snp_ensembl(mirror="www")
 #' @export
 connect_to_snp_ensembl <- function(mirror = "www"){
   snp_mart <- biomaRt::useEnsembl(biomart = "snp",
@@ -951,27 +951,20 @@ create_gwas <- function(vargen_dir, verbose = FALSE){
 #' Output can be used as parameter for \code{\link{vargen_pipeline}}
 #'
 #' @param keywords a vector of keywords to grep the traits from the gwas catalog. (default: "")
-#' @param vargen_dir (optional) a path to vargen data directory, created
-#' during \code{\link{vargen_install}}. If not specified, the gwas object will
-#' be created by reading the file at "http://www.ebi.ac.uk/gwas/api/search/downloads/alternative".
-#' If specified, this function will look for files that begin with "gwas_catalog".
-#' If more than one is found, the user will have to choose one via a text menu
+#' @param gwas_cat output from \code{\link{create_gwas}}
 #' @return a vector of traits
 #'
 #' @examples
 #' list_gwas_traits(keywords = c("type 1 diabetes", "Obesity"))
 #' @export
-list_gwas_traits <- function(keywords = "", vargen_dir) {
-  traits <- c()
+list_gwas_traits <- function(keywords = "", gwas_cat) {
 
-  # If the vargen directory is not specified the gwas catalog will be read from
-  # the following URL: "http://www.ebi.ac.uk/gwas/api/search/downloads/alternative"
-  # cf the "create_gwas" function.
-  if(missing(vargen_dir)){
+  if(missing(gwas_cat) || class(gwas_cat) != 'gwaswloc'){
     gwas_cat <- create_gwas()
-  } else{
-    gwas_cat <- create_gwas(vargen_dir = vargen_dir)
+    warning("gwas_cat not provided (or not a gwaswloc object). Created one with create_gwas().")
   }
+
+  traits <- c()
 
   # Collapsing the values with a "|" for "OR" in grep search
   keys <- paste(keywords, collapse = "|")
@@ -987,9 +980,9 @@ list_gwas_traits <- function(keywords = "", vargen_dir) {
 #' @title Get the variants from the gwas catalog associated to the traits of interest
 #' @description uses \code{\link[gwascat]{subsetByTraits}} to get the variants.
 #'
-#' @param gwas_cat output from \code{\link{create_gwas}}
 #' @param gwas_traits a vector of gwas traits, can be obtained from
 #' \code{\link{list_gwas_traits}}
+#' @param gwas_cat output from \code{\link{create_gwas}}
 #'
 #' @return a data.frame contaning the variants linked to the traits in the gwas catalog
 #' The data.frame contains the following columns:
@@ -1008,10 +1001,15 @@ list_gwas_traits <- function(keywords = "", vargen_dir) {
 #' obesity_gwas <- c("Obesity (extreme)", "Obesity-related traits", "Obesity")
 #' gwas_cat <- create_gwas()
 #'
-#' gwas_variants <- get_gwas_variants(gwas_cat, obesity_gwas)
+#' gwas_variants <- get_gwas_variants(obesity_gwas, gwas_cat)
 #' @export
-get_gwas_variants <- function(gwas_cat, gwas_traits){
-  #require("gwascat")
+get_gwas_variants <- function(gwas_traits, gwas_cat){
+
+  if(missing(gwas_cat) || class(gwas_cat) != 'gwaswloc'){
+    gwas_cat <- create_gwas()
+    warning("gwas_cat not provided (or not a gwaswloc object). Created one with create_gwas().")
+  }
+
   gwas_variants <- gwascat::subsetByTraits(x = gwas_cat, tr = gwas_traits)
   GenomeInfoDb::seqlevelsStyle(gwas_variants) <- "UCSC"
 
@@ -1036,9 +1034,9 @@ get_gwas_variants <- function(gwas_cat, gwas_traits){
 #' correspond to the "suggestive" and "significant" thresholds in genome wide
 #' studies.
 #'
-#' @param gwas_cat a gwaswloc object obtained from \code{\link{create_gwas}}
 #' @param traits a vector with the trait of interest (as characters). The list
 #' of available traits can be obtained with \code{\link{list_gwas_traits}}
+#' @param gwas_cat a gwaswloc object obtained from \code{\link{create_gwas}}
 #' @return nothing (just display the plot)
 #'
 #' @references
@@ -1050,7 +1048,13 @@ get_gwas_variants <- function(gwas_cat, gwas_traits){
 #'
 #' plot_manhattan_gwas(gwas_cat = gwas_cat, traits = c("Type 1 diabetes", "Type 2 diabetes"))
 #' @export
-plot_manhattan_gwas <- function(gwas_cat, traits) {
+plot_manhattan_gwas <- function(traits, gwas_cat) {
+
+  if(missing(gwas_cat) || class(gwas_cat) != 'gwaswloc'){
+    gwas_cat <- create_gwas()
+    warning("gwas_cat not provided (or not a gwaswloc object). Created one with create_gwas().")
+  }
+
   # Check if the gwas traits are in the gwas catalog:
   for(trait in traits){
     if(!(trait %in% gwas_cat$`DISEASE/TRAIT`)) stop(paste0("gwas trait '", trait, "' not found in gwas catalog, stopping now."))
@@ -1671,7 +1675,8 @@ vargen_pipeline <- function(vargen_dir, omim_morbid_ids, fantom_corr = 0.25,
   # GWAS variants (only if list of gwas traits were given)
   if(!missing(gwas_traits)){
     if(verbose) print("Getting the gwas variants,,,")
-    master_variants <- rbind(master_variants, get_gwas_variants(gwas_cat, gwas_traits))
+    master_variants <- rbind(master_variants, get_gwas_variants(gwas_traits = gwas_traits,
+                                                                gwas_cat = gwas_cat))
   } else{
     if(verbose) print("No values for 'gwas_traits', skipping gwas step...")
   }
@@ -1849,7 +1854,8 @@ vargen_custom <- function(vargen_dir, gene_ids, fantom_corr = 0.25, outdir = "./
   # GWAS variants (only if list of gwas traits were given)
   if(!missing(gwas_traits)){
     if(verbose) print("Getting the gwas variants...")
-    master_variants <- rbind(master_variants, get_gwas_variants(gwas_cat, gwas_traits))
+    master_variants <- rbind(master_variants, get_gwas_variants(gwas_traits = gwas_traits,
+                                                                gwas_cat = gwas_cat))
   } else{
     if(verbose) print("No values for 'gwas_traits', skipping gwas step...")
   }

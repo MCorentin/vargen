@@ -4,13 +4,13 @@
 \alias{plot_manhattan_gwas}
 \title{Manhattan plot for variants found in GWAS}
 \usage{
-plot_manhattan_gwas(gwas_cat, traits)
+plot_manhattan_gwas(traits, gwas_cat)
 }
 \arguments{
-\item{gwas_cat}{a gwaswloc object obtained from \code{\link{create_gwas}}}
-
 \item{traits}{a vector with the trait of interest (as characters). The list
 of available traits can be obtained with \code{\link{list_gwas_traits}}}
+
+\item{gwas_cat}{a gwaswloc object obtained from \code{\link{create_gwas}}}
 }
 \value{
 nothing (just display the plot)

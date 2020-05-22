@@ -212,10 +212,11 @@ adipose_tissues
 
 The gwas traits will be used to get associated variants in the gwas catalog (https://www.ebi.ac.uk/gwas/). 
 You can search the available gwas traits by keyword with the *list_gwas_traits* function. Here we are going to use a local 
-gwas catalog file (gwas_catalog_v1.0.2-associations_e96_r2019-08-24.tsv). 
+gwas catalog file. 
 
 ````
-obesity_traits <- list_gwas_traits("obesity", "./vargen_data")
+gwas_cat <- create_gwas("./vargen_data")
+obesity_traits <- list_gwas_traits("obesity", gwas_cat)
 obesity_traits
 
 #>  [1] "Obesity (extreme)"
@@ -253,7 +254,8 @@ Now we can launch the pipeline with all the input data:
 adipose_tissues <- select_gtex_tissues("./vargen_data/GTEx_Analysis_v8_eQTL/", 
                                        "adipose")
 
-obesity_traits <- list_gwas_traits("obesity", "./vargen_data/")
+gwas_cat <- create_gwas("./vargen_data")
+obesity_traits <- list_gwas_traits("obesity", gwas_cat)
 
 obesity_variants <- vargen_pipeline(vargen_dir = "./vargen_data/", 
                                     omim_morbid_ids = "601665", 
@@ -382,7 +384,8 @@ Example:
 adipose_tissues <- select_gtex_tissues("./vargen_data/GTEx_Analysis_v8_eQTL/", 
                                        "adipose")
 
-obesity_traits <- list_gwas_traits("obesity", "./vargen_data/")
+gwas_cat <- create_gwas("./vargen_data")
+obesity_traits <- list_gwas_traits("obesity", gwas_cat)
 
 obesity_custom <- vargen_custom(vargen_dir = "./vargen_data/", 
                                 gene_ids = c("ENSG00000155846", "ENSG00000115138"), 
@@ -403,7 +406,7 @@ gwas_cat <- create_gwas("./vargen_data/")
 alzheimer_traits <- c("Alzheimer's disease", "Alzheimer's disease (late onset)", "Alzheimer's disease biomarkers", 
                       "Alzheimer's disease (cognitive decline)")
 
-plot_manhattan_gwas(gwas_cat = gwas_cat, traits = alzheimer_traits)
+plot_manhattan_gwas(traits = alzheimer_traits, gwas_cat = gwas_cat)
 
 # Optional: if you want to save the plot as a pdf
 grDevices::dev.print(pdf, "./manhanttan_alzheimer.pdf")
