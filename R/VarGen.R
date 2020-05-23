@@ -591,9 +591,13 @@ multi_var_mart_helper <- function(gene_ids, master_variants){
 #' @param title: The title that each of the graphics will be given with a
 #' counter added.
 #' @param genes: The mapped and reported genes that are found in the file.
+#' @param gene_mode: The mode for selecting if the reported genes and the
+#' mapped genes should both be search for the given genes or if only one or the
+#' other should be.  0 is for mapped genes only, 1 is for only reported, 2 is
+#' for both. The defualt is 2.
 #' @param pval_thresh: The cut off threshold for the p-values of the variants.
 #' @return Nothing; The KEGG pathways figures in a given or made directory.
-kegg_graph <- function(vargen_dir, output_dir, traits, chrs, title, genes, pval_thresh) {
+kegg_graph <- function(vargen_dir, output_dir, traits, chrs, title, genes, gene_mode = 3, pval_thresh) {
   #Check if the minimum criteria for searching for trait have been met.
   if(is.null(vargen_dir) == FALSE && is.null(traits) == FALSE && is.null(chrs)){
     gwas_cat <- create_gwas(vargen_dir)
@@ -681,15 +685,28 @@ kegg_graph <- function(vargen_dir, output_dir, traits, chrs, title, genes, pval_
     if(is.null(pval_thresh) == FALSE && is.null(genes) == TRUE){
       kegg_paths <- subset(kegg_paths, kegg_paths[["p-value"]] >= pval_thresh)
     } else if(is.null(pval_thresh) == TRUE && is.null(genes) == FALSE) {
-      kegg_paths_mapped <- subset(kegg_paths, kegg_paths[["mapped_genes"]] == genes)
-      kegg_paths_reported <- subset(kegg_paths, kegg_paths[["reported_genes"]] == genes)
-      kegg_paths <- merge(x = kegg_paths_mapped, y = kegg_paths_reported, by = c("ensembl_gene_id", "kegg_enzyme", "rsid"), all = TRUE)
+      if(gene_mode == 1){
+        kegg_paths_mapped <- subset(kegg_paths, kegg_paths[["mapped_genes"]] == genes)
+      } else if(gene_mode == 1) {
+        kegg_paths_reported <- subset(kegg_paths, kegg_paths[["reported_genes"]] == genes)
+      } else {
+        kegg_paths_mapped <- subset(kegg_paths, kegg_paths[["mapped_genes"]] == genes)
+        kegg_paths_reported <- subset(kegg_paths, kegg_paths[["reported_genes"]] == genes)
+
+        kegg_paths <- merge(x = kegg_paths_mapped, y = kegg_paths_reported, by = c("ensembl_gene_id", "kegg_enzyme", "rsid"), all = TRUE)
+      }
     } else {
       kegg_paths <- subset(kegg_paths, kegg_paths[["p-value"]] >= pval_thresh)
-      kegg_paths_mapped <- subset(kegg_paths, kegg_paths[["mapped_genes"]] == genes)
-      kegg_paths_reported <- subset(kegg_paths, kegg_paths[["reported_genes"]] == genes)
+      if(gene_mode == 1){
+        kegg_paths_mapped <- subset(kegg_paths, kegg_paths[["mapped_genes"]] == genes)
+      } else if(gene_mode == 1) {
+        kegg_paths_reported <- subset(kegg_paths, kegg_paths[["reported_genes"]] == genes)
+      } else {
+        kegg_paths_mapped <- subset(kegg_paths, kegg_paths[["mapped_genes"]] == genes)
+        kegg_paths_reported <- subset(kegg_paths, kegg_paths[["reported_genes"]] == genes)
 
-      kegg_paths <- merge(x = kegg_paths_mapped, y = kegg_paths_reported, by = c("ensembl_gene_id", "kegg_enzyme", "rsid"), all = TRUE)
+        kegg_paths <- merge(x = kegg_paths_mapped, y = kegg_paths_reported, by = c("ensembl_gene_id", "kegg_enzyme", "rsid"), all = TRUE)
+      }
     }
 
     for(kegg_pathway in kegg_paths[["kegg_enzyme"]]){
