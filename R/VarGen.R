@@ -582,15 +582,17 @@ multi_var_mart_helper <- function(gene_ids, master_variants){
 #' placed into a directory made labeled KEGG_images.
 #' @param vargen_dir: The directory that the VarGen information has been
 #' download to or is being stored in.
-#' @param traits: A vector containing the traits that can be seached for. Can be
-#' given as either a vector or as a single string.
-#' @param title: The title that each of the graphics will be given with a
-#' counter added.
 #' @param output_dir: The directory where the files will be put as desired
 #' by the user.
+#' @param traits: A vector containing the traits that can be seached for. Can be
+#' given as either a vector or as a single string.
+#' @param chrs: A vector containing the chromosomes that can be seached for.
+#' Can be given as either a vector or as a single string. Ex: "chr1"
+#' @param title: The title that each of the graphics will be given with a
+#' counter added.
+#' @param pval_thresh: The cut off threshold for the p-values of the variants.
 #' @return Nothing; The KEGG pathways figures in a given or made directory.
-kegg_graph <- function(vargen_dir = NULL, output_dir,
-                       traits, chrs, title) {
+kegg_graph <- function(vargen_dir, output_dir, traits, chrs, title, pval_thresh) {
   #Check if the minimum criteria for searching for trait have been met.
   if(is.null(vargen_dir) == FALSE && is.null(traits) == FALSE && is.null(chrs)){
     gwas_cat <- create_gwas(vargen_dir)
@@ -635,8 +637,8 @@ kegg_graph <- function(vargen_dir = NULL, output_dir,
   if(nrow(kegg_path) == 0 || is.na(unique(kegg_path$"kegg_enzyme")[1])){
     stop(paste0("No KEGG pathways found.  Try broading the search."))
   } else {
-    variant_info <- cbind(variants_traits$"SNPS", variants_traits$"SNP_GENE_IDS")
-    colnames(variant_info) <- cbind("rsid", "ensembl_gene_id")
+    variant_info <- cbind(variants_traits$"SNPS", variants_traits$"SNP_GENE_IDS", variants_traits$"P-VALUE")
+    colnames(variant_info) <- cbind("rsid", "ensembl_gene_id", "p-value")
 
     variant_info <- merge(x = variant_info, y = kegg_path, by = "ensembl_gene_id", all.x = TRUE)
 
@@ -652,32 +654,50 @@ kegg_graph <- function(vargen_dir = NULL, output_dir,
     } else {
       output_dir <- paste0(output_dir, "/", "KEGG_images/")
     }
-    #Check if the title is given.
+    # Check if the title is given.
     titleKey <- FALSE
     if(is.null(title)){
       titleKey <- TRUE
     }
 
     cnt <- 1
-    #Remove values without a KEGG pathway.
-    kegg_path <- subset(variant_info, is.na(variant_info[["kegg_enzyme"]]) == FALSE)
-    kegg_path <- subset(kegg_path, kegg_path[["kegg_enzyme"]] != "")
+    # Remove values without a KEGG pathway.
+    kegg_paths <- subset(variant_info, is.na(variant_info[["kegg_enzyme"]]) == FALSE)
+    kegg_paths <- subset(kegg_paths, kegg_paths[["kegg_enzyme"]] != "")
 
-    for(kegg_pathway in kegg_path[["kegg_enzyme"]]){
+    # Get the values that are missing KEGG pathways.
+    kegg_paths_na <- subset(variant_info, is.na(variant_info[["kegg_enzyme"]]) == TRUE)
+    if(is.null(pval_thresh) == FALSE){
+      kegg_paths_na <- subset(kegg_paths_na, kegg_paths_na[["p-value"]] >= pval_thresh)
+    }
+    # Write output to text file in same directory of values not found with KEGG pathways
+    # in the next for loop.
+    file_out<-file(paste(output_dir, "variants_without_kegg.txt"))
+
+    # Restrict it by p-value threshold
+    if(is.null(pval_thresh) == FALSE){
+      kegg_paths <- subset(kegg_paths, kegg_paths[["p-value"]] >= pval_thresh)
+    }
+
+    for(kegg_pathway in kegg_paths[["kegg_enzyme"]]){
       # Separate pathway ID from the enzyme/s.
       kegg_id <- unlist(strsplit(kegg_pathway, "\\+"))[1]
       png <- KEGGREST::keggGet(paste0("map", kegg_id), option = "image")
       # Make the default title.
       if (titleKey == TRUE) {
-        title <- paste0("map_", kegg_id, "_", kegg_path[["refsnp_id"]][cnt], "_kegg.png")
+        title <- paste0("map_", kegg_id, "_", kegg_paths[["rsid"]][cnt], "_kegg.png")
       } else {
         title <- paste0(cnt, "_", title)
       }
+
+      writeLines(c(kegg_paths[["rsid"]][cnt]), file_out)
 
       print(paste0("Making figure ", cnt, " out of ", nrow(kegg_path)))
       png::writePNG(image = png, target = paste(output_dir, title, sep = ""))
       cnt <- cnt + 1
     }
+
+    close(file_out)
   }
 }
 
@@ -692,7 +712,7 @@ kegg_graph <- function(vargen_dir = NULL, output_dir,
 #' @param snp_fx The cut off for the number of variants that should be output
 #' as a pathview for a figure. The default will be all variants found for the
 #' specified gene.
-pathview_maker <- function(dataset = NULL, gene_name = NULL, snp_fx = 0, snp_fx_threshold = 0, output_dir = getwd()){
+pathview_maker <- function(dataset, gene_name, snp_fx, snp_fx_threshold, output_dir){
   # Check to make sure a proper existing directory is set for the output.
   if(output_dir == "" || output_dir == " ") {
     output_dir = getwd()
@@ -750,7 +770,7 @@ pathview_maker <- function(dataset = NULL, gene_name = NULL, snp_fx = 0, snp_fx_
         gene_data <- subset(gene_data, gene_data[["fathmm_xf_score"]] >= snp_fx_threshold)
       }
     }
-
+  }
 }
 
 
