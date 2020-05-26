@@ -1073,17 +1073,18 @@ plot_manhattan_gwas <- function(traits, gwas_cat) {
   # required after ggbio. (because ggplot2::autoplot will be called instead of
   # ggbio::autoplot, and ggplot2::autoplot does not handle gwaswloc objects).
   #   gwascat::traitsManh(gwr = variants_traits, selr = gwas_cat, traits = traits)
-  variants_traits = variants_traits[which(IRanges::overlapsAny(variants_traits,
-                                                               gwas_cat))]
-  availtr = as.character(variants_traits$`DISEASE/TRAIT`)
-  oth = which(!(availtr %in% traits))
-  availtr[oth] = "Other"
-  variants_traits$Trait = availtr
-  pv = variants_traits$PVALUE_MLOG
+  variants_traits <- variants_traits[which(IRanges::overlapsAny(variants_traits,
+                                                                gwas_cat))]
+  availtr <- as.character(variants_traits$`DISEASE/TRAIT`)
+  oth <- which(!(availtr %in% traits))
+  availtr[oth] <- "Other"
+  variants_traits$Trait <- availtr
+  pv <- variants_traits$PVALUE_MLOG
+  # Capping the values at 25
   variants_traits$PVALUE_MLOG = ifelse(pv > 25, 25, pv)
-  sn = paste(GenomeInfoDb::genome(variants_traits)[1],
-             as.character(GenomeInfoDb::seqnames(variants_traits))[1],
-             sep = " ")
+  sn <- paste(GenomeInfoDb::genome(variants_traits)[1],
+              as.character(GenomeInfoDb::seqnames(variants_traits))[1],
+              sep = " ")
 
   # Generate the plot
   ggbio::autoplot(variants_traits, geom = "point", xlab = sn,
@@ -1101,7 +1102,7 @@ plot_manhattan_gwas <- function(traits, gwas_cat) {
 
   ggplot2::xlab("Genomic Coordinates") + ggplot2::ylab("-log10(p-value)") +
 
-  ggplot2::theme(strip.text.x = ggplot2::element_text(size=6),
+  ggplot2::theme(strip.text.x = ggplot2::element_text(size=10),
                  axis.text.x  = ggplot2::element_blank(),
                  axis.ticks.x = ggplot2::element_blank()) +
 

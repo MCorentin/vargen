@@ -39,6 +39,7 @@ Corentin Molitor, Matt Brember, Fady Mohareb, VarGen: An R package for disease-a
     - [VarPhen](#varphen)
     - [Customised list of genes](#customised-list-of-genes)
 - [Tips](#tips)
+    - [How to get gwas variants only](#how-to-get-gwas-variants-only)
     - [How to plot the gwas variants](#how-to-plot-the-gwas-variants)
     - [How to plot the omim variants](#how-to-plot-the-omim-variants)
     - [Ensembl mirrors](#ensembl-mirrors)
@@ -397,11 +398,31 @@ obesity_custom <- vargen_custom(vargen_dir = "./vargen_data/",
 
 ## Tips 
 
+### How to get gwas variants only
+
+If you are only interested in the gwas variants, you can use the following commands:
+
+````
+gwas_cat <- create_gwas()
+
+# This will list the gwas traits with "alzheimer":
+list_gwas_traits(keywords = "alzheimer", gwas_cat = gwas_cat)
+
+# Selecting some gwas traits of interest:
+alzheimer_traits <- c("Alzheimer's disease", "Alzheimer's disease (late onset)", "Alzheimer's disease (cognitive decline)")
+
+# This will get the variants from the selected traits:
+gwas_variants <- get_gwas_variants(gwas_cat = gwas_cat, gwas_traits = alzheimer_traits)
+
+# If you want more details about the variants you can annotate them:
+gwas_variants_annotated <- annotate_variants(rsid = gwas_variants$rsid)
+````
+
 ### How to plot the gwas variants
 
 If you want to visualise the variants in a manhattan plot, you can use the *plot_manhattan_gwas* function:
 ````
-gwas_cat <- create_gwas("./vargen_data/")
+gwas_cat <- create_gwas()
 
 alzheimer_traits <- c("Alzheimer's disease", "Alzheimer's disease (late onset)", "Alzheimer's disease biomarkers", 
                       "Alzheimer's disease (cognitive decline)")
