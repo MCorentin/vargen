@@ -490,7 +490,8 @@ vargen_visualisation <- function(annotated_snps, outdir = "./", rsid_highlight,
 #' for both. The defualt is 2.
 #' @param pval_thresh: The cut off threshold for the p-values of the variants.
 #' @return Nothing; The KEGG pathways figures in a given or made directory.
-kegg_graph <- function(vargen_dir, output_dir, traits, chrs, title, genes, gene_mode = 3, pval_thresh) {
+kegg_graph <- function(vargen_dir, output_dir, traits, chrs, title, genes, gene_mode = 3,
+                       pval_thresh) {
   #Check if the minimum criteria for searching for trait have been met.
   if(is.null(vargen_dir) == FALSE && is.null(traits) == FALSE && is.null(chrs)){
     gwas_cat <- create_gwas(vargen_dir)
@@ -638,8 +639,36 @@ kegg_graph <- function(vargen_dir, output_dir, traits, chrs, title, genes, gene_
 #' by the user.
 #' @param traits: A vector containing the traits that can be seached for. Can be
 #' given as either a vector or as a single string.
-pathview_maker <- function(vargen_dir, output_dir, traits, title, pval_thresh){
-  if(is.null(vargen_dir) == FALSE){
+#' @param chrs: A vector containing the chromosomes that can be seached for.
+#' Can be given as either a vector or as a single string. Ex: "chr1"
+#' @param title: The title that each of the graphics will be given with a
+#' counter added.
+#' @param genes: The mapped and reported genes that are found in the file.
+#' @param gene_mode: The mode for selecting if the reported genes and the
+#' mapped genes should both be search for the given genes or if only one or the
+#' other should be.  0 is for mapped genes only, 1 is for only reported, 2 is
+#' for both. The defualt is 2.
+#' @param pval_thresh: The cut off threshold for the p-values of the variants.
+#' @param key_pos: The position of the key for the pathview figure given as either
+#' "topleft", "bottomleft", "topright", or "bottomright".
+#' @param view: The view for the pathview figure, either as the KEGG naitive or
+#' as Graphviz view. Setting to "T" sets the figures to KEGG naitive, "F" to
+#' Graphviz view.
+#' @param na_val_color: The color for the na values.
+#' @param low_col: The color for the low values values.
+#' @param low_cpd_col: The color for the low compound values.
+#' @param mid_col: The color for the mid values.
+#' @param mid_cpd_col: The color for the mid compound values.
+#' @param high_col: The color for the high values.
+#' @param high_cpd_col: The color for the high compound values.
+#' @return Nothing; The KEGG pathways figures in a given or made directory.
+pathview_maker <- function(vargen_dir, output_dir, traits, chrs, title, genes,
+                           gene_mode = 3, pval_thresh, key_pos = "topright",
+                           view = T, na_val_color = "gray", low_col = "green",
+                           low_cpd_col = "blue", mid_col = "gray",
+                           mid_cpd_col = "gray", high_col = "red",
+                           high_cpd_col = "yellow"){
+  if(is.null(vargen_dir) == FALSE && is.null(traits) == FALSE && is.null(chrs)){
     gwas_cat <- create_gwas(vargen_dir)
     for(trait in traits){
       if(!(trait %in% gwas_cat$`DISEASE/TRAIT`)){
@@ -650,8 +679,24 @@ pathview_maker <- function(vargen_dir, output_dir, traits, title, pval_thresh){
     variants_traits <- gwascat::subsetByTraits(x = gwas_cat, tr = traits)
     variants_traits <- variants_traits[which(IRanges::overlapsAny(variants_traits,
                                                                   gwas_cat))]
+  } else if (is.null(vargen_dir) == FALSE && is.null(traits) == FALSE
+             && is.null(chrs) == FALSE) {
+    for(trait in traits){
+      if(!(trait %in% gwas_cat$`DISEASE/TRAIT`)){
+        stop(paste0("gwas trait '", trait, "' not found in gwas catalog, stopping now."))
+      }
+    }
+
+    variants_traits_chrs <- gwascat::subsetByChromosome(x = gwas_cat, ch = chrs)
+    variants_traits_chrs <- variants_traits_chrs[which(IRanges::overlapsAny(variants_traits_chrs,
+                                                                          gwas_cat))]
+    variants_traits <- gwascat::subsetByTraits(x = variants_traits_chrs, tr = traits)
+    variants_traits <- variants_traits[which(IRanges::overlapsAny(variants_traits,
+                                                               gwas_cat))]
   } else if(is.null(vargen_dir)) {
     stop(paste0("No VarGen directory was found"))
+  } else {
+    variants_traits <- gwas_cat
   }
 
   cnt <- 1
@@ -664,7 +709,7 @@ pathview_maker <- function(vargen_dir, output_dir, traits, title, pval_thresh){
   # Remove the values without a matching Entrez ID
 
   if(nrow(kegg_path) == 0 || is.na(unique(kegg_path$"kegg_enzyme")[1])){
-    stop(paste0("No KEGG pathways found.  Try broading the search."))
+    stop(paste("No KEGG pathways found.  Try broading the search."))
   } else {
     variant_info <- cbind(variants_traits$"SNP_GENE_IDS", variants_traits$"P-VALUE", variants_traits$"SNP_ID_CURRENT")
     colnames(variant_info) <- cbind("ensembl_gene_id", "p-value", "id")
@@ -675,7 +720,7 @@ pathview_maker <- function(vargen_dir, output_dir, traits, title, pval_thresh){
     kegg_path <- subset(kegg_path, kegg_path[["kegg_enzyme"]] != "")
 
     sel.genes <- unique(subset(kegg_path, kegg_path[["p-value"]] >= pval_thresh)[["id"]])
-    sim.cpd.data <- sim.mol.data(mol.type="cpd", nmol=3000)
+    sim.cpd.data <- sim.mol.data(mol.type = "cpd", nmol = 3000)
     sel.cpds <- names(sim.cpd.data)[abs(sim.cpd.data) > 0.5]
 
     if(is.null(output_dir) || output_dir == " "){
@@ -695,30 +740,80 @@ pathview_maker <- function(vargen_dir, output_dir, traits, title, pval_thresh){
     if(is.null(title)){
       titleKey <- TRUE
     }
-  }
 
-  old_dir <- getwd()
-  for(kegg_pathway in kegg_path[["kegg_enzyme"]]){
-    setwd(output_dir)
-    # Separate pathway ID from the enzyme/s.
-    kegg_id <- unlist(strsplit(kegg_pathway, "\\+"))[1]
+    # Restrict it by p-value threshold
+    if(is.null(pval_thresh) == FALSE && is.null(genes) == TRUE){
+      kegg_paths <- subset(kegg_path, kegg_path[["p-value"]] >= pval_thresh)
+    } else if(is.null(pval_thresh) == TRUE && is.null(genes) == FALSE) {
+      if(gene_mode == 1){
+        kegg_paths_mapped <- subset(kegg_path, kegg_path[["mapped_genes"]] == genes)
+      } else if(gene_mode == 1) {
+        kegg_paths_reported <- subset(kegg_path, kegg_path[["reported_genes"]] == genes)
+      } else {
+        kegg_paths_mapped <- subset(kegg_paths, kegg_path[["mapped_genes"]] == genes)
+        kegg_paths_reported <- subset(kegg_paths, kegg_path[["reported_genes"]] == genes)
 
-    # Make the default title.
-    if (titleKey == TRUE) {
-      title <- paste0("map_", kegg_id, "_", kegg_path[["id"]][cnt])
+        if(nrow(kegg_paths_mapped) != 0 && nrow(kegg_paths_reported) != 0) {
+          kegg_path <- merge(x = kegg_paths_mapped, y = kegg_paths_reported, by = c("ensembl_gene_id", "kegg_enzyme", "rsid"), all = TRUE)
+        } else {
+          stop(paste("No KEGG pathways found. Try broading the search."))
+        }
+      }
     } else {
-      title <- paste0(cnt, "_", title)
-    }
-    pv.out <- pathview(gene.data = sel.genes, cpd.data = sel.cpds, pathway.id = kegg_id,
-                       species = "hsa", out.suffix = title, keys.align = "y",
-                       kegg.native = T, key.pos = "topright",
-                       limit = list(gene = 5, cpd = 2),
-                       bins = list(gene = 5, cpd = 2), na.col = "gray",
-                       discrete = list(gene = T, cpd = T))
-    cnt <- cnt + 1
-  }
+      kegg_path <- subset(kegg_path, kegg_path[["p-value"]] >= pval_thresh)
+      if(gene_mode == 1){
+        kegg_paths_mapped <- subset(kegg_path, kegg_path[["mapped_genes"]] == genes)
+      } else if(gene_mode == 1) {
+        kegg_paths_reported <- subset(kegg_path, kegg_path[["reported_genes"]] == genes)
+      } else {
+        kegg_paths_mapped <- subset(kegg_path, kegg_path[["mapped_genes"]] == genes)
+        kegg_paths_reported <- subset(kegg_path, kegg_path[["reported_genes"]] == genes)
 
-  setwd(old_dir)
+        if(nrow(kegg_paths_mapped) != 0 && nrow(kegg_paths_reported) != 0) {
+          kegg_path <- merge(x = kegg_paths_mapped, y = kegg_paths_reported, by = c("ensembl_gene_id", "kegg_enzyme", "rsid"), all = TRUE)
+        } else {
+          stop(paste("No KEGG pathways found. Try broading the search."))
+        }
+      }
+    }
+
+    #Check for pathview customization variables.
+    if(key_pos != "topright" || key_pos != "topleft" || key_pos != "bottomright" || key_pos != "bottomleft"){
+      key_pos = "topright"
+      paste("key position invalid, thus placing the key in the topright position.")
+    }
+    if(view != T || view != F){
+      view = T
+    }
+
+    old_dir <- getwd()
+    for(kegg_pathway in kegg_path[["kegg_enzyme"]]){
+      setwd(output_dir)
+      # Separate pathway ID from the enzyme/s.
+      kegg_id <- unlist(strsplit(kegg_pathway, "\\+"))[1]
+
+      # Make the default title.
+      if (titleKey == TRUE) {
+        title <- paste0("map_", kegg_id, "_", kegg_path[["id"]][cnt])
+      } else {
+        title <- paste0(cnt, "_", title)
+      }
+
+      pv.out <- pathview(gene.data = sel.genes, cpd.data = sel.cpds, pathway.id = kegg_id,
+                         species = "hsa", out.suffix = title, keys.align = "y",
+                         kegg.native = view, key.pos = key_pos,
+                         limit = list(gene = 5, cpd = 2),
+                         bins = list(gene = 5, cpd = 2), na.col = na_val_color,
+                         discrete = list(gene = T, cpd = T),
+                         low = list(gene = low_col, cpd = low_cpd_col),
+                         mid = list(gene = mid_col, cpd = mid_cpd_col),
+                         high = list(gene = high_col, cpd = high_cpd_col))
+      cnt <- cnt + 1
+    }
+
+    print(old_dir)
+    setwd(old_dir)
+  }
 }
 
 # ---- Visualization Helpers ----
