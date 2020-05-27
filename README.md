@@ -84,7 +84,7 @@ VarGen needs the following:
 
 - Optional R libraries (needed for the visualisation functions: *vargen_visualisation* and *plot_manhattan_gwas*):
 ````
-    Gviz (1.28.1)           ggbio (>= 1.32.0)       grDevices (>= 3.6.0)
+    Gviz (1.28.1)           ggbio (>= 1.32.0)
 ````
 
 To install the dependencies you can use the following command in R (it might take a while depending on your connection):
@@ -430,7 +430,9 @@ alzheimer_traits <- c("Alzheimer's disease", "Alzheimer's disease (late onset)",
 plot_manhattan_gwas(traits = alzheimer_traits, gwas_cat = gwas_cat)
 
 # Optional: if you want to save the plot as a pdf
-grDevices::dev.print(pdf, "./manhanttan_alzheimer.pdf")
+pdf("./manhanttan_alzheimer.pdf", width = 14)
+    plot_manhattan_gwas(traits = alzheimer_traits, gwas_cat = gwas_cat)
+dev.off()
 ````
 
 ![Example of manhanttan plot for alzheimer's disease](./images/manhattan_alzheimer.png?raw=true)
