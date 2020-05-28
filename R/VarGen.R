@@ -636,9 +636,9 @@ kegg_graph <- function(vargen_dir, output_dir = NULL, traits = NULL, chrs = NULL
     file_out<-file(paste(output_dir, "variants_without_kegg.txt"))
 
     # Restrict it by p-value threshold
-    if(is.null(pval_thresh) == FALSE && is.null(genes) == TRUE){
+    if(is.null(pval_thresh) == FALSE && is.null(genes)){
       kegg_paths <- subset(kegg_paths, kegg_paths[["p-value"]] >= pval_thresh)
-    } else if(is.null(pval_thresh) == TRUE && is.null(genes) == FALSE) {
+    } else if(is.null(pval_thresh) && is.null(genes) == FALSE) {
       if(gene_mode == 1){
         kegg_paths_mapped <- subset(kegg_paths, kegg_paths[["mapped_genes"]] == genes)
       } else if(gene_mode == 0) {
@@ -646,9 +646,10 @@ kegg_graph <- function(vargen_dir, output_dir = NULL, traits = NULL, chrs = NULL
       } else {
         kegg_paths_mapped <- subset(kegg_paths, kegg_paths[["mapped_genes"]] == genes)
         kegg_paths_reported <- subset(kegg_paths, kegg_paths[["reported_genes"]] == genes)
-
         kegg_paths <- merge(x = kegg_paths_mapped, y = kegg_paths_reported, by = c("ensembl_gene_id",
-                                                                                   "kegg_enzyme", "rsid"), all = TRUE)
+                                                                                   "kegg_enzyme", "rsid",
+                                                                                   "p-value", "mapped_gene",
+                                                                                   "reported_genes"), all = TRUE)
       }
     } else if(is.null(pval_thresh) == FALSE && is.null(genes) == FALSE) {
       kegg_paths <- subset(kegg_paths, kegg_paths[["p-value"]] >= pval_thresh)
@@ -661,8 +662,14 @@ kegg_graph <- function(vargen_dir, output_dir = NULL, traits = NULL, chrs = NULL
         kegg_paths_reported <- subset(kegg_paths, kegg_paths[["reported_genes"]] == genes)
 
         kegg_paths <- merge(x = kegg_paths_mapped, y = kegg_paths_reported, by = c("ensembl_gene_id",
-                                                                                   "kegg_enzyme", "rsid"), all = TRUE)
+                                                                                   "kegg_enzyme", "rsid"
+                                                                                   , "p-value", "mapped_gene",
+                                                                                   "reported_genes"), all = TRUE)
       }
+    }
+
+    if(nrow(kegg_paths) == 0){
+      print("No KEGG pathways available for this search request. Try broading search if possible.")
     }
 
     for(kegg_pathway in kegg_paths[["kegg_enzyme"]]){
@@ -801,6 +808,7 @@ pathview_maker <- function(vargen_dir, output_dir = NULL, traits = NULL,
                                                                   gwas_cat))]
   } else if (is.null(vargen_dir) == FALSE && is.null(traits) == FALSE
              && is.null(chrs) == FALSE) {
+    gwas_cat <- create_gwas(vargen_dir)
     for(trait in traits){
       if(!(trait %in% gwas_cat$`DISEASE/TRAIT`)){
         stop(paste0("gwas trait '", trait, "' not found in gwas catalog, stopping now."))
@@ -845,7 +853,6 @@ pathview_maker <- function(vargen_dir, output_dir = NULL, traits = NULL,
       sel.genes <- unique(kegg_path[["id"]])
       sel.cpds <- unique(kegg_path[["kegg_enzyme"]])
     }
-    print(kegg_path)
 
     if(is.null(output_dir) || output_dir == " "){
       # Make the proper output directory if one isn't given.
