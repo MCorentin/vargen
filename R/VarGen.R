@@ -492,7 +492,7 @@ vargen_visualisation <- function(annotated_snps, outdir = "./", rsid_highlight,
 #' @return Nothing; The KEGG pathways figures in a given or default directory.
 kegg_graph <- function(vargen_dir, output_dir = NULL, traits = NULL,
                        chrs = NULL, title = NULL, genes = NULL, gene_mode = 2,
-                       pval_thresh = NULL) {
+                       pval_thresh = NULL, color = NULL) {
   # ______________________________________________________________________
   # 1. Check that the minimum information is correct and given and if not
   # given a proper warning to the user. Checks:
@@ -561,6 +561,10 @@ kegg_graph <- function(vargen_dir, output_dir = NULL, traits = NULL,
         output_dir <- paste0(getwd(), "/", "KEGG_images/")
       }
     }
+  }
+
+  if(is.null(color)){
+    color = "#da8cde"
   }
 
   # ______________________________________________________________________
@@ -738,7 +742,7 @@ kegg_graph <- function(vargen_dir, output_dir = NULL, traits = NULL,
               for(j in 1:length(index)){
                 matched <- c(matched, kegg_genes[index[j]])
               }
-              fg[index] <- "#61c5ed"
+              fg[index] <- color
               bg[index] <- "#000000"
             } else {
               index <- c(NA)
@@ -752,7 +756,7 @@ kegg_graph <- function(vargen_dir, output_dir = NULL, traits = NULL,
               for(j in 1:length(index)){
                 matched <- c(matched, kegg_genes[index[j]])
               }
-              fg[index] <- "#da8cde"
+              fg[index] <- color
               bg[index] <- "#000000"
             } else {
               index <- c(NA)
@@ -767,7 +771,7 @@ kegg_graph <- function(vargen_dir, output_dir = NULL, traits = NULL,
               for(j in 1:length(index)){
                 matched <- c(matched, kegg_genes[index[j]])
               }
-              fg[index] <- "#61c5ed"
+              fg[index] <- color
               bg[index] <- "#000000"
             }
           }
@@ -778,7 +782,7 @@ kegg_graph <- function(vargen_dir, output_dir = NULL, traits = NULL,
               for(j in 1:length(index)){
                 matched <- c(matched, kegg_genes[index[j]])
               }
-              fg[index] <- "#da8cde"
+              fg[index] <- color
               bg[index] <- "#000000"
             }
           }
@@ -813,7 +817,10 @@ kegg_graph <- function(vargen_dir, output_dir = NULL, traits = NULL,
 
         writeLines(c(kegg_paths[["rsid"]][cnt]), file_out)
 
-        print(missing_cnt)
+        if(file.exists(paste(output_dir, title, sep = ""))){
+          file_cnt <- sapply(output_dir, function(output_dir){length(list.files(output_dir, pattern = title))})
+          title <- paste0(file_cnt, "_", title, sep = "")
+        }
 
         download.file(url, paste(output_dir, title, sep = ""), mode="wb")
 
