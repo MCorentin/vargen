@@ -490,7 +490,9 @@ vargen_visualisation <- function(annotated_snps, outdir = "./", rsid_highlight,
 #' for both. The defualt is 2.
 #' @param pval_thresh: The cut off threshold for the p-values of the variants.
 #' @return Nothing; The KEGG pathways figures in a given or default directory.
-kegg_graph <- function(vargen_dir, output_dir = NULL, traits = NULL, chrs = NULL, title = NULL, genes = NULL, gene_mode = 2, pval_thresh = NULL) {
+kegg_graph <- function(vargen_dir, output_dir = NULL, traits = NULL,
+                       chrs = NULL, title = NULL, genes = NULL, gene_mode = 2,
+                       pval_thresh = NULL) {
   # ______________________________________________________________________
   # 1. Check that the minimum information is correct and given and if not
   # given a proper warning to the user. Checks:
@@ -712,28 +714,112 @@ kegg_graph <- function(vargen_dir, output_dir = NULL, traits = NULL, chrs = NULL
     # the rsids that were aquired by filtered out due to the p-value
     # threshold.
     # ______________________________________________________________________
+    index <- c()
     for(kegg_pathway in kegg_paths[["kegg_enzyme"]]){
       # Separate pathway ID from the enzyme/s.
-      kegg_id <- unlist(strsplit(kegg_pathway, "\\+"))[1]
-      png <- KEGGREST::keggGet(paste0("hsa", kegg_id), option = "image")
-      # Make the default title.
-      if (titleKey == TRUE) {
-        if(file.exists(paste0(output_dir, "hsa_", kegg_id, "_kegg.png")) == FALSE){
-          title <- paste0("hsa_", kegg_id, "_kegg.png")
-        }
-      } else {
-        if(file.exists(paste0(output_dir, cnt, "_", title)) == FALSE){
-          title <- paste0(cnt, "_", title)
+      kegg_path_id <- unlist(strsplit(kegg_pathway, "\\+"))[1]
+      #Get the list of numbers, gene symbols and gene description
+      kegg_genes <- KEGGREST::keggGet(paste0("hsa", kegg_path_id))[[1]]$GENE
+
+      kegg_id <- kegg_genes[seq(1, length(kegg_genes), 2)]
+
+      kegg_genes <- kegg_genes[seq(0, length(kegg_genes), 2)]
+      kegg_genes <- gsub("\\;.*","",kegg_genes)
+
+      fg <- rep()
+      bg <- rep()
+      matched <- c()
+
+      if(is.na(unique(kegg_paths[["mapped_gene"]])) == FALSE){
+        if(gene_mode == 1){
+          for(i in 1:length(unique(kegg_paths[["mapped_gene"]]))) {
+            if(is.na(match(unique(kegg_paths[["mapped_gene"]])[i], kegg_genes)) == FALSE){
+              index <- c(index, match(unique(kegg_paths[["mapped_gene"]])[i], kegg_genes))
+              for(j in 1:length(index)){
+                matched <- c(matched, kegg_genes[index[j]])
+              }
+              fg[index] <- "#61c5ed"
+              bg[index] <- "#000000"
+            } else {
+              index <- c(NA)
+              matched <- c(NA)
+            }
+          }
+        } else if(gene_mode == 0) {
+          for(i in 1:length(unique(kegg_paths[["reported_genes"]]))) {
+            if(is.na(match(unique(kegg_paths[["reported_genes"]])[i], kegg_genes)) == FALSE){
+              index <- c(index, match(unique(kegg_paths[["reported_genes"]])[i], kegg_genes))
+              for(j in 1:length(index)){
+                matched <- c(matched, kegg_genes[index[j]])
+              }
+              fg[index] <- "#da8cde"
+              bg[index] <- "#000000"
+            } else {
+              index <- c(NA)
+              matched <- c(NA)
+            }
+          }
+        } else if(gene_mode == 2) {
+          for(i in 1:length(unique(kegg_paths[["mapped_gene"]]))) {
+            if(is.na(match(unique(kegg_paths[["mapped_gene"]])[i], kegg_genes)) == FALSE){
+              index <- c(index, match(unique(kegg_paths[["mapped_gene"]])[i], kegg_genes))
+
+              for(j in 1:length(index)){
+                matched <- c(matched, kegg_genes[index[j]])
+              }
+              fg[index] <- "#61c5ed"
+              bg[index] <- "#000000"
+            }
+          }
+          for(i in 1:length(unique(kegg_paths[["reported_genes"]]))) {
+            if(is.na(match(unique(kegg_paths[["reported_genes"]])[i], kegg_genes)) == FALSE){
+              # This might cause an error... needs testing.
+              append(index, c(index, match(unique(kegg_paths[["reported_genes"]])[i], kegg_genes)), length(index))
+              for(j in 1:length(index)){
+                matched <- c(matched, kegg_genes[index[j]])
+              }
+              fg[index] <- "#da8cde"
+              bg[index] <- "#000000"
+            }
+          }
         }
       }
 
-      writeLines(c(kegg_paths[["rsid"]][cnt]), file_out)
+      if(is.null(fg) == FALSE && is.null(matched) == FALSE){
+        matched <- na.omit(matched)
+        df <- data.frame(kegg_genes, kegg_id)
+        df <- df[is.element(df$"kegg_gene", matched),]
 
-      print(paste0("Making figure ", cnt, " out of ", nrow(kegg_paths)))
-      png::writePNG(image = png, target = paste(output_dir, title, sep = ""))
-      cnt <- cnt + 1
+        temp <- df[["kegg_id"]]
+        for(i in 1:length(df[["kegg_id"]])) {
+          temp[i] <- paste("hsa:", df[["kegg_id"]][i], sep = "")
+        }
+        kegg_id <- temp
+
+        kegg_genes <- df[["kegg_genes"]]
+
+        url <- KEGGREST::color.pathway.by.objects(paste("path:hsa", kegg_path_id, sep = ""),
+                                                    unlist(strsplit(kegg_genes, ",")),
+                                                    fg.color.list = unlist(strsplit(fg[!is.na(fg)], ",")),
+                                                    bg.color.list = unlist(strsplit(bg[!is.na(bg)], ",")))
+
+        if (titleKey == TRUE) {
+          title <- paste0("hsa_", kegg_path_id, "_kegg.png")
+        } else {
+          if(file.exists(paste0(output_dir, cnt, "_", title)) == FALSE){
+            title <- paste0(cnt, "_", title)
+          }
+        }
+
+        writeLines(c(kegg_paths[["rsid"]][cnt]), file_out)
+
+        print(missing_cnt)
+
+        download.file(url, paste(output_dir, title, sep = ""), mode="wb")
+
+        cnt <- cnt + 1
+      }
     }
-
     close(file_out)
   }
 }
