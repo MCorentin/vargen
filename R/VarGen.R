@@ -512,6 +512,52 @@ vargen_visualisation <- function(annotated_snps, outdir = "./", rsid_highlight,
 #' for both. The defualt is 2.
 #' @param pval_thresh: The cut off threshold for the p-values of the variants.
 #' @return Nothing; The KEGG pathways figures in a given or default directory.
+#' @title Makes the KEGG graphs for a selected variant.
+#' @description Allows for the KEGG graphs to be output into a directory, but
+#' also allows for KEGG graphs to be generated based upon a seach of a gene/genes,
+#' or by the fathmm score threshold. The default name of the image will be the
+#' name of the kegg_id unless other wise specfied.  They will be
+#' placed into a directory made labeled KEGG_images.
+#' @param vargen_dir: The directory that the VarGen information has been
+#' download to or is being stored in.
+#' @param output_dir: The directory where the files will be put as desired
+#' by the user.
+#' @param traits: A vector containing the traits that can be seached for. Can be
+#' given as either a vector or as a single string.
+#' @param chrs: A vector containing the chromosomes that can be seached for.
+#' Can be given as either a vector or as a single string. Ex: "chr1"
+#' @param title: The title that each of the graphics will be given with a
+#' counter added.
+#' @param genes: The mapped and reported genes that are found in the file.
+#' @param gene_mode: The mode for selecting if the reported genes and the
+#' mapped genes should both be search for the given genes or if only one or the
+#' other should be.  0 is for mapped genes only, 1 is for only reported, 2 is
+#' for both. The defualt is 2.
+#' @param pval_thresh: The cut off threshold for the p-values of the variants.
+#' @return Nothing; The KEGG pathways figures in a given or default directory.
+#' @title Makes the KEGG graphs for a selected variant.
+#' @description Allows for the KEGG graphs to be output into a directory, but
+#' also allows for KEGG graphs to be generated based upon a seach of a gene/genes,
+#' or by the fathmm score threshold. The default name of the image will be the
+#' name of the kegg_id unless other wise specfied.  They will be
+#' placed into a directory made labeled KEGG_images.
+#' @param vargen_dir: The directory that the VarGen information has been
+#' download to or is being stored in.
+#' @param output_dir: The directory where the files will be put as desired
+#' by the user.
+#' @param traits: A vector containing the traits that can be seached for. Can be
+#' given as either a vector or as a single string.
+#' @param chrs: A vector containing the chromosomes that can be seached for.
+#' Can be given as either a vector or as a single string. Ex: "chr1"
+#' @param title: The title that each of the graphics will be given with a
+#' counter added.
+#' @param genes: The mapped and reported genes that are found in the file.
+#' @param gene_mode: The mode for selecting if the reported genes and the
+#' mapped genes should both be search for the given genes or if only one or the
+#' other should be.  0 is for mapped genes only, 1 is for only reported, 2 is
+#' for both. The defualt is 2.
+#' @param pval_thresh: The cut off threshold for the p-values of the variants.
+#' @return Nothing; The KEGG pathways figures in a given or default directory.
 kegg_graph <- function(vargen_dir, output_dir = NULL, traits = NULL,
                        chrs = NULL, title = NULL, genes = NULL, gene_mode = 2,
                        rsids = NULL, pval_thresh = NULL, color = "#da8cde",
@@ -546,7 +592,7 @@ kegg_graph <- function(vargen_dir, output_dir = NULL, traits = NULL,
 
   # Check that the p-value is valid.
   if(typeof(pval_thresh) != "double" && is.null(pval_thresh) == FALSE) {
-    if(is.na(as.double(pval_thresh))){
+    if(anyNA(as.double(pval_thresh))){
       print(paste0("p-value threshold could not be converted to a double from the given value: ",
                    pval_thresh, ". No pvalue threshold will be used."))
       pval_thresh <- NULL
@@ -563,7 +609,7 @@ kegg_graph <- function(vargen_dir, output_dir = NULL, traits = NULL,
                  bad_chrs, ". Cleaning up bad entries to fit entry format as possible."))
 
     for(i in 1:length(bad_chrs)){
-      if(is.na(as.double(bad_chrs[i])) == FALSE) {
+      if(anyNA(as.double(bad_chrs[i])) == FALSE) {
         bad_chrs[i] <- paste("chr", bad_chrs[i], sep = "")
       } else {
         bad_chrs <- bad_chrs[bad_chrs!= bad_chrs[i]]
@@ -1001,6 +1047,190 @@ kegg_graph <- function(vargen_dir, output_dir = NULL, traits = NULL,
     gwas_cat <- create_gwas(vargen_dir)
     variants_traits <- gwas_cat
   }
+
+  # ______________________________________________________________________
+  # 3. Get KEGG pathways for the filtered variants above.
+  # ______________________________________________________________________
+  kegg_path <- biomaRt::getBM(
+    attributes = c("kegg_enzyme", "ensembl_gene_id"),
+    filters = c("ensembl_gene_id"),
+    values = variants_traits$"SNP_GENE_IDS",
+    mart = connect_to_gene_ensembl(), uniqueRows = TRUE)
+
+  # ______________________________________________________________________
+  # 4. Make the directory and title as fit given the parameter inputs.
+  # ______________________________________________________________________
+  if(nrow(kegg_path) == 0 || anyNA(unique(kegg_path$"kegg_enzyme")[1])){
+    stop(paste0("No KEGG pathways found.  Try broading the search."))
+  } else {
+    variant_info <- cbind(variants_traits$"SNPS", variants_traits$"SNP_GENE_IDS",
+                          variants_traits$"P-VALUE", variants_traits$"MAPPED_GENE",
+                          variants_traits$"REPORTED GENE(S)")
+    colnames(variant_info) <- cbind("rsid", "ensembl_gene_id", "p-value", "mapped_genes", "reported_genes")
+    variant_info <- merge(x = variant_info, y = kegg_path, by = "ensembl_gene_id", all.x = TRUE)
+
+    if(is.null(output_dir) || output_dir == " " || is.double(output_dir)){
+      # Make the proper output directory if one isn't given.
+      if(.Platform$OS.type == "windows"){
+        dir.create("KEGG_images")
+        output_dir <- paste0(getwd(), "\\", "KEGG_images\\")
+      } else {
+        dir.create("KEGG_images")
+        output_dir <- paste0(getwd(), "/", "KEGG_images/")
+      }
+    } else {
+      output_dir <- paste0(output_dir, "/", "KEGG_images/")
+    }
+    # Check if the title is given.
+    titleKey <- FALSE
+    if(is.null(title)){
+      titleKey <- TRUE
+    }
+
+    # ______________________________________________________________________
+    # 5. Subset and restrict the variants by the pathways and the p-values.
+    # In this section the genes are also gone through for each mode (either
+    # reported, mapped or both) as well.
+    # ______________________________________________________________________
+    cnt <- 1
+    # Remove values without a KEGG pathway.
+    kegg_paths <- subset(variant_info, anyNA(variant_info[["kegg_enzyme"]]) == FALSE)
+    kegg_paths <- subset(kegg_paths, kegg_paths[["kegg_enzyme"]] != "")
+
+    # Get the values that are missing KEGG pathways.
+    kegg_paths_na <- subset(variant_info, anyNA(variant_info[["kegg_enzyme"]]) == TRUE)
+    if(is.null(pval_thresh) == FALSE){
+      kegg_paths_na <- subset(kegg_paths_na, kegg_paths_na[["p-value"]] >= pval_thresh)
+    }
+    # Write output to text file in same directory of values not found with KEGG pathways
+    # in the next for loop.
+    file_out<-file(paste(output_dir, "variants_without_kegg.txt"))
+
+    fg <- rep()
+    bg <- rep()
+    # Restrict it by p-value threshold
+    if(is.null(pval_thresh) == FALSE){
+      kegg_paths <- subset(kegg_paths, kegg_paths[["p-value"]] >= pval_thresh)
+
+    }
+
+    if(nrow(kegg_paths) == 0){
+      print("No KEGG pathways available for this search request. Try broading search if possible.")
+    }
+    # ______________________________________________________________________
+    # 6. Output KEGG pathways for each pathway in the output firectory
+    # assuming it doesn't already exist. Also write the file containing
+    # the rsids that were aquired by filtered out due to the p-value
+    # threshold.
+    # ______________________________________________________________________
+    index <- c()
+    for(kegg_pathway in kegg_paths[["kegg_enzyme"]]){
+      # Separate pathway ID from the enzyme/s.
+      kegg_path_id <- unlist(strsplit(kegg_pathway, "\\+"))[1]
+      #Get the list of numbers, gene symbols and gene description
+      kegg_genes <- KEGGREST::keggGet(paste0("hsa", kegg_path_id))[[1]]$GENE
+
+      kegg_id <- kegg_genes[seq(1, length(kegg_genes), 2)]
+
+      kegg_genes <- kegg_genes[seq(0, length(kegg_genes), 2)]
+      kegg_genes <- gsub("\\;.*","",kegg_genes)
+
+      matched <- c()
+
+      if(anyNA(unique(kegg_paths[["mapped_gene"]])) == FALSE){
+        if(gene_mode == 1){
+          for(i in 1:length(unique(kegg_paths[["mapped_gene"]]))) {
+            if(anyNA(match(unique(kegg_paths[["mapped_gene"]])[i], kegg_genes)) == FALSE){
+              index <- c(index, match(unique(kegg_paths[["mapped_gene"]])[i], kegg_genes))
+              for(j in 1:length(index)){
+                matched <- c(matched, kegg_genes[index[j]])
+              }
+              fg[index] <- color
+              bg[index] <- "#000000"
+            } else {
+              index <- c(NA)
+              matched <- c(NA)
+            }
+          }
+        } else if(gene_mode == 0) {
+          for(i in 1:length(unique(kegg_paths[["reported_genes"]]))) {
+            if(anyNA(match(unique(kegg_paths[["reported_genes"]])[i], kegg_genes)) == FALSE){
+              index <- c(index, match(unique(kegg_paths[["reported_genes"]])[i], kegg_genes))
+              for(j in 1:length(index)){
+                matched <- c(matched, kegg_genes[index[j]])
+              }
+              fg[index] <- color
+              bg[index] <- "#000000"
+            } else {
+              index <- c(NA)
+              matched <- c(NA)
+            }
+          }
+        } else if(gene_mode == 2) {
+          for(i in 1:length(unique(kegg_paths[["mapped_gene"]]))) {
+            if(anyNA(match(unique(kegg_paths[["mapped_gene"]])[i], kegg_genes)) == FALSE){
+              index <- c(index, match(unique(kegg_paths[["mapped_gene"]])[i], kegg_genes))
+
+              for(j in 1:length(index)){
+                matched <- c(matched, kegg_genes[index[j]])
+              }
+              fg[index] <- color
+              bg[index] <- "#000000"
+            }
+          }
+          for(i in 1:length(unique(kegg_paths[["reported_genes"]]))) {
+            if(is.na(match(unique(kegg_paths[["reported_genes"]])[i], kegg_genes)) == FALSE){
+              # This might cause an error... needs testing.
+              append(index, c(index, match(unique(kegg_paths[["reported_genes"]])[i], kegg_genes)), length(index))
+              for(j in 1:length(index)){
+                matched <- c(matched, kegg_genes[index[j]])
+              }
+              fg[index] <- color
+              bg[index] <- "#000000"
+            }
+          }
+        }
+      }
+      if(is.null(fg) == FALSE && is.null(matched) == FALSE){
+        matched <- na.omit(matched)
+        df <- data.frame(kegg_genes, kegg_id)
+        df <- df[is.element(df$"kegg_gene", matched),]
+
+        temp <- df[["kegg_id"]]
+        for(i in 1:length(df[["kegg_id"]])) {
+          temp[i] <- paste("hsa:", df[["kegg_id"]][i], sep = "")
+        }
+        kegg_id <- temp
+
+        kegg_genes <- df[["kegg_genes"]]
+
+        url <- KEGGREST::color.pathway.by.objects(paste("path:hsa", kegg_path_id, sep = ""),
+                                                  unlist(strsplit(kegg_genes, ",")),
+                                                  fg.color.list = unlist(strsplit(fg[!anyNA(fg)], ",")),
+                                                  bg.color.list = unlist(strsplit(bg[!anyNA(bg)], ",")))
+
+        if (titleKey == TRUE) {
+          title <- paste0("hsa_", kegg_path_id, "_kegg.png")
+        } else {
+          if(file.exists(paste0(output_dir, cnt, "_", title)) == FALSE){
+            title <- paste0(cnt, "_", title)
+          }
+        }
+
+        writeLines(c(kegg_paths[["rsid"]][cnt]), file_out)
+
+        if(file.exists(paste(output_dir, title, sep = ""))){
+          file_cnt <- sapply(output_dir, function(output_dir){length(list.files(output_dir, pattern = title))})
+          title <- paste0(file_cnt, "_", title, sep = "")
+        }
+
+        download.file(url, paste(output_dir, title, sep = ""), mode="wb")
+
+        cnt <- cnt + 1
+      }
+    }
+    close(file_out)
+  }
 }
 
 
@@ -1273,112 +1503,6 @@ pathview_maker <- function(vargen_dir, output_dir = NULL, traits = NULL,
 
     setwd(old_dir)
   }
-}
-
-# ---- Visualization Helpers ----
-
-#' @title Add Entrez IDs to the master info data file list
-#' @description Gets the uniprot ids that correlate to the
-#' ensemble ids and adds them to the master_variants info dataframe:
-#' @param gene_mart: The DB in which the KEGG information is searched for
-#' @param gene_ids: The list of ensembl gene IDs
-#' @return nothing, saves the separate pathway ID and images
-get_pathview_info <- function(gene_ids, master_variants){
-  print("Connecting to biomaRt to retrieve information.")
-  #1. Connect to biomaRt to retrieve the uniprot ids.
-  entrez_variants <- biomaRt::getBM(
-    attributes = c("hgnc_symbol", "entrezgene_id", "ensembl_gene_id", "kegg_enzyme"),
-    filters = c("ensembl_gene_id"),
-    values = gene_ids,
-    mart = gene_mart, uniqueRows = TRUE)
-
-  print("Merging the datasets with the new ensemble information.")
-  #2. Merge the datasets with the new ensemble information.
-  master_variants <- merge(x = master_variants, y = entrez_variants, by.x = c("ensembl_gene_id", "hgnc_symbol"),
-                           by.y = c("ensembl_gene_id", "hgnc_symbol"), all.x = TRUE)
-
-  print("Getting the variants that have duplicates.")
-  #3. Get the variants that have duplicates to their assigned variables as
-  # they don't match as they currently are.
-  multi_variants <- multi_var_mart_helper(gene_ids, master_variants)
-
-  print("Reorganizing the columns.")
-  #4. Reorganize the columns.
-  master_variants <- master_variants[,c(3,5,1,16,2,3,4,6,7,8,9,10,11,12,13,14,15,16,17)]
-
-  print("Replacing the ID for sepcial cases.")
-  #5. Replace and Find the ID for the ensemble IDs that have multiple ones per variant.
-  cnt = 1
-  printCnt = 1
-  entrezgene_bundle = ""
-  for (variant_bundle in multi_variants[["ensembl_gene_id"]]) {
-    variantLST = strsplit(variant_bundle, ",")
-    # Look through the bundles to find each one in the mart and then
-    # add it to the master_variants.
-    while(cnt <= lengths(variantLST)){
-      entrez_variants <- biomaRt::getBM(
-        attributes = c("hgnc_symbol", "entrezgene_id", "ensembl_gene_id"),
-        filters = c("ensembl_gene_id"),
-        values = c(variantLST[[1]][[cnt]]),
-        mart = gene_mart,
-        uniqueRows = TRUE)
-      # If the datasethas no value for the entrezgene ID then it
-      # has an NA added to that position in the string.  If it
-      # does then it adds the ID.
-      if(dim(entrez_variants)[[1]] != 0){
-        if(nchar(entrezgene_bundle) != 0){
-          entrezgene_bundle = paste((paste(paste(entrezgene_bundle, ","),
-                                           entrez_variants[["entrezgene_id"]])), ",")
-        } else {
-          entrezgene_bundle = paste(entrez_variants[["entrezgene_id"]], ",")
-        }
-      } else {
-        if(nchar(entrezgene_bundle) != 0){
-          entrezgene_bundle = paste(paste(entrezgene_bundle, "NA"), ",")
-        } else {
-          entrezgene_bundle = paste("NA", ",")
-        }
-      }
-
-      if(cnt == lengths(variantLST)) {
-        print(paste0("finished changing ", printCnt, " out of ", nrow(multi_variants)))
-        # Todo find where the variants match in the dataframe and
-        # replace the missing values with the found ids.
-        entrezgene_bundle <- substr(entrezgene_bundle, 1, nchar(entrezgene_bundle) -1)
-        master_variants[["entrezgene_id"]][which(master_variants[["ensembl_gene_id"]] == variant_bundle)] <- entrezgene_bundle
-        cnt = 1
-        printCnt = printCnt + 1
-        entrezgene_bundle = ""
-        break;
-      }
-      cnt = cnt + 1
-    }
-  }
-
-  master_variants[["rsid.1"]] <- NULL
-  master_variants[["entrezgene_id.1"]] <- NULL
-
-  return(master_variants)
-}
-
-#' Gets the uniprot ids that correlate to the ensemble ids and
-#' adds them to the master_variants info dataframe:
-#' @param params: The list of ensembl gene IDs
-#' @param master_variants: The DB in which the information is stored
-#' @return The subsetted dataframe containing only variants with two or more IDs
-multi_var_mart_helper <- function(params, master_variants){
-  size = 0
-  #Get the size for a single ensembe_gene_id
-  for(param in params){
-    if(is.null(strsplit(param, ",")[[1]]) == FALSE || strsplit(param, ",")[[1]] == ""){
-      size = nchar(strsplit(param, ",")[[1]])
-      break;
-    }
-  }
-  # Subset the data based on those only with multiple values.
-  master_variants <- master_variants[nchar(master_variants[["mapped_genes"]]) > size*2,]
-
-  return(master_variants)
 }
 
 
