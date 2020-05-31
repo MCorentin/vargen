@@ -466,7 +466,29 @@ vargen_visualisation <- function(annotated_snps, outdir = "./", rsid_highlight,
 }
 
 #---- Visualizations ----
-
+#' @title Makes the KEGG graphs for a selected variant.
+#' @description Allows for the KEGG graphs to be output into a directory, but
+#' also allows for KEGG graphs to be generated based upon a seach of a gene/genes,
+#' or by the fathmm score threshold. The default name of the image will be the
+#' name of the kegg_id unless other wise specfied.  They will be
+#' placed into a directory made labeled KEGG_images.
+#' @param vargen_dir: The directory that the VarGen information has been
+#' download to or is being stored in.
+#' @param output_dir: The directory where the files will be put as desired
+#' by the user.
+#' @param traits: A vector containing the traits that can be seached for. Can be
+#' given as either a vector or as a single string.
+#' @param chrs: A vector containing the chromosomes that can be seached for.
+#' Can be given as either a vector or as a single string. Ex: "chr1"
+#' @param title: The title that each of the graphics will be given with a
+#' counter added.
+#' @param genes: The mapped and reported genes that are found in the file.
+#' @param gene_mode: The mode for selecting if the reported genes and the
+#' mapped genes should both be search for the given genes or if only one or the
+#' other should be.  0 is for mapped genes only, 1 is for only reported, 2 is
+#' for both. The defualt is 2.
+#' @param pval_thresh: The cut off threshold for the p-values of the variants.
+#' @return Nothing; The KEGG pathways figures in a given or default directory.
 #' @title Makes the KEGG graphs for a selected variant.
 #' @description Allows for the KEGG graphs to be output into a directory, but
 #' also allows for KEGG graphs to be generated based upon a seach of a gene/genes,
@@ -492,7 +514,8 @@ vargen_visualisation <- function(annotated_snps, outdir = "./", rsid_highlight,
 #' @return Nothing; The KEGG pathways figures in a given or default directory.
 kegg_graph <- function(vargen_dir, output_dir = NULL, traits = NULL,
                        chrs = NULL, title = NULL, genes = NULL, gene_mode = 2,
-                       pval_thresh = NULL, color = NULL) {
+                       rsids = NULL, pval_thresh = NULL, color = "#da8cde",
+                       pval_low_col = "#09873e", pval_high_col = "#1254c7") {
   # ______________________________________________________________________
   # 1. Check that the minimum information is correct and given and if not
   # given a proper warning to the user. Checks:
@@ -505,26 +528,32 @@ kegg_graph <- function(vargen_dir, output_dir = NULL, traits = NULL,
   # if they're able to be corrected.
   # E. Checks if output directory exists and if it doesn't then it creates
   # the directory in the current directory.
+  # F. Checks that the rsids are not NA
+  # G. Checks the colors are not null or na
   # ______________________________________________________________________
+  # Check the directory exists for the VarGen data.
   if(dir.exists(vargen_dir) == FALSE){
     stop(paste0("The directory used for vargen_dir: ", vargen_dir,
                 " was not found in the current directory ", getwd()))
   }
 
-  if(gene_mode != 0 || gene_mode != 1 || gene_mode != 2) {
-    paste0("Gene_mode: ", gene_mode,
-           " does not exist so the default mode of 2 is being used instead.")
+  # Check that the genes are valid.
+  if(!(gene_mode %in% c(0,1,2))) {
+    print(paste0("Gene_mode: ", gene_mode,
+                 " does not exist so the default mode of 2 is being used instead."))
     gene_mode <- 2
   }
 
+  # Check that the p-value is valid.
   if(typeof(pval_thresh) != "double" && is.null(pval_thresh) == FALSE) {
     if(is.na(as.double(pval_thresh))){
-        print(paste0("p-value threshold could not be converted to a double from the given value: ",
-                     pval_thresh, ". No pvalue threshold will be used."))
-        pval_thresh <- NULL
+      print(paste0("p-value threshold could not be converted to a double from the given value: ",
+                   pval_thresh, ". No pvalue threshold will be used."))
+      pval_thresh <- NULL
     }
   }
 
+  # Check if the chromosome/s are valid and if they are not attempt to fix them.
   if(length(grep("chr[0-9]", x = chrs)) != length(chrs)){
     #Separate the bad and good chromosomes
     bad_chrs <- chrs[!(chrs %in% chrs[grep("chr[0-9]", x = chrs)])]
@@ -540,7 +569,6 @@ kegg_graph <- function(vargen_dir, output_dir = NULL, traits = NULL,
         bad_chrs <- bad_chrs[bad_chrs!= bad_chrs[i]]
       }
     }
-
     if(length(good_chrs) != 0){
       chrs <- c(good_chrs, bad_chrs)
       print(paste("These are the remaining chromosomes after fixing: ", chrs))
@@ -550,21 +578,44 @@ kegg_graph <- function(vargen_dir, output_dir = NULL, traits = NULL,
     }
   }
 
+  # Check if the output directory exists and if it doesn't then make it.
   if(is.null(output_dir) == FALSE) {
     if(dir.exists(output_dir) == FALSE) {
       # Make the proper output directory if one isn't given.
       if(.Platform$OS.type == "windows"){
-        dir.create("KEGG_images")
+        if(dir.exists(paste0(getwd(), "\\", "KEGG_images\\")) == FALSE){
+          dir.create("KEGG_images")
+        }
         output_dir <- paste0(getwd(), "\\", "KEGG_images\\")
       } else {
-        dir.create("KEGG_images")
+        if(dir.exists(paste0(getwd(), "/", "KEGG_images/")) == FALSE){
+          dir.create("KEGG_images")
+        }
         output_dir <- paste0(getwd(), "/", "KEGG_images/")
       }
     }
   }
 
-  if(is.null(color)){
+  # If a rsid is given then search just by the rsid and not by any other params even
+  # if they have been given. A default title should made for each rsid as well and
+  # not just the default.
+  if(anyNA(rsids)) {
+    rsids = NULL
+  } else if(is.null(rsids) == FALSE) {
+    traits = NULL
+    genes = NULL
+    chrs = NULL
+  }
+
+  # Check that the colors are properly set.
+  if(is.null(color) || anyNA(color)){
     color = "#da8cde"
+  }
+  if(is.null(pval_high_col) || anyNA(pval_high_col)){
+    color = "#1254c7"
+  }
+  if(is.null(pval_low_col) || anyNA(pval_low_col)){
+    color = "#09873e"
   }
 
   # ______________________________________________________________________
@@ -572,8 +623,9 @@ kegg_graph <- function(vargen_dir, output_dir = NULL, traits = NULL,
   # p_threasholds in the gwas_cat. There are 4 cases excluding where the
   # directory is null.
   # ______________________________________________________________________
-  # Case 1: Restrict the variants by trait.
-  if(is.null(vargen_dir) == FALSE && is.null(traits) == FALSE && is.null(chrs)) {
+  if(is.null(vargen_dir) == FALSE && is.null(traits) == FALSE
+     && is.null(chrs) && is.null(genes)) {
+    # Case 1: Restrict the variants by trait only.
     gwas_cat <- create_gwas(vargen_dir)
     for(trait in traits){
       if(!(trait %in% gwas_cat$`DISEASE/TRAIT`)){
@@ -584,21 +636,92 @@ kegg_graph <- function(vargen_dir, output_dir = NULL, traits = NULL,
     variants_traits <- gwascat::subsetByTraits(x = gwas_cat, tr = traits)
     variants_traits <- variants_traits[which(IRanges::overlapsAny(variants_traits,
                                                                   gwas_cat))]
-  # Case 2: Restrict the variants by chromosome.
   } else if(is.null(vargen_dir) == FALSE && is.null(traits)
-             && is.null(chrs) == FALSE) {
+            && is.null(chrs) == FALSE && is.null(genes)) {
+    # Case 2: Restrict the variants by chromosome only.
     gwas_cat <- create_gwas(vargen_dir)
-    for(trait in traits){
-      if(!(trait %in% gwas_cat$`DISEASE/TRAIT`)){
-        stop(paste0("gwas trait '", trait, "' not found in gwas catalog, stopping now."))
-      }
-    }
     variants_traits <- gwascat::subsetByChromosome(x = gwas_cat, ch = chrs)
     variants_traits <- variants_traits[which(IRanges::overlapsAny(variants_traits,
-                                                                            gwas_cat))]
-  # Case 3: Restrict by both trait and chromosome.
+                                                                  gwas_cat))]
+  } else if(is.null(vargen_dir) == FALSE && is.null(traits) && is.null(chrs)
+            && is.null(genes) == FALSE) {
+    # Case 3: Restrict by gene only.
+    gwas_cat <- create_gwas(vargen_dir)
+    if(gene_mode == 1){
+      variants_traits <- cbind(gwas_cat$"SNPS", gwas_cat$"SNP_GENE_IDS",
+                               gwas_cat$"P-VALUE", gwas_cat$"MAPPED_GENE",
+                               gwas_cat$"REPORTED GENE(S)")
+      colnames(variants_traits) <- cbind("rsid", "ensembl_gene_id",
+                                         "p-value", "mapped_genes",
+                                         "reported_genes")
+
+      variants_traits <- data.frame(variants_traits)
+      variants_single <- subset(variants_traits,
+                                variants_traits[["mapped_genes"]] == genes)
+
+      for(i in 1:nrow(variants_traits)){
+        print(paste0("searching ", i, " out of ", nrow(variants_traits), " special cases."))
+        inner_genes <- strsplit(variants_traits[["mapped_genes"]], ", ")[[i]]
+        if(genes %in% inner_genes){
+          variants_single <- merge(x = variants_single, y = variants_traits[i, ],
+                                   by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
+                                          "mapped_genes", "reported_genes"), all = TRUE)
+        }
+      }
+      variants_traits <- variants_single
+
+    } else if(gene_mode == 0) {
+      variants_traits <- cbind(gwas_cat$"SNPS", gwas_cat$"SNP_GENE_IDS",
+                               gwas_cat$"P-VALUE", gwas_cat$"MAPPED_GENE",
+                               gwas_cat$"REPORTED GENE(S)")
+      colnames(variants_traits) <- cbind("rsid", "ensembl_gene_id",
+                                         "p-value", "mapped_genes",
+                                         "reported_genes")
+
+      variants_traits <- data.frame(variants_traits)
+      variants_multi <- subset(variants_traits,
+                               variants_traits[["reported_genes"]] == genes)
+
+      for(i in 1:nrow(variants_traits)){
+        inner_genes <- strsplit(variants_traits[["reported_genes"]], ", ")[[i]]
+        if(genes %in% inner_genes){
+          variants_multi <- merge(x = variants_single, y = variants_traits[i, ],
+                                  by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
+                                         "mapped_genes", "reported_genes"), all = TRUE)
+        }
+      }
+      variants_traits <- variants_multi
+    } else {
+      variants_traits <- cbind(gwas_cat$"SNPS", gwas_cat$"SNP_GENE_IDS",
+                               gwas_cat$"P-VALUE", gwas_cat$"MAPPED_GENE",
+                               gwas_cat$"REPORTED GENE(S)")
+      colnames(variants_traits) <- cbind("rsid", "ensembl_gene_id",
+                                         "p-value", "mapped_genes",
+                                         "reported_genes")
+
+      variants_traits <- data.frame(variants_traits)
+      variants_single_reported <- subset(variants_traits,
+                                         variants_traits[["reported_genes"]] == genes)
+      variants_single_mapped <- subset(variants_traits,
+                                       variants_traits[["mapped_genes"]] == genes)
+
+      for(i in 1:nrow(variants_traits)){
+        print(paste0("searching ", i, " out of ", nrow(variants_traits), " special cases."))
+        inner_genes_reported <- strsplit(variants_traits[["reported_genes"]], ", ")[[i]]
+        inner_genes_mapped <- strsplit(variants_traits[["mapped_genes"]], ", ")[[i]]
+        if(genes %in% inner_genes){
+          variants_single_reported <- merge(x = variants_single_reported, y = variants_traits[i, ],
+                                            by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
+                                                   "mapped_genes", "reported_genes"), all = TRUE)
+        }
+      }
+      variants_traits <- merge(x = variants_traits, y = variants_single_mapped,
+                               by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
+                                      "mapped_genes", "reported_genes"), all = TRUE)
+    }
   } else if (is.null(vargen_dir) == FALSE && is.null(traits) == FALSE
-           && is.null(chrs) == FALSE) {
+             && is.null(chrs) == FALSE && is.null(genes)) {
+    # Case 4: Restrict by both trait and chromosome.
     gwas_cat <- create_gwas(vargen_dir)
     for(trait in traits){
       if(!(trait %in% gwas_cat$`DISEASE/TRAIT`)){
@@ -611,225 +734,275 @@ kegg_graph <- function(vargen_dir, output_dir = NULL, traits = NULL,
     variants_traits <- gwascat::subsetByTraits(x = variants_traits_chrs, tr = traits)
     variants_traits <- variants_traits[which(IRanges::overlapsAny(variants_traits,
                                                                   gwas_cat))]
+  } else if (is.null(vargen_dir) == FALSE && is.null(traits) == FALSE
+             && is.null(chrs) && is.null(genes) == FALSE) {
+    # Case 5: Restrict by both trait and gene.
+    gwas_cat <- create_gwas(vargen_dir)
+    for(trait in traits){
+      if(!(trait %in% gwas_cat$`DISEASE/TRAIT`)){
+        stop(paste0("gwas trait '", trait, "' not found in gwas catalog, stopping now."))
+      }
+    }
+    variants_traits <- gwascat::subsetByTraits(x = gwas_cat, tr = traits)
+    variants_traits <- variants_traits[which(IRanges::overlapsAny(variants_traits,
+                                                                  gwas_cat))]
+    if(gene_mode == 1){
+      variants_info <- cbind(variants_traits$"SNPS", variants_traits$"SNP_GENE_IDS",
+                             variants_traits$"P-VALUE", variants_traits$"MAPPED_GENE",
+                             variants_traits$"REPORTED GENE(S)")
+      colnames(variants_info) <- cbind("rsid", "ensembl_gene_id",
+                                       "p-value", "mapped_genes",
+                                       "reported_genes")
+
+      variants_info <- data.frame(variants_info)
+      variants_single <- subset(variants_info,
+                                variants_info[["mapped_genes"]] == genes)
+
+      for(i in 1:nrow(variants_info)){
+        print(paste0("searching ", i, " out of ", nrow(variants_info), " special cases."))
+        inner_genes <- strsplit(variants_info[["mapped_genes"]], ", ")[[i]]
+        if(genes %in% inner_genes){
+          variants_single <- merge(x = variants_single, y = variants_info[i, ],
+                                   by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
+                                          "mapped_genes", "reported_genes"), all = TRUE)
+        }
+      }
+      variants_traits <- variants_single
+
+    } else if(gene_mode == 0) {
+      variants_info <- cbind(gwas_cat$"SNPS", gwas_cat$"SNP_GENE_IDS",
+                             gwas_cat$"P-VALUE", gwas_cat$"MAPPED_GENE",
+                             gwas_cat$"REPORTED GENE(S)")
+      colnames(variants_info) <- cbind("rsid", "ensembl_gene_id",
+                                       "p-value", "mapped_genes",
+                                       "reported_genes")
+
+      variants_info <- data.frame(variants_info)
+      variants_multi <- subset(variants_info,
+                               variants_info[["reported_genes"]] == genes)
+
+      for(i in 1:nrow(variants_info)){
+        print(paste0("searching ", i, " out of ", nrow(variants_info), " special cases."))
+        inner_genes <- strsplit(variants_info[["reported_genes"]], ", ")[[i]]
+        if(genes %in% inner_genes){
+          variants_multi <- merge(x = variants_single, y = variants_info[i, ],
+                                  by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
+                                         "mapped_genes", "reported_genes"), all = TRUE)
+        }
+      }
+      variants_info <- variants_multi
+    } else {
+      variants_info <- cbind(gwas_cat$"SNPS", gwas_cat$"SNP_GENE_IDS",
+                             gwas_cat$"P-VALUE", gwas_cat$"MAPPED_GENE",
+                             gwas_cat$"REPORTED GENE(S)")
+      colnames(variants_info) <- cbind("rsid", "ensembl_gene_id",
+                                       "p-value", "mapped_genes",
+                                       "reported_genes")
+
+      variants_info <- data.frame(variants_info)
+      variants_single_reported <- subset(variants_info,
+                                         variants_info[["reported_genes"]] == genes)
+      variants_single_mapped <- subset(variants_info,
+                                       variants_info[["mapped_genes"]] == genes)
+
+      for(i in 1:nrow(variants_info)){
+        print(paste0("searching ", i, " out of ", nrow(variants_info), " special cases."))
+        inner_genes_reported <- strsplit(variants_info[["reported_genes"]], ", ")[[i]]
+        inner_genes_mapped <- strsplit(variants_info[["mapped_genes"]], ", ")[[i]]
+        if(genes %in% inner_genes_mapped || genes %in% inner_genes_reported){
+          variants_single_reported <- merge(x = variants_single_reported, y = variants_info[i, ],
+                                            by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
+                                                   "mapped_genes", "reported_genes"), all = TRUE)
+        }
+      }
+      variants_info <- merge(x = variants_info, y = variants_single_mapped,
+                             by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
+                                    "mapped_genes", "reported_genes"), all = TRUE)
+    }
+  } else if (is.null(vargen_dir) == FALSE && is.null(traits) == FALSE
+             && is.null(chrs) && is.null(genes) == FALSE) {
+    # Case 6: Restrict by both chromosome and gene.
+    gwas_cat <- create_gwas(vargen_dir)
+    for(trait in traits){
+      if(!(trait %in% gwas_cat$`DISEASE/TRAIT`)){
+        stop(paste0("gwas trait '", trait, "' not found in gwas catalog, stopping now."))
+      }
+    }
+    variants_traits <- gwascat::subsetByChromosome(x = gwas_cat, ch = chrs)
+    variants_traits <- variants_traits_chrs[which(IRanges::overlapsAny(variants_traits,
+                                                                       gwas_cat))]
+    if(gene_mode == 1){
+      variants_info <- cbind(variants_traits$"SNPS", variants_traits$"SNP_GENE_IDS",
+                             variants_traits$"P-VALUE", variants_traits$"MAPPED_GENE",
+                             variants_traits$"REPORTED GENE(S)")
+      colnames(variants_info) <- cbind("rsid", "ensembl_gene_id",
+                                       "p-value", "mapped_genes",
+                                       "reported_genes")
+
+      variants_info <- data.frame(variants_info)
+      variants_single <- subset(variants_info,
+                                variants_info[["mapped_genes"]] == genes)
+
+      for(i in 1:nrow(variants_info)){
+        print(paste0("searching ", i, " out of ", nrow(variants_info), " special cases."))
+        inner_genes <- strsplit(variants_info[["mapped_genes"]], ", ")[[i]]
+        if(genes %in% inner_genes){
+          variants_single <- merge(x = variants_single, y = variants_info[i, ],
+                                   by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
+                                          "mapped_genes", "reported_genes"), all = TRUE)
+        }
+      }
+      variants_traits <- variants_single
+
+    }
+    else if(gene_mode == 0) {
+      variants_info <- cbind(gwas_cat$"SNPS", gwas_cat$"SNP_GENE_IDS",
+                             gwas_cat$"P-VALUE", gwas_cat$"MAPPED_GENE",
+                             gwas_cat$"REPORTED GENE(S)")
+      colnames(variants_info) <- cbind("rsid", "ensembl_gene_id",
+                                       "p-value", "mapped_genes",
+                                       "reported_genes")
+
+      variants_info <- data.frame(variants_info)
+      variants_multi <- subset(variants_info,
+                               variants_info[["reported_genes"]] == genes)
+
+      for(i in 1:nrow(variants_info)){
+        print(paste0("searching ", i, " out of ", nrow(variants_info), " special cases."))
+        inner_genes <- strsplit(variants_info[["reported_genes"]], ", ")[[i]]
+        if(genes %in% inner_genes){
+          variants_multi <- merge(x = variants_single, y = variants_info[i, ],
+                                  by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
+                                         "mapped_genes", "reported_genes"), all = TRUE)
+        }
+      }
+      variants_info <- variants_multi
+    } else {
+      variants_info <- cbind(gwas_cat$"SNPS", gwas_cat$"SNP_GENE_IDS",
+                             gwas_cat$"P-VALUE", gwas_cat$"MAPPED_GENE",
+                             gwas_cat$"REPORTED GENE(S)")
+      colnames(variants_info) <- cbind("rsid", "ensembl_gene_id",
+                                       "p-value", "mapped_genes",
+                                       "reported_genes")
+
+      variants_info <- data.frame(variants_info)
+      variants_single_reported <- subset(variants_info,
+                                         variants_info[["reported_genes"]] == genes)
+      variants_single_mapped <- subset(variants_info,
+                                       variants_info[["mapped_genes"]] == genes)
+
+      for(i in 1:nrow(variants_info)){
+        print(paste0("searching ", i, " out of ", nrow(variants_info), " special cases."))
+        inner_genes_reported <- strsplit(variants_info[["reported_genes"]], ", ")[[i]]
+        inner_genes_mapped <- strsplit(variants_info[["mapped_genes"]], ", ")[[i]]
+        if(genes %in% inner_genes){
+          variants_single_reported <- merge(x = variants_single_reported, y = variants_info[i, ],
+                                            by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
+                                                   "mapped_genes", "reported_genes"), all = TRUE)
+        }
+      }
+      variants_info <- merge(x = variants_info, y = variants_single_mapped,
+                             by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
+                                    "mapped_genes", "reported_genes"), all = TRUE)
+    }
+  }  else if (is.null(vargen_dir) == FALSE && is.null(traits) == FALSE
+              && is.null(chrs) && is.null(genes) == FALSE) {
+    # Case 7: Restrict by both chromosome and gene.
+    gwas_cat <- create_gwas(vargen_dir)
+    for(trait in traits){
+      if(!(trait %in% gwas_cat$`DISEASE/TRAIT`)){
+        stop(paste0("gwas trait '", trait, "' not found in gwas catalog, stopping now."))
+      }
+    }
+    variants_traits_chrs <- gwascat::subsetByChromosome(x = gwas_cat, ch = chrs)
+    variants_traits_chrs <- variants_traits_chrs[which(IRanges::overlapsAny(variants_traits_chrs,
+                                                                            gwas_cat))]
+    variants_traits <- gwascat::subsetByTraits(x = variants_traits_chrs, tr = traits)
+    variants_traits <- variants_traits[which(IRanges::overlapsAny(variants_traits,
+                                                                  gwas_cat))]
+    if(gene_mode == 1){
+      variants_info <- cbind(variants_traits$"SNPS", variants_traits$"SNP_GENE_IDS",
+                             variants_traits$"P-VALUE", variants_traits$"MAPPED_GENE",
+                             variants_traits$"REPORTED GENE(S)")
+      colnames(variants_info) <- cbind("rsid", "ensembl_gene_id",
+                                       "p-value", "mapped_genes",
+                                       "reported_genes")
+
+      variants_info <- data.frame(variants_info)
+      variants_single <- subset(variants_info,
+                                variants_info[["mapped_genes"]] == genes)
+
+      for(i in 1:nrow(variants_info)){
+        print(paste0("searching ", i, " out of ", nrow(variants_info), " special cases."))
+        inner_genes <- strsplit(variants_info[["mapped_genes"]], ", ")[[i]]
+        if(genes %in% inner_genes){
+          variants_single <- merge(x = variants_single, y = variants_info[i, ],
+                                   by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
+                                          "mapped_genes", "reported_genes"), all = TRUE)
+        }
+      }
+      variants_traits <- variants_single
+
+    } else if(gene_mode == 0) {
+      variants_info <- cbind(gwas_cat$"SNPS", gwas_cat$"SNP_GENE_IDS",
+                             gwas_cat$"P-VALUE", gwas_cat$"MAPPED_GENE",
+                             gwas_cat$"REPORTED GENE(S)")
+      colnames(variants_info) <- cbind("rsid", "ensembl_gene_id",
+                                       "p-value", "mapped_genes",
+                                       "reported_genes")
+
+      variants_info <- data.frame(variants_info)
+      variants_multi <- subset(variants_info,
+                               variants_info[["reported_genes"]] == genes)
+
+      for(i in 1:nrow(variants_info)){
+        print(paste0("searching ", i, " out of ", nrow(variants_info), " special cases."))
+        inner_genes <- strsplit(variants_info[["reported_genes"]], ", ")[[i]]
+        if(genes %in% inner_genes){
+          variants_multi <- merge(x = variants_single, y = variants_info[i, ],
+                                  by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
+                                         "mapped_genes", "reported_genes"), all = TRUE)
+        }
+      }
+      variants_info <- variants_multi
+    } else {
+      variants_info <- cbind(gwas_cat$"SNPS", gwas_cat$"SNP_GENE_IDS",
+                             gwas_cat$"P-VALUE", gwas_cat$"MAPPED_GENE",
+                             gwas_cat$"REPORTED GENE(S)")
+      colnames(variants_info) <- cbind("rsid", "ensembl_gene_id",
+                                       "p-value", "mapped_genes",
+                                       "reported_genes")
+
+      variants_info <- data.frame(variants_info)
+      variants_single_reported <- subset(variants_info,
+                                         variants_info[["reported_genes"]] == genes)
+      variants_single_mapped <- subset(variants_info,
+                                       variants_info[["mapped_genes"]] == genes)
+
+      for(i in 1:nrow(variants_info)){
+        print(paste0("searching ", i, " out of ", nrow(variants_info), " special cases."))
+        inner_genes_reported <- strsplit(variants_info[["reported_genes"]], ", ")[[i]]
+        inner_genes_mapped <- strsplit(variants_info[["mapped_genes"]], ", ")[[i]]
+        if(genes %in% inner_genes){
+          variants_single_reported <- merge(x = variants_single_reported, y = variants_info[i, ],
+                                            by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
+                                                   "mapped_genes", "reported_genes"), all = TRUE)
+        }
+      }
+      variants_info <- merge(x = variants_info, y = variants_single_mapped,
+                             by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
+                                    "mapped_genes", "reported_genes"), all = TRUE)
+    }
   } else if(is.null(vargen_dir)) {
+    # Case 8: This case should never happen as it should already be caught.
     stop(paste0("No VarGen directory was found."))
   } else {
-    # Case 4: No restrictions given.
+    # Case 9: No restrictions given.
     gwas_cat <- create_gwas(vargen_dir)
     variants_traits <- gwas_cat
   }
-
-  # ______________________________________________________________________
-  # 3. Get KEGG pathways for the filtered variants above.
-  # ______________________________________________________________________
-  kegg_path <- biomaRt::getBM(
-    attributes = c("kegg_enzyme", "ensembl_gene_id"),
-    filters = c("ensembl_gene_id"),
-    values = variants_traits$"SNP_GENE_IDS",
-    mart = connect_to_gene_ensembl(), uniqueRows = TRUE)
-
-  # ______________________________________________________________________
-  # 4. Make the directory and title as fit given the parameter inputs.
-  # ______________________________________________________________________
-  if(nrow(kegg_path) == 0 || is.na(unique(kegg_path$"kegg_enzyme")[1])){
-    stop(paste0("No KEGG pathways found.  Try broading the search."))
-  } else {
-    variant_info <- cbind(variants_traits$"SNPS", variants_traits$"SNP_GENE_IDS",
-                          variants_traits$"P-VALUE", variants_traits$"MAPPED_GENE",
-                          variants_traits$"REPORTED GENE(S)")
-    colnames(variant_info) <- cbind("rsid", "ensembl_gene_id", "p-value", "mapped_gene", "reported_genes")
-    variant_info <- merge(x = variant_info, y = kegg_path, by = "ensembl_gene_id", all.x = TRUE)
-
-    if(is.null(output_dir) || output_dir == " " || is.double(output_dir)){
-      # Make the proper output directory if one isn't given.
-      if(.Platform$OS.type == "windows"){
-        dir.create("KEGG_images")
-        output_dir <- paste0(getwd(), "\\", "KEGG_images\\")
-      } else {
-        dir.create("KEGG_images")
-        output_dir <- paste0(getwd(), "/", "KEGG_images/")
-      }
-    } else {
-      output_dir <- paste0(output_dir, "/", "KEGG_images/")
-    }
-    # Check if the title is given.
-    titleKey <- FALSE
-    if(is.null(title)){
-      titleKey <- TRUE
-    }
-
-    # ______________________________________________________________________
-    # 5. Subset and restrict the variants by the pathways and the p-values.
-    # In this section the genes are also gone through for each mode (either
-    # reported, mapped or both) as well.
-    # ______________________________________________________________________
-    cnt <- 1
-    # Remove values without a KEGG pathway.
-    kegg_paths <- subset(variant_info, is.na(variant_info[["kegg_enzyme"]]) == FALSE)
-    kegg_paths <- subset(kegg_paths, kegg_paths[["kegg_enzyme"]] != "")
-
-    # Get the values that are missing KEGG pathways.
-    kegg_paths_na <- subset(variant_info, is.na(variant_info[["kegg_enzyme"]]) == TRUE)
-    if(is.null(pval_thresh) == FALSE){
-      kegg_paths_na <- subset(kegg_paths_na, kegg_paths_na[["p-value"]] >= pval_thresh)
-    }
-    # Write output to text file in same directory of values not found with KEGG pathways
-    # in the next for loop.
-    file_out<-file(paste(output_dir, "variants_without_kegg.txt"))
-
-    # Restrict it by p-value threshold
-    if(is.null(pval_thresh) == FALSE && is.null(genes)){
-      kegg_paths <- subset(kegg_paths, kegg_paths[["p-value"]] >= pval_thresh)
-    } else if(is.null(pval_thresh) && is.null(genes) == FALSE) {
-      if(gene_mode == 1){
-        kegg_paths_mapped <- subset(kegg_paths, kegg_paths[["mapped_genes"]] == genes)
-      } else if(gene_mode == 0) {
-        kegg_paths_reported <- subset(kegg_paths, kegg_paths[["reported_genes"]] == genes)
-      } else {
-        kegg_paths_mapped <- subset(kegg_paths, kegg_paths[["mapped_genes"]] == genes)
-        kegg_paths_reported <- subset(kegg_paths, kegg_paths[["reported_genes"]] == genes)
-        kegg_paths <- merge(x = kegg_paths_mapped, y = kegg_paths_reported, by = c("ensembl_gene_id",
-                                                                                   "kegg_enzyme", "rsid",
-                                                                                   "p-value", "mapped_gene",
-                                                                                   "reported_genes"), all = TRUE)
-      }
-    } else if(is.null(pval_thresh) == FALSE && is.null(genes) == FALSE) {
-      kegg_paths <- subset(kegg_paths, kegg_paths[["p-value"]] >= pval_thresh)
-      if(gene_mode == 1){
-        kegg_paths_mapped <- subset(kegg_paths, kegg_paths[["mapped_genes"]] == genes)
-      } else if(gene_mode == 0) {
-        kegg_paths_reported <- subset(kegg_paths, kegg_paths[["reported_genes"]] == genes)
-      } else {
-        kegg_paths_mapped <- subset(kegg_paths, kegg_paths[["mapped_genes"]] == genes)
-        kegg_paths_reported <- subset(kegg_paths, kegg_paths[["reported_genes"]] == genes)
-        kegg_paths <- merge(x = kegg_paths_mapped, y = kegg_paths_reported, by = c("ensembl_gene_id",
-                                                                                   "kegg_enzyme", "rsid"
-                                                                                   , "p-value", "mapped_gene",
-                                                                                   "reported_genes"), all = TRUE)
-      }
-    }
-
-    if(nrow(kegg_paths) == 0){
-      print("No KEGG pathways available for this search request. Try broading search if possible.")
-    }
-    # ______________________________________________________________________
-    # 6. Output KEGG pathways for each pathway in the output firectory
-    # assuming it doesn't already exist. Also write the file containing
-    # the rsids that were aquired by filtered out due to the p-value
-    # threshold.
-    # ______________________________________________________________________
-    index <- c()
-    for(kegg_pathway in kegg_paths[["kegg_enzyme"]]){
-      # Separate pathway ID from the enzyme/s.
-      kegg_path_id <- unlist(strsplit(kegg_pathway, "\\+"))[1]
-      #Get the list of numbers, gene symbols and gene description
-      kegg_genes <- KEGGREST::keggGet(paste0("hsa", kegg_path_id))[[1]]$GENE
-
-      kegg_id <- kegg_genes[seq(1, length(kegg_genes), 2)]
-
-      kegg_genes <- kegg_genes[seq(0, length(kegg_genes), 2)]
-      kegg_genes <- gsub("\\;.*","",kegg_genes)
-
-      fg <- rep()
-      bg <- rep()
-      matched <- c()
-
-      if(is.na(unique(kegg_paths[["mapped_gene"]])) == FALSE){
-        if(gene_mode == 1){
-          for(i in 1:length(unique(kegg_paths[["mapped_gene"]]))) {
-            if(is.na(match(unique(kegg_paths[["mapped_gene"]])[i], kegg_genes)) == FALSE){
-              index <- c(index, match(unique(kegg_paths[["mapped_gene"]])[i], kegg_genes))
-              for(j in 1:length(index)){
-                matched <- c(matched, kegg_genes[index[j]])
-              }
-              fg[index] <- color
-              bg[index] <- "#000000"
-            } else {
-              index <- c(NA)
-              matched <- c(NA)
-            }
-          }
-        } else if(gene_mode == 0) {
-          for(i in 1:length(unique(kegg_paths[["reported_genes"]]))) {
-            if(is.na(match(unique(kegg_paths[["reported_genes"]])[i], kegg_genes)) == FALSE){
-              index <- c(index, match(unique(kegg_paths[["reported_genes"]])[i], kegg_genes))
-              for(j in 1:length(index)){
-                matched <- c(matched, kegg_genes[index[j]])
-              }
-              fg[index] <- color
-              bg[index] <- "#000000"
-            } else {
-              index <- c(NA)
-              matched <- c(NA)
-            }
-          }
-        } else if(gene_mode == 2) {
-          for(i in 1:length(unique(kegg_paths[["mapped_gene"]]))) {
-            if(is.na(match(unique(kegg_paths[["mapped_gene"]])[i], kegg_genes)) == FALSE){
-              index <- c(index, match(unique(kegg_paths[["mapped_gene"]])[i], kegg_genes))
-
-              for(j in 1:length(index)){
-                matched <- c(matched, kegg_genes[index[j]])
-              }
-              fg[index] <- color
-              bg[index] <- "#000000"
-            }
-          }
-          for(i in 1:length(unique(kegg_paths[["reported_genes"]]))) {
-            if(is.na(match(unique(kegg_paths[["reported_genes"]])[i], kegg_genes)) == FALSE){
-              # This might cause an error... needs testing.
-              append(index, c(index, match(unique(kegg_paths[["reported_genes"]])[i], kegg_genes)), length(index))
-              for(j in 1:length(index)){
-                matched <- c(matched, kegg_genes[index[j]])
-              }
-              fg[index] <- color
-              bg[index] <- "#000000"
-            }
-          }
-        }
-      }
-
-      if(is.null(fg) == FALSE && is.null(matched) == FALSE){
-        matched <- na.omit(matched)
-        df <- data.frame(kegg_genes, kegg_id)
-        df <- df[is.element(df$"kegg_gene", matched),]
-
-        temp <- df[["kegg_id"]]
-        for(i in 1:length(df[["kegg_id"]])) {
-          temp[i] <- paste("hsa:", df[["kegg_id"]][i], sep = "")
-        }
-        kegg_id <- temp
-
-        kegg_genes <- df[["kegg_genes"]]
-
-        url <- KEGGREST::color.pathway.by.objects(paste("path:hsa", kegg_path_id, sep = ""),
-                                                    unlist(strsplit(kegg_genes, ",")),
-                                                    fg.color.list = unlist(strsplit(fg[!is.na(fg)], ",")),
-                                                    bg.color.list = unlist(strsplit(bg[!is.na(bg)], ",")))
-
-        if (titleKey == TRUE) {
-          title <- paste0("hsa_", kegg_path_id, "_kegg.png")
-        } else {
-          if(file.exists(paste0(output_dir, cnt, "_", title)) == FALSE){
-            title <- paste0(cnt, "_", title)
-          }
-        }
-
-        writeLines(c(kegg_paths[["rsid"]][cnt]), file_out)
-
-        if(file.exists(paste(output_dir, title, sep = ""))){
-          file_cnt <- sapply(output_dir, function(output_dir){length(list.files(output_dir, pattern = title))})
-          title <- paste0(file_cnt, "_", title, sep = "")
-        }
-
-        download.file(url, paste(output_dir, title, sep = ""), mode="wb")
-
-        cnt <- cnt + 1
-      }
-    }
-    close(file_out)
-  }
 }
+
 
 
 #' @title Make pathview figures for a selected Entrez ID.
@@ -954,10 +1127,10 @@ pathview_maker <- function(vargen_dir, output_dir = NULL, traits = NULL,
 
     variants_traits_chrs <- gwascat::subsetByChromosome(x = gwas_cat, ch = chrs)
     variants_traits_chrs <- variants_traits_chrs[which(IRanges::overlapsAny(variants_traits_chrs,
-                                                                          gwas_cat))]
+                                                                            gwas_cat))]
     variants_traits <- gwascat::subsetByTraits(x = variants_traits_chrs, tr = traits)
     variants_traits <- variants_traits[which(IRanges::overlapsAny(variants_traits,
-                                                               gwas_cat))]
+                                                                  gwas_cat))]
   } else if(is.null(vargen_dir)) {
     stop(paste0("No VarGen directory was found"))
   } else {
@@ -1190,24 +1363,20 @@ get_pathview_info <- function(gene_ids, master_variants){
 
 #' Gets the uniprot ids that correlate to the ensemble ids and
 #' adds them to the master_variants info dataframe:
-#' @param gene_ids: The list of ensembl gene IDs
+#' @param params: The list of ensembl gene IDs
 #' @param master_variants: The DB in which the information is stored
 #' @return The subsetted dataframe containing only variants with two or more IDs
-multi_var_mart_helper <- function(gene_ids, master_variants){
+multi_var_mart_helper <- function(params, master_variants){
   size = 0
   #Get the size for a single ensembe_gene_id
-  for(gene_id in gene_ids){
-    tryCatch({
-      if(is.null(strsplit(gene_id, ",")[[1]]) == FALSE || strsplit(gene_id, ",")[[1]] == ""){
-        size = nchar(strsplit(gene_id, ",")[[1]])
-        break;
-      }
-    }, error = function(e) {
-
-    })
+  for(param in params){
+    if(is.null(strsplit(param, ",")[[1]]) == FALSE || strsplit(param, ",")[[1]] == ""){
+      size = nchar(strsplit(param, ",")[[1]])
+      break;
+    }
   }
   # Subset the data based on those only with multiple values.
-  master_variants <- master_variants[nchar(master_variants[["ensembl_gene_id"]]) > size*2,]
+  master_variants <- master_variants[nchar(master_variants[["mapped_genes"]]) > size*2,]
 
   return(master_variants)
 }
@@ -1568,15 +1737,15 @@ get_fantom5_variants <- function(fantom_df, omim_genes, corr_threshold = 0.25,
 
   for(gene in 1:nrow(omim_genes)){
     enhancers_df <- try(get_fantom5_enhancers_from_hgnc(fantom_df = fantom_df,
-                                                    hgnc_symbols = omim_genes[gene, "hgnc_symbol"],
-                                                    corr_threshold = corr_threshold))
+                                                        hgnc_symbols = omim_genes[gene, "hgnc_symbol"],
+                                                        corr_threshold = corr_threshold))
     if(nrow(enhancers_df) != 0) {
       enhancers_df <- try(GenomicRanges::makeGRangesFromDataFrame(enhancers_df,
-                                                              keep.extra.columns = TRUE))
+                                                                  keep.extra.columns = TRUE))
       enhancers_df <- unlist(rtracklayer::liftOver(enhancers_df, rtracklayer::import.chain(hg19ToHg38.over.chain)))
       fantom_locs <- try(paste0(GenomeInfoDb::seqnames(enhancers_df), ":",
-                            BiocGenerics::start(enhancers_df)-1, ":",
-                            BiocGenerics::end(enhancers_df)))
+                                BiocGenerics::start(enhancers_df)-1, ":",
+                                BiocGenerics::end(enhancers_df)))
       fantom_locs <- sub("^chr", "", fantom_locs)
 
 
