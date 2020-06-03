@@ -1020,8 +1020,8 @@ get_gwas_variants <- function(gwas_traits, gwas_cat){
                                         rsid = gwas_variants$SNPS,
                                         ensembl_gene_id = gwas_variants$SNP_GENE_IDS,
                                         hgnc_symbol = gwas_variants$MAPPED_GENE,
-                                        source = "gwas"))#,
-                                        #trait = gwas_variants$`DISEASE/TRAIT`))
+                                        source = "gwas",
+                                        trait = gwas_variants$`DISEASE/TRAIT`))
 
   return(gwas_variants_df)
 }
@@ -1348,8 +1348,6 @@ get_gtex_variants <- function(tissue_files, omim_genes, gtex_lookup_file,
         gtex_variants_update[!is.na(gtex_variants_update$refsnp_id),"rsid"] <-
           gtex_variants_update[!is.na(gtex_variants_update$refsnp_id),"refsnp_id"]
 
-        # Then we remove the "refsnp_id" column, we don't need it anymore
-        gtex_variants <- gtex_variants_update[,-"refsnp_id"]
       }
 
       # get rsid positions with biomaRt
@@ -1540,6 +1538,8 @@ vargen_install <- function(install_dir = "./", gtex_version = "v8", verbose = FA
 #'   \item ensembl_gene_id ("gene id" of the gene associated with the variant)
 #'   \item hgnc_symbol ("hgnc symbol" of the gene associated with the variant)
 #'   \item source ("omim", "fantom5", "gtex" or "gwas")
+#'   \item trait (the "omim ids" seperated by ';' for omim,fantom and gtex variants and the gwas trait
+#'   for the gwas variants).
 #' }
 #'
 #' @examples
@@ -1675,6 +1675,17 @@ vargen_pipeline <- function(vargen_dir, omim_morbid_ids, fantom_corr = 0.25,
     } else{
       if(verbose) print("No values for 'gtex_tissues', skipping GTEx step...")
     }
+
+      # Adding the traits for each variant.
+      master_variants$trait <- ""
+
+      for(gene in unique(master_variants$hgnc_symbol)){
+        # First get the list of omim ids for this gene:
+        gene_omims <- paste0(unique(omim_all_genes[omim_all_genes$hgnc_symbol == gene,]$mim_morbid_accession), collapse = ";")
+
+        # Then add it to the "trait" column
+        master_variants[master_variants$hgnc_symbol == gene,]$trait <- gene_omims
+      }
   }
 
   #_____________________________________________________________________________
@@ -1740,6 +1751,9 @@ vargen_pipeline <- function(vargen_dir, omim_morbid_ids, fantom_corr = 0.25,
 #'   \item ensembl_gene_id ("gene id" of the gene associated with the variant)
 #'   \item hgnc_symbol ("hgnc symbol" of the gene associated with the variant)
 #'   \item source ("omim", "fantom5", "gtex" or "gwas")
+#'   \item trait (an empty string for the gene, fantom and gtex variants, since this
+#'   comes from a list of genes, no omim id is associated with them. Contains the
+#'   gwas trait for the gwas variants. )
 #' }
 #'
 #' @examples
@@ -1858,6 +1872,8 @@ vargen_custom <- function(vargen_dir, gene_ids, fantom_corr = 0.25, outdir = "./
     } else{
       print("No values for 'gtex_tissues', skipping GTEx step...")
     }
+
+    master_variants$trait <- ""
 
   } else {
     print(paste0("No genes found for: ", paste(gene_ids, collapse = ", ")))
