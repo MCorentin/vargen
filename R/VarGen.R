@@ -632,10 +632,13 @@ list_omim_accessions <- function(gene_mart, keywords){
 #' DM_genes <- get_omim_genes(c("125853","222100"), gene_mart)
 #' @export
 get_omim_genes <- function(omim_ids, gene_mart) {
+
   if(missing(gene_mart) || class(gene_mart) != 'Mart'){
     gene_mart <- connect_to_gene_ensembl()
     warning("Gene mart not provided (or not a valid Mart object). We used one from connect_to_gene_ensembl() instead.")
   }
+
+  mim_genes <- data.frame()
 
   mim_genes <- biomaRt::getBM(attributes = c("ensembl_gene_id", "chromosome_name",
                                              "start_position", "end_position",
@@ -645,22 +648,20 @@ get_omim_genes <- function(omim_ids, gene_mart) {
                               values = c(omim_ids),
                               mart = gene_mart, uniqueRows = TRUE)
 
-  if(is.null(mim_genes)) print(paste0("No genes found for:", paste(omim_ids, collapse = ", ")))
-  if(!is.null(mim_genes) && nrow(mim_genes) == 0) print(paste0("No genes found for: ", paste(omim_ids, collapse = ", ")))
+  if(nrow(mim_genes) == 0) print(paste0("No genes found for: ", paste(omim_ids, collapse = ", ")))
 
-  if(!is.null(mim_genes)) mim_genes$chromosome_name <- format_chr(chr = mim_genes$chromosome_name)
+  if(nrow(mim_genes) > 0) mim_genes$chromosome_name <- format_chr(chr = mim_genes$chromosome_name)
 
   return(mim_genes)
 }
 
 
-#' @title Get the variants on the OMIM genes
-#' @description Get the variants on the gene locations obtained from
-#' \code{\link{get_omim_genes}}
+#' @title Get the variants located on the genes
+#' @description Get the variants located between the start and stop positions
+#' of the genes given as input.
 #'
-#' @param omim_genes list of omim genes from \code{\link{get_omim_genes}}
+#' @param genes list of genes (can be obtained from \code{\link{get_omim_genes}})
 #' @param verbose if true, will print progress information (default: FALSE)
-#'
 #'
 #' @return a data.frame of variants with the following columns (see: \code{\link{format_output}})
 #' \itemize{
@@ -671,41 +672,41 @@ get_omim_genes <- function(omim_ids, gene_mart) {
 #'   \item hgnc_symbol ("hgnc symbol" of the gene associated with the variant)
 #'   \item source (here the value will be "omim")
 #' }
-get_omim_variants <- function(omim_genes, verbose = FALSE){
+get_genes_variants <- function(genes, verbose = FALSE){
   # Get the variants on the OMIM genes:
-  omim_variants <- data.frame()
+  genes_variants <- data.frame()
 
   # Used to avoid growing the data frame for every gene, we only do it at the end
   # with: "do.call('rbind', list.variants)"
-  list.variants <- vector('list', nrow(omim_genes))
+  list.variants <- vector('list', nrow(genes))
 
-  for(gene in 1:nrow(omim_genes)){
-    variants_loc <- get_variants_from_locations(locations = paste0(omim_genes[gene,"chromosome_name"], ":",
-                                                                   omim_genes[gene,"start_position"], ":",
-                                                                   omim_genes[gene,"end_position"]),
+  for(current_gene in 1:nrow(genes)){
+    variants_loc <- get_variants_from_locations(locations = paste0(genes[current_gene,"chromosome_name"], ":",
+                                                                   genes[current_gene,"start_position"], ":",
+                                                                   genes[current_gene,"end_position"]),
                                                 verbose = verbose)
     if(length(variants_loc) != 0){
-      gene_variants <- cbind(ensembl_gene_id = omim_genes[gene, "ensembl_gene_id"],
-                             hgnc_symbol = omim_genes[gene, "hgnc_symbol"],
-                             variants_loc)
+      current_gene_variants <- cbind(ensembl_gene_id = genes[current_gene, "ensembl_gene_id"],
+                                     hgnc_symbol = genes[current_gene, "hgnc_symbol"],
+                                     variants_loc)
 
-      gene_variants_df <- format_output(chr = unlist(gene_variants$seq_region_name),
-                                        pos =  unlist(gene_variants$start),
-                                        rsid = unlist(gene_variants$id),
-                                        ensembl_gene_id = unique(gene_variants$ensembl_gene_id),
-                                        hgnc_symbol = unique(gene_variants$hgnc_symbol))
+      current_gene_variants_df <- format_output(chr = unlist(current_gene_variants$seq_region_name),
+                                                pos =  unlist(current_gene_variants$start),
+                                                rsid = unlist(current_gene_variants$id),
+                                                ensembl_gene_id = unique(current_gene_variants$ensembl_gene_id),
+                                                hgnc_symbol = unique(current_gene_variants$hgnc_symbol))
 
-      list.variants[[gene]] <- gene_variants_df
+      list.variants[[current_gene]] <- current_gene_variants_df
     }
   }
 
   # Removing the NULL elements of the list if exists
   list.variants <- list.variants[!sapply(list.variants, is.null)]
   # Then concatenate the list into a data.frame
-  omim_variants <- do.call('rbind', list.variants)
-  omim_variants$source <- "omim"
+  genes_variants <- do.call('rbind', list.variants)
+  genes_variants$source <- "omim"
 
-  return(omim_variants)
+  return(genes_variants)
 }
 
 
@@ -1013,15 +1014,14 @@ get_gwas_variants <- function(gwas_traits, gwas_cat){
   gwas_variants <- gwascat::subsetByTraits(x = gwas_cat, tr = gwas_traits)
   GenomeInfoDb::seqlevelsStyle(gwas_variants) <- "UCSC"
 
-  # "gwas_variants@ranges" contains "start" "stop" "width", that is why we only
-  # select columns c(1,2,5,6,7,8).
+  # "gwas_variants@ranges" contains "start" "stop" "width", we only take the start
   gwas_variants_df <- unique(data.frame(chr = gwas_variants@seqnames,
-                                        pos = gwas_variants@ranges,
+                                        pos = gwas_variants@ranges@start,
                                         rsid = gwas_variants$SNPS,
                                         ensembl_gene_id = gwas_variants$SNP_GENE_IDS,
                                         hgnc_symbol = gwas_variants$MAPPED_GENE,
-                                        source = "gwas")[,c(1,2,5,6,7,8)])
-  colnames(gwas_variants_df)[2] <- "pos"
+                                        source = "gwas"))#,
+                                        #trait = gwas_variants$`DISEASE/TRAIT`))
 
   return(gwas_variants_df)
 }
@@ -1347,8 +1347,9 @@ get_gtex_variants <- function(tissue_files, omim_genes, gtex_lookup_file,
 
         gtex_variants_update[!is.na(gtex_variants_update$refsnp_id),"rsid"] <-
           gtex_variants_update[!is.na(gtex_variants_update$refsnp_id),"refsnp_id"]
+
         # Then we remove the "refsnp_id" column, we don't need it anymore
-        gtex_variants <- gtex_variants_update[ ,-which(names(gtex_variants_update) == c("refsnp_id"))]
+        gtex_variants <- gtex_variants_update[,-"refsnp_id"]
       }
 
       # get rsid positions with biomaRt
@@ -1563,8 +1564,9 @@ vargen_install <- function(install_dir = "./", gtex_version = "v8", verbose = FA
 vargen_pipeline <- function(vargen_dir, omim_morbid_ids, fantom_corr = 0.25,
                             outdir = "./", gtex_tissues, gwas_traits,
                             gene_mart, snp_mart, verbose = FALSE) {
+
   if(missing(omim_morbid_ids)){
-    stop("Please provide at least one OMIM morbid id. Stopping now")
+    stop("Please provide at least one OMIM morbid id. Stopping now.")
   }
 
   if(!dir.exists(outdir)){
@@ -1587,8 +1589,7 @@ vargen_pipeline <- function(vargen_dir, omim_morbid_ids, fantom_corr = 0.25,
     warning("Snp mart not provided (or not a valid Mart object). We used one from connect_to_snp_ensembl() instead.")
   }
 
-
-  # no gwas traits = no need to generate the gwas object
+  # no gwas traits = no need to generate the gwas_cat object
   if(!missing(gwas_traits)){
     if(verbose) print("Building the gwascat object...")
       gwas_cat <- create_gwas(vargen_dir)
@@ -1619,55 +1620,61 @@ vargen_pipeline <- function(vargen_dir, omim_morbid_ids, fantom_corr = 0.25,
   # Getting variants from genes related to OMIM disease
   #_____________________________________________________________________________
   if(verbose) print("Starting the pipeline...")
+
   omim_all_genes <- data.frame()
   master_variants <- data.frame()
+
   for(omim_morbid in omim_morbid_ids){
-    if(verbose) print(paste0("Getting genes and variants for OMIM: ", omim_morbid))
+    if(verbose) print(paste0("Getting genes for OMIM: ", omim_morbid))
     # First: get all the genes linked to the different omim ids:
     omim_genes <- get_omim_genes(omim_morbid, gene_mart)
+
     if(nrow(omim_genes) == 0){
       if(verbose) print(paste0("warning: no genes found for omim id: ", omim_morbid))
     } else {
-
       omim_all_genes <- rbind(omim_all_genes, omim_genes)
-
-      # We get the variants on the genes:
-      genes_variants <- get_omim_variants(omim_genes = omim_genes,
-                                          verbose = verbose)
-
-      if(length(genes_variants) != 0) master_variants <- rbind(master_variants, genes_variants)
-
-      # We get the variants on the enhancers of the genes:
-      fantom_variants <- get_fantom5_variants(fantom_df = fantom_df,
-                                              omim_genes = omim_genes,
-                                              corr_threshold = fantom_corr,
-                                              hg19ToHg38.over.chain = hg19ToHg38.over.chain,
-                                              verbose = verbose)
-
-      if(length(fantom_variants) != 0) master_variants <- rbind(master_variants, fantom_variants)
     }
   }
 
-  if(verbose) print(paste0("Writing the list of genes to: ", outdir, "/genes_info.tsv"))
-  # We write the list of genes in a file.
-  utils::write.table(x = omim_all_genes, quote = FALSE, sep = "\t", row.names = FALSE,
-                     file = paste0(outdir, "/genes_info.tsv"))
+  if(nrow(omim_all_genes) > 0){
+    omim_all_genes <- unique(omim_all_genes)
 
-  #_____________________________________________________________________________
-  # Getting variants associated with change of expression in GTEx (need tissues as input)
-  #_____________________________________________________________________________
-  if(!missing(gtex_tissues)){
-    if(verbose) print("Getting the GTEx variants...")
-    gtex_variants <- get_gtex_variants(tissue_files = gtex_tissues,
-                                       omim_genes = omim_all_genes,
-                                       gtex_lookup_file = gtex_lookup_file,
-                                       snp_mart = snp_mart,
-                                       verbose = verbose)
+    # We get the variants on the genes:
+    genes_variants <- get_genes_variants(genes = omim_all_genes, verbose = verbose)
+    if(length(genes_variants) != 0) master_variants <- rbind(master_variants, genes_variants)
 
-    if(length(gtex_variants) != 0) master_variants <- rbind(master_variants, gtex_variants)
+    # We get the variants on the enhancers of the genes:
+    fantom_variants <- get_fantom5_variants(fantom_df = fantom_df,
+                                            omim_genes = omim_all_genes,
+                                            corr_threshold = fantom_corr,
+                                            hg19ToHg38.over.chain = hg19ToHg38.over.chain,
+                                            verbose = verbose)
+    if(length(fantom_variants) != 0) master_variants <- rbind(master_variants, fantom_variants)
 
-  } else{
-    if(verbose) print("No values for 'gtex_tissues', skipping GTEx step...")
+    # master_variants$trait <- omim_morbid
+    # print(head(master_variants))
+
+    if(verbose) print(paste0("Writing the list of genes to: ", outdir, "/genes_info.tsv"))
+    # We write the list of genes in a file.
+    utils::write.table(x = omim_all_genes, quote = FALSE, sep = "\t", row.names = FALSE,
+                       file = paste0(outdir, "/genes_info.tsv"))
+
+    #_____________________________________________________________________________
+    # Getting variants associated with change of expression in GTEx (need tissues as input)
+    #_____________________________________________________________________________
+    if(!missing(gtex_tissues)){
+      if(verbose) print("Getting the GTEx variants...")
+      gtex_variants <- get_gtex_variants(tissue_files = gtex_tissues,
+                                         omim_genes = omim_all_genes,
+                                         gtex_lookup_file = gtex_lookup_file,
+                                         snp_mart = snp_mart,
+                                         verbose = verbose)
+
+      if(length(gtex_variants) != 0) master_variants <- rbind(master_variants, gtex_variants)
+
+    } else{
+      if(verbose) print("No values for 'gtex_tissues', skipping GTEx step...")
+    }
   }
 
   #_____________________________________________________________________________
@@ -1800,6 +1807,7 @@ vargen_custom <- function(vargen_dir, gene_ids, fantom_corr = 0.25, outdir = "./
     stop(paste0("Can not read: ", gtex_lookup_file, ", stopping now."))
   }
 
+  master_variants <- data.frame()
   #_____________________________________________________________________________
   # Getting variants from genes related to OMIM disease
   #_____________________________________________________________________________
@@ -1811,43 +1819,49 @@ vargen_custom <- function(vargen_dir, gene_ids, fantom_corr = 0.25, outdir = "./
                               values = c(gene_ids),
                               mart = gene_mart, uniqueRows = TRUE)
 
-  if(verbose) print(paste0("Writing the list of genes to: ", outdir, "/custom_genes_info.tsv"))
-  utils::write.table(x = genes_info, quote = FALSE, sep = "\t", row.names = FALSE,
-                     file = paste0(outdir, "/custom_genes_info.tsv"))
+  if(nrow(genes_info) > 0){
 
-  # Get the variants on the genes: (we are reusing the get_omim_variants function)
-  master_variants <- get_omim_variants(omim_genes = genes_info, verbose = verbose)
-  # Replacing "omim" by "gene"
-  master_variants$source <- "gene"
+    if(verbose) print(paste0("Writing the list of genes to: ", outdir, "/custom_genes_info.tsv"))
 
-  #_____________________________________________________________________________
-  # Getting variants on the enhancers of the OMIM genes, using FANTOM5
-  #_____________________________________________________________________________
-  fantom_variants <- get_fantom5_variants(fantom_df = fantom_df,
-                                          omim_genes = genes_info,
-                                          corr_threshold = fantom_corr,
-                                          hg19ToHg38.over.chain = hg19ToHg38.over.chain,
-                                          verbose = verbose)
+    utils::write.table(x = genes_info, quote = FALSE, sep = "\t", row.names = FALSE,
+                       file = paste0(outdir, "/custom_genes_info.tsv"))
 
-  if(length(fantom_variants) != 0) master_variants <- rbind(master_variants, fantom_variants)
+    # Get the variants on the genes:
+    master_variants <- get_genes_variants(genes = genes_info, verbose = verbose)
+    # Replacing "omim" by "gene"
+    master_variants$source <- "gene"
 
-  #_____________________________________________________________________________
-  # Getting variants associated with change of expression in GTEx (need tissues as input)
-  #_____________________________________________________________________________
-  if(!missing(gtex_tissues)){
-    if(verbose) print("Getting the GTEx variants...")
-    gtex_variants <- get_gtex_variants(tissue_files = gtex_tissues,
-                                       omim_genes = genes_info,
-                                       gtex_lookup_file = gtex_lookup_file,
-                                       snp_mart = snp_mart,
-                                       verbose = verbose)
+    #_____________________________________________________________________________
+    # Getting variants on the enhancers of the OMIM genes, using FANTOM5
+    #_____________________________________________________________________________
+    fantom_variants <- get_fantom5_variants(fantom_df = fantom_df,
+                                            omim_genes = genes_info,
+                                            corr_threshold = fantom_corr,
+                                            hg19ToHg38.over.chain = hg19ToHg38.over.chain,
+                                            verbose = verbose)
 
-    if(length(gtex_variants) != 0) master_variants <- rbind(master_variants, gtex_variants)
+    if(length(fantom_variants) != 0) master_variants <- rbind(master_variants, fantom_variants)
 
-  } else{
-    print("No values for 'gtex_tissues', skipping GTEx step...")
+    #_____________________________________________________________________________
+    # Getting variants associated with change of expression in GTEx (need tissues as input)
+    #_____________________________________________________________________________
+    if(!missing(gtex_tissues)){
+      if(verbose) print("Getting the GTEx variants...")
+      gtex_variants <- get_gtex_variants(tissue_files = gtex_tissues,
+                                         omim_genes = genes_info,
+                                         gtex_lookup_file = gtex_lookup_file,
+                                         snp_mart = snp_mart,
+                                         verbose = verbose)
+
+      if(length(gtex_variants) != 0) master_variants <- rbind(master_variants, gtex_variants)
+
+    } else{
+      print("No values for 'gtex_tissues', skipping GTEx step...")
+    }
+
+  } else {
+    print(paste0("No genes found for: ", paste(gene_ids, collapse = ", ")))
   }
-
 
   #_____________________________________________________________________________
   # Getting variants associated to the disease in the gwas catalog
