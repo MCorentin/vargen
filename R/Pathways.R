@@ -90,7 +90,7 @@
   
   # If a rsid is given then search just by the rsid and not by any other params even
   # if they have been given. A default title should made for each rsid as well and
-  # not just the default.
+  # not just the default; This is done later on.
   if(is.null(params[[8]])) {
     params[[8]] = NA
   } else if(is.na(params[[8]]) == FALSE) {
@@ -128,469 +128,493 @@
 #' the function by the user after they have been deemed valid.
 #' @return a dataframe for restricted variants from the GWAS catelog
 .restrict_snp_gwas <- function(params){
-  if(is.na(params[[1]]) == FALSE && is.na(params[[3]]) == FALSE
-     && is.na(params[[4]]) && is.na(params[[6]])) {
-    # Case 1: Restrict the variants by trait only.
-    gwas_cat <- create_gwas(params[[1]])
-    for(trait in params[[3]]){
-      if(!(trait %in% gwas_cat$`DISEASE/TRAIT`)){
-        stop(paste0("gwas trait '", trait,
-                    "' not found in gwas catalog, stopping now."))
-      }
-    }
-    variants_traits <- gwascat::subsetByTraits(x = gwas_cat, tr = params[[3]])
-    variants_traits <- variants_traits[which(IRanges::overlapsAny(variants_traits,
-                                                                  gwas_cat))]
-  } else if(is.na(params[[1]]) == FALSE && is.na(params[[3]])
-            && is.na(params[[4]]) == FALSE && is.na(params[[6]])) {
-    # Case 2: Restrict the variants by chromosome only.
-    gwas_cat <- create_gwas(params[[1]])
-    variants_traits <- gwascat::subsetByChromosome(x = gwas_cat, ch = chrs)
-    variants_traits <- variants_traits[which(IRanges::overlapsAny(variants_traits,
-                                                                  gwas_cat))]
-  } else if(is.na(params[[1]]) == FALSE && is.na(params[[3]])
-            && is.na(params[[4]]) && is.na(params[[6]]) == FALSE) {
-    # Case 3: Restrict by gene only.
-    gwas_cat <- create_gwas(params[[1]])
-    if(params[[7]] == 1){
-      variants_traits <- cbind(gwas_cat$"SNPS", gwas_cat$"SNP_GENE_IDS",
-                               gwas_cat$"P-VALUE", gwas_cat$"MAPPED_GENE",
-                               gwas_cat$"REPORTED GENE(S)")
-      colnames(variants_traits) <- cbind("rsid", "ensembl_gene_id",
-                                         "p-value", "mapped_genes",
-                                         "reported_genes")
-      
-      variants_traits <- data.frame(variants_traits)
-      variants_single <- subset(variants_traits,
-                                variants_traits[["mapped_genes"]] == params[[6]])
-      
-      for(i in 1:nrow(variants_traits)){
-        print(paste0("searching ", i, " out of ", nrow(variants_traits), " special cases."))
-        inner_genes <- strsplit(variants_traits[["mapped_genes"]], ", ")[[i]]
-        if(params[[6]] %in% inner_genes){
-          variants_single <- merge(x = variants_single, y = variants_traits[i, ],
-                                   by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
-                                          "mapped_genes", "reported_genes"), all = TRUE)
+  # If there is a given rsid or list of then that is the only thing that needs to 
+  # be looked for. Otherwise, the other restirction paramters can be used.
+  if(is.na(params[[8]])) {
+    if(is.na(params[[1]]) == FALSE && is.na(params[[3]]) == FALSE
+       && is.na(params[[4]]) && is.na(params[[6]])) {
+      # Case 1: Restrict the variants by trait only.
+      gwas_cat <- create_gwas(params[[1]])
+      for(trait in params[[3]]){
+        if(!(trait %in% gwas_cat$`DISEASE/TRAIT`)){
+          stop(paste0("gwas trait '", trait,
+                      "' not found in gwas catalog, stopping now."))
         }
       }
-      variants_traits <- variants_singlef
-      
-    } else if(params[[7]] == 0) {
-      variants_traits <- cbind(gwas_cat$"SNPS", gwas_cat$"SNP_GENE_IDS",
-                               gwas_cat$"P-VALUE", gwas_cat$"MAPPED_GENE",
-                               gwas_cat$"REPORTED GENE(S)")
-      colnames(variants_traits) <- cbind("rsid", "ensembl_gene_id",
-                                         "p-value", "mapped_genes",
-                                         "reported_genes")
-      
-      variants_traits <- data.frame(variants_traits)
-      variants_multi <- subset(variants_traits,
-                               variants_traits[["reported_genes"]] == params[[6]])
-      
-      for(i in 1:nrow(variants_traits)){
-        inner_genes <- strsplit(variants_traits[["reported_genes"]], ", ")[[i]]
-        if(params[[6]] %in% inner_genes){
-          variants_multi <- merge(x = variants_single, y = variants_traits[i, ],
-                                  by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
-                                         "mapped_genes", "reported_genes"), all = TRUE)
+      variants_traits <- gwascat::subsetByTraits(x = gwas_cat, tr = params[[3]])
+      variants_traits <- variants_traits[which(IRanges::overlapsAny(variants_traits,
+                                                                    gwas_cat))]
+    } else if(is.na(params[[1]]) == FALSE && is.na(params[[3]])
+              && is.na(params[[4]]) == FALSE && is.na(params[[6]])) {
+      # Case 2: Restrict the variants by chromosome only.
+      gwas_cat <- create_gwas(params[[1]])
+      variants_traits <- gwascat::subsetByChromosome(x = gwas_cat, ch = chrs)
+      variants_traits <- variants_traits[which(IRanges::overlapsAny(variants_traits,
+                                                                    gwas_cat))]
+    } else if(is.na(params[[1]]) == FALSE && is.na(params[[3]])
+              && is.na(params[[4]]) && is.na(params[[6]]) == FALSE) {
+      # Case 3: Restrict by gene only.
+      gwas_cat <- create_gwas(params[[1]])
+      if(params[[7]] == 1){
+        variants_traits <- cbind(gwas_cat$"SNPS", gwas_cat$"SNP_GENE_IDS",
+                                 gwas_cat$"P-VALUE", gwas_cat$"MAPPED_GENE",
+                                 gwas_cat$"REPORTED GENE(S)")
+        colnames(variants_traits) <- cbind("rsid", "ensembl_gene_id",
+                                           "p-value", "mapped_genes",
+                                           "reported_genes")
+        
+        variants_traits <- data.frame(variants_traits)
+        variants_single <- subset(variants_traits,
+                                  variants_traits[["mapped_genes"]] == params[[6]])
+        
+        for(i in 1:nrow(variants_traits)){
+          print(paste0("searching ", i, " out of ", nrow(variants_traits), " special cases."))
+          inner_genes <- strsplit(variants_traits[["mapped_genes"]], ", ")[[i]]
+          if(params[[6]] %in% inner_genes){
+            variants_single <- merge(x = variants_single, y = variants_traits[i, ],
+                                     by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
+                                            "mapped_genes", "reported_genes"), all = TRUE)
+          }
+        }
+        variants_traits <- variants_singlef
+        
+      } else if(params[[7]] == 0) {
+        variants_traits <- cbind(gwas_cat$"SNPS", gwas_cat$"SNP_GENE_IDS",
+                                 gwas_cat$"P-VALUE", gwas_cat$"MAPPED_GENE",
+                                 gwas_cat$"REPORTED GENE(S)")
+        colnames(variants_traits) <- cbind("rsid", "ensembl_gene_id",
+                                           "p-value", "mapped_genes",
+                                           "reported_genes")
+        
+        variants_traits <- data.frame(variants_traits)
+        variants_multi <- subset(variants_traits,
+                                 variants_traits[["reported_genes"]] == params[[6]])
+        
+        for(i in 1:nrow(variants_traits)){
+          inner_genes <- strsplit(variants_traits[["reported_genes"]], ", ")[[i]]
+          if(params[[6]] %in% inner_genes){
+            variants_multi <- merge(x = variants_single, y = variants_traits[i, ],
+                                    by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
+                                           "mapped_genes", "reported_genes"), all = TRUE)
+          }
+        }
+        variants_traits <- variants_multi
+      } else {
+        variants_traits <- cbind(gwas_cat$"SNPS", gwas_cat$"SNP_GENE_IDS",
+                                 gwas_cat$"P-VALUE", gwas_cat$"MAPPED_GENE",
+                                 gwas_cat$"REPORTED GENE(S)")
+        colnames(variants_traits) <- cbind("rsid", "ensembl_gene_id",
+                                           "p-value", "mapped_genes",
+                                           "reported_genes")
+        
+        variants_traits <- data.frame(variants_traits)
+        variants_single_reported <- subset(variants_traits,
+                                           variants_traits[["reported_genes"]] == params[[6]])
+        variants_single_mapped <- subset(variants_traits,
+                                         variants_traits[["mapped_genes"]] == params[[6]])
+        
+        for(i in 1:nrow(variants_traits)){
+          print(paste0("searching ", i, " out of ", nrow(variants_traits), " special cases."))
+          inner_genes_reported <- strsplit(variants_traits[["reported_genes"]], ", ")[[i]]
+          inner_genes_mapped <- strsplit(variants_traits[["mapped_genes"]], ", ")[[i]]
+          if(params[[6]] %in% inner_genes){
+            variants_single_reported <- merge(x = variants_single_reported, y = variants_traits[i, ],
+                                              by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
+                                                     "mapped_genes", "reported_genes"), all = TRUE)
+          }
+        }
+        variants_traits <- merge(x = variants_traits, y = variants_single_mapped,
+                                 by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
+                                        "mapped_genes", "reported_genes"), all = TRUE)
+      }
+    } else if (is.na(params[[1]]) == FALSE && is.na(params[[3]]) == FALSE
+               && is.na(params[[4]]) == FALSE && is.na(params[[6]])) {
+      # Case 4: Restrict by both trait and chromosome.
+      gwas_cat <- create_gwas(params[[1]])
+      for(trait in params[[3]]){
+        if(!(trait %in% gwas_cat$`DISEASE/TRAIT`)){
+          stop(paste0("gwas trait '", trait, "' not found in gwas catalog, stopping now."))
         }
       }
-      variants_traits <- variants_multi
-    } else {
-      variants_traits <- cbind(gwas_cat$"SNPS", gwas_cat$"SNP_GENE_IDS",
-                               gwas_cat$"P-VALUE", gwas_cat$"MAPPED_GENE",
-                               gwas_cat$"REPORTED GENE(S)")
-      colnames(variants_traits) <- cbind("rsid", "ensembl_gene_id",
-                                         "p-value", "mapped_genes",
-                                         "reported_genes")
-      
-      variants_traits <- data.frame(variants_traits)
-      variants_single_reported <- subset(variants_traits,
-                                         variants_traits[["reported_genes"]] == params[[6]])
-      variants_single_mapped <- subset(variants_traits,
-                                       variants_traits[["mapped_genes"]] == params[[6]])
-      
-      for(i in 1:nrow(variants_traits)){
-        print(paste0("searching ", i, " out of ", nrow(variants_traits), " special cases."))
-        inner_genes_reported <- strsplit(variants_traits[["reported_genes"]], ", ")[[i]]
-        inner_genes_mapped <- strsplit(variants_traits[["mapped_genes"]], ", ")[[i]]
-        if(params[[6]] %in% inner_genes){
-          variants_single_reported <- merge(x = variants_single_reported, y = variants_traits[i, ],
-                                            by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
-                                                   "mapped_genes", "reported_genes"), all = TRUE)
+      variants_traits_chrs <- gwascat::subsetByChromosome(x = gwas_cat, ch = params[[4]])
+      variants_traits_chrs <- variants_traits_chrs[which(IRanges::overlapsAny(variants_traits_chrs,
+                                                                              gwas_cat))]
+      variants_traits <- gwascat::subsetByTraits(x = variants_traits_chrs, tr = params[[3]])
+      variants_traits <- variants_traits[which(IRanges::overlapsAny(variants_traits,
+                                                                    gwas_cat))]
+    } else if (is.na(params[[1]]) == FALSE && is.na(params[[3]]) == FALSE
+               && is.na(params[[4]]) && is.na(params[[6]]) == FALSE) {
+      # Case 5: Restrict by both trait and gene.
+      gwas_cat <- create_gwas(params[[1]])
+      for(trait in params[[3]]){
+        if(!(trait %in% gwas_cat$`DISEASE/TRAIT`)){
+          stop(paste0("gwas trait '", trait, "' not found in gwas catalog, stopping now."))
         }
       }
-      variants_traits <- merge(x = variants_traits, y = variants_single_mapped,
+      variants_traits <- gwascat::subsetByTraits(x = gwas_cat, tr = params[[3]])
+      variants_traits <- variants_traits[which(IRanges::overlapsAny(variants_traits,
+                                                                    gwas_cat))]
+      if(params[[7]] == 1){
+        variants_info <- cbind(variants_traits$"SNPS", variants_traits$"SNP_GENE_IDS",
+                               variants_traits$"P-VALUE", variants_traits$"MAPPED_GENE",
+                               variants_traits$"REPORTED GENE(S)")
+        colnames(variants_info) <- cbind("rsid", "ensembl_gene_id",
+                                         "p-value", "mapped_genes",
+                                         "reported_genes")
+        
+        variants_info <- data.frame(variants_info)
+        variants_single <- subset(variants_info,
+                                  variants_info[["mapped_genes"]] == params[[6]])
+        
+        for(i in 1:nrow(variants_info)){
+          print(paste0("searching ", i, " out of ", nrow(variants_info), " special cases."))
+          inner_genes <- strsplit(variants_info[["mapped_genes"]], ", ")[[i]]
+          if(params[[6]] %in% inner_genes){
+            variants_single <- merge(x = variants_single, y = variants_info[i, ],
+                                     by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
+                                            "mapped_genes", "reported_genes"), all = TRUE)
+          }
+        }
+        variants_traits <- variants_single
+        
+      } else if(params[[7]] == 0) {
+        variants_info <- cbind(gwas_cat$"SNPS", gwas_cat$"SNP_GENE_IDS",
+                               gwas_cat$"P-VALUE", gwas_cat$"MAPPED_GENE",
+                               gwas_cat$"REPORTED GENE(S)")
+        colnames(variants_info) <- cbind("rsid", "ensembl_gene_id",
+                                         "p-value", "mapped_genes",
+                                         "reported_genes")
+        
+        variants_info <- data.frame(variants_info)
+        variants_multi <- subset(variants_info,
+                                 variants_info[["reported_genes"]] == params[[6]])
+        
+        for(i in 1:nrow(variants_info)){
+          print(paste0("searching ", i, " out of ", nrow(variants_info), " special cases."))
+          inner_genes <- strsplit(variants_info[["reported_genes"]], ", ")[[i]]
+          if(params[[6]] %in% inner_genes){
+            variants_multi <- merge(x = variants_single, y = variants_info[i, ],
+                                    by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
+                                           "mapped_genes", "reported_genes"), all = TRUE)
+          }
+        }
+        variants_info <- variants_multi
+      } else {
+        variants_info <- cbind(gwas_cat$"SNPS", gwas_cat$"SNP_GENE_IDS",
+                               gwas_cat$"P-VALUE", gwas_cat$"MAPPED_GENE",
+                               gwas_cat$"REPORTED GENE(S)")
+        colnames(variants_info) <- cbind("rsid", "ensembl_gene_id",
+                                         "p-value", "mapped_genes",
+                                         "reported_genes")
+        
+        variants_info <- data.frame(variants_info)
+        variants_single_reported <- subset(variants_info,
+                                           variants_info[["reported_genes"]] == params[[6]])
+        variants_single_mapped <- subset(variants_info,
+                                         variants_info[["mapped_genes"]] == params[[6]])
+        
+        for(i in 1:nrow(variants_info)){
+          print(paste0("searching ", i, " out of ", nrow(variants_info), " special cases."))
+          inner_genes_reported <- strsplit(variants_info[["reported_genes"]], ", ")[[i]]
+          inner_genes_mapped <- strsplit(variants_info[["mapped_genes"]], ", ")[[i]]
+          if(params[[6]] %in% inner_genes_mapped || params[[6]] %in% inner_genes_reported){
+            variants_single_reported <- merge(x = variants_single_reported, y = variants_info[i, ],
+                                              by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
+                                                     "mapped_genes", "reported_genes"), all = TRUE)
+          }
+        }
+        variants_info <- merge(x = variants_info, y = variants_single_mapped,
                                by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
                                       "mapped_genes", "reported_genes"), all = TRUE)
-    }
-  } else if (is.na(params[[1]]) == FALSE && is.na(params[[3]]) == FALSE
-             && is.na(params[[4]]) == FALSE && is.na(params[[6]])) {
-    # Case 4: Restrict by both trait and chromosome.
-    gwas_cat <- create_gwas(params[[1]])
-    for(trait in params[[3]]){
-      if(!(trait %in% gwas_cat$`DISEASE/TRAIT`)){
-        stop(paste0("gwas trait '", trait, "' not found in gwas catalog, stopping now."))
       }
-    }
-    variants_traits_chrs <- gwascat::subsetByChromosome(x = gwas_cat, ch = params[[4]])
-    variants_traits_chrs <- variants_traits_chrs[which(IRanges::overlapsAny(variants_traits_chrs,
-                                                                            gwas_cat))]
-    variants_traits <- gwascat::subsetByTraits(x = variants_traits_chrs, tr = params[[3]])
-    variants_traits <- variants_traits[which(IRanges::overlapsAny(variants_traits,
-                                                                  gwas_cat))]
-  } else if (is.na(params[[1]]) == FALSE && is.na(params[[3]]) == FALSE
-             && is.na(params[[4]]) && is.na(params[[6]]) == FALSE) {
-    # Case 5: Restrict by both trait and gene.
-    gwas_cat <- create_gwas(params[[1]])
-    for(trait in params[[3]]){
-      if(!(trait %in% gwas_cat$`DISEASE/TRAIT`)){
-        stop(paste0("gwas trait '", trait, "' not found in gwas catalog, stopping now."))
-      }
-    }
-    variants_traits <- gwascat::subsetByTraits(x = gwas_cat, tr = params[[3]])
-    variants_traits <- variants_traits[which(IRanges::overlapsAny(variants_traits,
-                                                                  gwas_cat))]
-    if(params[[7]] == 1){
-      variants_info <- cbind(variants_traits$"SNPS", variants_traits$"SNP_GENE_IDS",
-                             variants_traits$"P-VALUE", variants_traits$"MAPPED_GENE",
-                             variants_traits$"REPORTED GENE(S)")
-      colnames(variants_info) <- cbind("rsid", "ensembl_gene_id",
-                                       "p-value", "mapped_genes",
-                                       "reported_genes")
-      
-      variants_info <- data.frame(variants_info)
-      variants_single <- subset(variants_info,
-                                variants_info[["mapped_genes"]] == params[[6]])
-      
-      for(i in 1:nrow(variants_info)){
-        print(paste0("searching ", i, " out of ", nrow(variants_info), " special cases."))
-        inner_genes <- strsplit(variants_info[["mapped_genes"]], ", ")[[i]]
-        if(params[[6]] %in% inner_genes){
-          variants_single <- merge(x = variants_single, y = variants_info[i, ],
-                                   by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
-                                          "mapped_genes", "reported_genes"), all = TRUE)
+    }  else if (is.na(params[[1]]) == FALSE && is.na(params[[3]]) == FALSE
+                && is.na(params[[4]]) && is.na(params[[6]]) == FALSE) {
+      # Case 6: Restrict by both chromosome and gene.
+      gwas_cat <- create_gwas(params[[1]])
+      for(trait in params[[3]]){
+        if(!(trait %in% gwas_cat$`DISEASE/TRAIT`)){
+          stop(paste0("gwas trait '", trait, "' not found in gwas catalog, stopping now."))
         }
       }
-      variants_traits <- variants_single
-      
-    } else if(params[[7]] == 0) {
-      variants_info <- cbind(gwas_cat$"SNPS", gwas_cat$"SNP_GENE_IDS",
-                             gwas_cat$"P-VALUE", gwas_cat$"MAPPED_GENE",
-                             gwas_cat$"REPORTED GENE(S)")
-      colnames(variants_info) <- cbind("rsid", "ensembl_gene_id",
-                                       "p-value", "mapped_genes",
-                                       "reported_genes")
-      
-      variants_info <- data.frame(variants_info)
-      variants_multi <- subset(variants_info,
-                               variants_info[["reported_genes"]] == params[[6]])
-      
-      for(i in 1:nrow(variants_info)){
-        print(paste0("searching ", i, " out of ", nrow(variants_info), " special cases."))
-        inner_genes <- strsplit(variants_info[["reported_genes"]], ", ")[[i]]
-        if(params[[6]] %in% inner_genes){
-          variants_multi <- merge(x = variants_single, y = variants_info[i, ],
-                                  by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
-                                         "mapped_genes", "reported_genes"), all = TRUE)
+      variants_traits <- gwascat::subsetByChromosome(x = gwas_cat, ch = params[[4]])
+      variants_traits <- variants_traits_chrs[which(IRanges::overlapsAny(variants_traits,
+                                                                         gwas_cat))]
+      if(params[[7]] == 1){
+        variants_info <- cbind(variants_traits$"SNPS", variants_traits$"SNP_GENE_IDS",
+                               variants_traits$"P-VALUE", variants_traits$"MAPPED_GENE",
+                               variants_traits$"REPORTED GENE(S)")
+        colnames(variants_info) <- cbind("rsid", "ensembl_gene_id",
+                                         "p-value", "mapped_genes",
+                                         "reported_genes")
+        
+        variants_info <- data.frame(variants_info)
+        variants_single <- subset(variants_info,
+                                  variants_info[["mapped_genes"]] == params[[6]])
+        
+        for(i in 1:nrow(variants_info)){
+          print(paste0("searching ", i, " out of ", nrow(variants_info), " special cases."))
+          inner_genes <- strsplit(variants_info[["mapped_genes"]], ", ")[[i]]
+          if(params[[6]] %in% inner_genes){
+            variants_single <- merge(x = variants_single, y = variants_info[i, ],
+                                     by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
+                                            "mapped_genes", "reported_genes"), all = TRUE)
+          }
+        }
+        variants_traits <- variants_single
+        
+      }
+      else if(params[[7]] == 0) {
+        variants_info <- cbind(gwas_cat$"SNPS", gwas_cat$"SNP_GENE_IDS",
+                               gwas_cat$"P-VALUE", gwas_cat$"MAPPED_GENE",
+                               gwas_cat$"REPORTED GENE(S)")
+        colnames(variants_info) <- cbind("rsid", "ensembl_gene_id",
+                                         "p-value", "mapped_genes",
+                                         "reported_genes")
+        
+        variants_info <- data.frame(variants_info)
+        variants_multi <- subset(variants_info,
+                                 variants_info[["reported_genes"]] == params[[6]])
+        
+        for(i in 1:nrow(variants_info)){
+          print(paste0("searching ", i, " out of ", nrow(variants_info), " special cases."))
+          inner_genes <- strsplit(variants_info[["reported_genes"]], ", ")[[i]]
+          if(params[[6]] %in% inner_genes){
+            variants_multi <- merge(x = variants_single, y = variants_info[i, ],
+                                    by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
+                                           "mapped_genes", "reported_genes"), all = TRUE)
+          }
+        }
+        variants_info <- variants_multi
+      } else {
+        variants_info <- cbind(gwas_cat$"SNPS", gwas_cat$"SNP_GENE_IDS",
+                               gwas_cat$"P-VALUE", gwas_cat$"MAPPED_GENE",
+                               gwas_cat$"REPORTED GENE(S)")
+        colnames(variants_info) <- cbind("rsid", "ensembl_gene_id",
+                                         "p-value", "mapped_genes",
+                                         "reported_genes")
+        
+        variants_info <- data.frame(variants_info)
+        variants_single_reported <- subset(variants_info,
+                                           variants_info[["reported_genes"]] == params[[6]])
+        variants_single_mapped <- subset(variants_info,
+                                         variants_info[["mapped_genes"]] == params[[6]])
+        
+        for(i in 1:nrow(variants_info)){
+          print(paste0("searching ", i, " out of ", nrow(variants_info), " special cases."))
+          inner_genes_reported <- strsplit(variants_info[["reported_genes"]], ", ")[[i]]
+          inner_genes_mapped <- strsplit(variants_info[["mapped_genes"]], ", ")[[i]]
+          if(params[[6]] %in% inner_genes){
+            variants_single_reported <- merge(x = variants_single_reported, y = variants_info[i, ],
+                                              by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
+                                                     "mapped_genes", "reported_genes"), all = TRUE)
+          }
+        }
+        variants_info <- merge(x = variants_info, y = variants_single_mapped,
+                               by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
+                                      "mapped_genes", "reported_genes"), all = TRUE)
+      }
+    } else if (is.na(params[[1]]) == FALSE && is.na(params[[3]]) == FALSE
+               && is.na(params[[4]]) && is.na(params[[6]]) == FALSE) {
+      # Case 6: Restrict by both chromosome and gene.
+      gwas_cat <- create_gwas(params[[1]])
+      for(trait in params[[3]]){
+        if(!(trait %in% gwas_cat$`DISEASE/TRAIT`)){
+          stop(paste0("gwas trait '", trait, "' not found in gwas catalog, stopping now."))
         }
       }
-      variants_info <- variants_multi
+      variants_traits <- gwascat::subsetByChromosome(x = gwas_cat, ch = params[[4]])
+      variants_traits <- variants_traits_chrs[which(IRanges::overlapsAny(variants_traits,
+                                                                         gwas_cat))]
+      if(params[[7]] == 1){
+        variants_info <- cbind(variants_traits$"SNPS", variants_traits$"SNP_GENE_IDS",
+                               variants_traits$"P-VALUE", variants_traits$"MAPPED_GENE",
+                               variants_traits$"REPORTED GENE(S)")
+        colnames(variants_info) <- cbind("rsid", "ensembl_gene_id",
+                                         "p-value", "mapped_genes",
+                                         "reported_genes")
+        
+        variants_info <- data.frame(variants_info)
+        variants_single <- subset(variants_info,
+                                  variants_info[["mapped_genes"]] == params[[6]])
+        
+        for(i in 1:nrow(variants_info)){
+          print(paste0("searching ", i, " out of ", nrow(variants_info), " special cases."))
+          inner_genes <- strsplit(variants_info[["mapped_genes"]], ", ")[[i]]
+          if(params[[6]] %in% inner_genes){
+            variants_single <- merge(x = variants_single, y = variants_info[i, ],
+                                     by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
+                                            "mapped_genes", "reported_genes"), all = TRUE)
+          }
+        }
+        variants_traits <- variants_single
+        
+      }
+      else if(params[[7]] == 0) {
+        variants_info <- cbind(gwas_cat$"SNPS", gwas_cat$"SNP_GENE_IDS",
+                               gwas_cat$"P-VALUE", gwas_cat$"MAPPED_GENE",
+                               gwas_cat$"REPORTED GENE(S)")
+        colnames(variants_info) <- cbind("rsid", "ensembl_gene_id",
+                                         "p-value", "mapped_genes",
+                                         "reported_genes")
+        
+        variants_info <- data.frame(variants_info)
+        variants_multi <- subset(variants_info,
+                                 variants_info[["reported_genes"]] == params[[6]])
+        
+        for(i in 1:nrow(variants_info)){
+          print(paste0("searching ", i, " out of ", nrow(variants_info), " special cases."))
+          inner_genes <- strsplit(variants_info[["reported_genes"]], ", ")[[i]]
+          if(params[[6]] %in% inner_genes){
+            variants_multi <- merge(x = variants_single, y = variants_info[i, ],
+                                    by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
+                                           "mapped_genes", "reported_genes"), all = TRUE)
+          }
+        }
+        variants_info <- variants_multi
+      } else {
+        variants_info <- cbind(gwas_cat$"SNPS", gwas_cat$"SNP_GENE_IDS",
+                               gwas_cat$"P-VALUE", gwas_cat$"MAPPED_GENE",
+                               gwas_cat$"REPORTED GENE(S)")
+        colnames(variants_info) <- cbind("rsid", "ensembl_gene_id",
+                                         "p-value", "mapped_genes",
+                                         "reported_genes")
+        
+        variants_info <- data.frame(variants_info)
+        variants_single_reported <- subset(variants_info,
+                                           variants_info[["reported_genes"]] == params[[6]])
+        variants_single_mapped <- subset(variants_info,
+                                         variants_info[["mapped_genes"]] == params[[6]])
+        
+        for(i in 1:nrow(variants_info)){
+          print(paste0("searching ", i, " out of ", nrow(variants_info), " special cases."))
+          inner_genes_reported <- strsplit(variants_info[["reported_genes"]], ", ")[[i]]
+          inner_genes_mapped <- strsplit(variants_info[["mapped_genes"]], ", ")[[i]]
+          if(params[[6]] %in% inner_genes){
+            variants_single_reported <- merge(x = variants_single_reported, y = variants_info[i, ],
+                                              by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
+                                                     "mapped_genes", "reported_genes"), all = TRUE)
+          }
+        }
+        variants_info <- merge(x = variants_info, y = variants_single_mapped,
+                               by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
+                                      "mapped_genes", "reported_genes"), all = TRUE)
+      }
+    }  else if (is.na(params[[1]]) == FALSE && is.na(params[[3]]) == FALSE
+                && is.na(params[[4]]) && is.na(params[[6]]) == FALSE) {
+      # Case 7: Restrict by both chromosome and gene.
+      gwas_cat <- create_gwas(params[[1]])
+      for(trait in params[[3]]){
+        if(!(trait %in% gwas_cat$`DISEASE/TRAIT`)){
+          stop(paste0("gwas trait '", trait, "' not found in gwas catalog, stopping now."))
+        }
+      }
+      variants_traits_chrs <- gwascat::subsetByChromosome(x = gwas_cat, ch = params[[4]])
+      variants_traits_chrs <- variants_traits_chrs[which(IRanges::overlapsAny(variants_traits_chrs,
+                                                                              gwas_cat))]
+      variants_traits <- gwascat::subsetByTraits(x = variants_traits_chrs, tr = params[[3]])
+      variants_traits <- variants_traits[which(IRanges::overlapsAny(variants_traits,
+                                                                    gwas_cat))]
+      if(params[[7]] == 1){
+        variants_info <- cbind(variants_traits$"SNPS", variants_traits$"SNP_GENE_IDS",
+                               variants_traits$"P-VALUE", variants_traits$"MAPPED_GENE",
+                               variants_traits$"REPORTED GENE(S)")
+        colnames(variants_info) <- cbind("rsid", "ensembl_gene_id",
+                                         "p-value", "mapped_genes",
+                                         "reported_genes")
+        
+        variants_info <- data.frame(variants_info)
+        variants_single <- subset(variants_info,
+                                  variants_info[["mapped_genes"]] == params[[6]])
+        
+        for(i in 1:nrow(variants_info)){
+          print(paste0("searching ", i, " out of ", nrow(variants_info), " special cases."))
+          inner_genes <- strsplit(variants_info[["mapped_genes"]], ", ")[[i]]
+          if(params[[6]] %in% inner_genes){
+            variants_single <- merge(x = variants_single, y = variants_info[i, ],
+                                     by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
+                                            "mapped_genes", "reported_genes"), all = TRUE)
+          }
+        }
+        variants_traits <- variants_single
+        
+      } else if(params[[7]] == 0) {
+        variants_info <- cbind(gwas_cat$"SNPS", gwas_cat$"SNP_GENE_IDS",
+                               gwas_cat$"P-VALUE", gwas_cat$"MAPPED_GENE",
+                               gwas_cat$"REPORTED GENE(S)")
+        colnames(variants_info) <- cbind("rsid", "ensembl_gene_id",
+                                         "p-value", "mapped_genes",
+                                         "reported_genes")
+        
+        variants_info <- data.frame(variants_info)
+        variants_multi <- subset(variants_info,
+                                 variants_info[["reported_genes"]] == params[[6]])
+        
+        for(i in 1:nrow(variants_info)){
+          print(paste0("searching ", i, " out of ", nrow(variants_info), " special cases."))
+          inner_genes <- strsplit(variants_info[["reported_genes"]], ", ")[[i]]
+          if(params[[6]] %in% inner_genes){
+            variants_multi <- merge(x = variants_single, y = variants_info[i, ],
+                                    by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
+                                           "mapped_genes", "reported_genes"), all = TRUE)
+          }
+        }
+        variants_info <- variants_multi
+      } else {
+        variants_info <- cbind(gwas_cat$"SNPS", gwas_cat$"SNP_GENE_IDS",
+                               gwas_cat$"P-VALUE", gwas_cat$"MAPPED_GENE",
+                               gwas_cat$"REPORTED GENE(S)")
+        colnames(variants_info) <- cbind("rsid", "ensembl_gene_id",
+                                         "p-value", "mapped_genes",
+                                         "reported_genes")
+        
+        variants_info <- data.frame(variants_info)
+        variants_single_reported <- subset(variants_info,
+                                           variants_info[["reported_genes"]] == params[[6]])
+        variants_single_mapped <- subset(variants_info,
+                                         variants_info[["mapped_genes"]] == params[[6]])
+        
+        for(i in 1:nrow(variants_info)){
+          print(paste0("searching ", i, " out of ", nrow(variants_info), " special cases."))
+          inner_genes_reported <- strsplit(variants_info[["reported_genes"]], ", ")[[i]]
+          inner_genes_mapped <- strsplit(variants_info[["mapped_genes"]], ", ")[[i]]
+          if(params[[6]] %in% inner_genes){
+            variants_single_reported <- merge(x = variants_single_reported, y = variants_info[i, ],
+                                              by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
+                                                     "mapped_genes", "reported_genes"), all = TRUE)
+          }
+        }
+        variants_info <- merge(x = variants_info, y = variants_single_mapped,
+                               by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
+                                      "mapped_genes", "reported_genes"), all = TRUE)
+      }
+    } else if(   is.na(params[[1]])) {
+      # Case 8: This case should never happen as it should already be caught.
+      stop(paste0("No VarGen directory was found."))
     } else {
-      variants_info <- cbind(gwas_cat$"SNPS", gwas_cat$"SNP_GENE_IDS",
-                             gwas_cat$"P-VALUE", gwas_cat$"MAPPED_GENE",
-                             gwas_cat$"REPORTED GENE(S)")
-      colnames(variants_info) <- cbind("rsid", "ensembl_gene_id",
-                                       "p-value", "mapped_genes",
-                                       "reported_genes")
-      
-      variants_info <- data.frame(variants_info)
-      variants_single_reported <- subset(variants_info,
-                                         variants_info[["reported_genes"]] == params[[6]])
-      variants_single_mapped <- subset(variants_info,
-                                       variants_info[["mapped_genes"]] == params[[6]])
-      
-      for(i in 1:nrow(variants_info)){
-        print(paste0("searching ", i, " out of ", nrow(variants_info), " special cases."))
-        inner_genes_reported <- strsplit(variants_info[["reported_genes"]], ", ")[[i]]
-        inner_genes_mapped <- strsplit(variants_info[["mapped_genes"]], ", ")[[i]]
-        if(params[[6]] %in% inner_genes_mapped || params[[6]] %in% inner_genes_reported){
-          variants_single_reported <- merge(x = variants_single_reported, y = variants_info[i, ],
-                                            by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
-                                                   "mapped_genes", "reported_genes"), all = TRUE)
-        }
-      }
-      variants_info <- merge(x = variants_info, y = variants_single_mapped,
-                             by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
-                                    "mapped_genes", "reported_genes"), all = TRUE)
+      # Case 9: No restrictions given.
+      gwas_cat <- create_gwas(params[[1]])
+      variants_traits <- gwas_cat
     }
-  }  else if (is.na(params[[1]]) == FALSE && is.na(params[[3]]) == FALSE
-              && is.na(params[[4]]) && is.na(params[[6]]) == FALSE) {
-    # Case 6: Restrict by both chromosome and gene.
-    gwas_cat <- create_gwas(params[[1]])
-    for(trait in params[[3]]){
-      if(!(trait %in% gwas_cat$`DISEASE/TRAIT`)){
-        stop(paste0("gwas trait '", trait, "' not found in gwas catalog, stopping now."))
-      }
-    }
-    variants_traits <- gwascat::subsetByChromosome(x = gwas_cat, ch = params[[4]])
-    variants_traits <- variants_traits_chrs[which(IRanges::overlapsAny(variants_traits,
-                                                                       gwas_cat))]
-    if(params[[7]] == 1){
-      variants_info <- cbind(variants_traits$"SNPS", variants_traits$"SNP_GENE_IDS",
-                             variants_traits$"P-VALUE", variants_traits$"MAPPED_GENE",
-                             variants_traits$"REPORTED GENE(S)")
-      colnames(variants_info) <- cbind("rsid", "ensembl_gene_id",
-                                       "p-value", "mapped_genes",
-                                       "reported_genes")
-      
-      variants_info <- data.frame(variants_info)
-      variants_single <- subset(variants_info,
-                                variants_info[["mapped_genes"]] == params[[6]])
-      
-      for(i in 1:nrow(variants_info)){
-        print(paste0("searching ", i, " out of ", nrow(variants_info), " special cases."))
-        inner_genes <- strsplit(variants_info[["mapped_genes"]], ", ")[[i]]
-        if(params[[6]] %in% inner_genes){
-          variants_single <- merge(x = variants_single, y = variants_info[i, ],
-                                   by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
-                                          "mapped_genes", "reported_genes"), all = TRUE)
-        }
-      }
-      variants_traits <- variants_single
-      
-    }
-    else if(params[[7]] == 0) {
-      variants_info <- cbind(gwas_cat$"SNPS", gwas_cat$"SNP_GENE_IDS",
-                             gwas_cat$"P-VALUE", gwas_cat$"MAPPED_GENE",
-                             gwas_cat$"REPORTED GENE(S)")
-      colnames(variants_info) <- cbind("rsid", "ensembl_gene_id",
-                                       "p-value", "mapped_genes",
-                                       "reported_genes")
-      
-      variants_info <- data.frame(variants_info)
-      variants_multi <- subset(variants_info,
-                               variants_info[["reported_genes"]] == params[[6]])
-      
-      for(i in 1:nrow(variants_info)){
-        print(paste0("searching ", i, " out of ", nrow(variants_info), " special cases."))
-        inner_genes <- strsplit(variants_info[["reported_genes"]], ", ")[[i]]
-        if(params[[6]] %in% inner_genes){
-          variants_multi <- merge(x = variants_single, y = variants_info[i, ],
-                                  by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
-                                         "mapped_genes", "reported_genes"), all = TRUE)
-        }
-      }
-      variants_info <- variants_multi
-    } else {
-      variants_info <- cbind(gwas_cat$"SNPS", gwas_cat$"SNP_GENE_IDS",
-                             gwas_cat$"P-VALUE", gwas_cat$"MAPPED_GENE",
-                             gwas_cat$"REPORTED GENE(S)")
-      colnames(variants_info) <- cbind("rsid", "ensembl_gene_id",
-                                       "p-value", "mapped_genes",
-                                       "reported_genes")
-      
-      variants_info <- data.frame(variants_info)
-      variants_single_reported <- subset(variants_info,
-                                         variants_info[["reported_genes"]] == params[[6]])
-      variants_single_mapped <- subset(variants_info,
-                                       variants_info[["mapped_genes"]] == params[[6]])
-      
-      for(i in 1:nrow(variants_info)){
-        print(paste0("searching ", i, " out of ", nrow(variants_info), " special cases."))
-        inner_genes_reported <- strsplit(variants_info[["reported_genes"]], ", ")[[i]]
-        inner_genes_mapped <- strsplit(variants_info[["mapped_genes"]], ", ")[[i]]
-        if(params[[6]] %in% inner_genes){
-          variants_single_reported <- merge(x = variants_single_reported, y = variants_info[i, ],
-                                            by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
-                                                   "mapped_genes", "reported_genes"), all = TRUE)
-        }
-      }
-      variants_info <- merge(x = variants_info, y = variants_single_mapped,
-                             by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
-                                    "mapped_genes", "reported_genes"), all = TRUE)
-    }
-  } else if (is.na(params[[1]]) == FALSE && is.na(params[[3]]) == FALSE
-             && is.na(params[[4]]) && is.na(params[[6]]) == FALSE) {
-    # Case 6: Restrict by both chromosome and gene.
-    gwas_cat <- create_gwas(params[[1]])
-    for(trait in params[[3]]){
-      if(!(trait %in% gwas_cat$`DISEASE/TRAIT`)){
-        stop(paste0("gwas trait '", trait, "' not found in gwas catalog, stopping now."))
-      }
-    }
-    variants_traits <- gwascat::subsetByChromosome(x = gwas_cat, ch = params[[4]])
-    variants_traits <- variants_traits_chrs[which(IRanges::overlapsAny(variants_traits,
-                                                                       gwas_cat))]
-    if(params[[7]] == 1){
-      variants_info <- cbind(variants_traits$"SNPS", variants_traits$"SNP_GENE_IDS",
-                             variants_traits$"P-VALUE", variants_traits$"MAPPED_GENE",
-                             variants_traits$"REPORTED GENE(S)")
-      colnames(variants_info) <- cbind("rsid", "ensembl_gene_id",
-                                       "p-value", "mapped_genes",
-                                       "reported_genes")
-      
-      variants_info <- data.frame(variants_info)
-      variants_single <- subset(variants_info,
-                                variants_info[["mapped_genes"]] == params[[6]])
-      
-      for(i in 1:nrow(variants_info)){
-        print(paste0("searching ", i, " out of ", nrow(variants_info), " special cases."))
-        inner_genes <- strsplit(variants_info[["mapped_genes"]], ", ")[[i]]
-        if(params[[6]] %in% inner_genes){
-          variants_single <- merge(x = variants_single, y = variants_info[i, ],
-                                   by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
-                                          "mapped_genes", "reported_genes"), all = TRUE)
-        }
-      }
-      variants_traits <- variants_single
-      
-    }
-    else if(params[[7]] == 0) {
-      variants_info <- cbind(gwas_cat$"SNPS", gwas_cat$"SNP_GENE_IDS",
-                             gwas_cat$"P-VALUE", gwas_cat$"MAPPED_GENE",
-                             gwas_cat$"REPORTED GENE(S)")
-      colnames(variants_info) <- cbind("rsid", "ensembl_gene_id",
-                                       "p-value", "mapped_genes",
-                                       "reported_genes")
-      
-      variants_info <- data.frame(variants_info)
-      variants_multi <- subset(variants_info,
-                               variants_info[["reported_genes"]] == params[[6]])
-      
-      for(i in 1:nrow(variants_info)){
-        print(paste0("searching ", i, " out of ", nrow(variants_info), " special cases."))
-        inner_genes <- strsplit(variants_info[["reported_genes"]], ", ")[[i]]
-        if(params[[6]] %in% inner_genes){
-          variants_multi <- merge(x = variants_single, y = variants_info[i, ],
-                                  by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
-                                         "mapped_genes", "reported_genes"), all = TRUE)
-        }
-      }
-      variants_info <- variants_multi
-    } else {
-      variants_info <- cbind(gwas_cat$"SNPS", gwas_cat$"SNP_GENE_IDS",
-                             gwas_cat$"P-VALUE", gwas_cat$"MAPPED_GENE",
-                             gwas_cat$"REPORTED GENE(S)")
-      colnames(variants_info) <- cbind("rsid", "ensembl_gene_id",
-                                       "p-value", "mapped_genes",
-                                       "reported_genes")
-      
-      variants_info <- data.frame(variants_info)
-      variants_single_reported <- subset(variants_info,
-                                         variants_info[["reported_genes"]] == params[[6]])
-      variants_single_mapped <- subset(variants_info,
-                                       variants_info[["mapped_genes"]] == params[[6]])
-      
-      for(i in 1:nrow(variants_info)){
-        print(paste0("searching ", i, " out of ", nrow(variants_info), " special cases."))
-        inner_genes_reported <- strsplit(variants_info[["reported_genes"]], ", ")[[i]]
-        inner_genes_mapped <- strsplit(variants_info[["mapped_genes"]], ", ")[[i]]
-        if(params[[6]] %in% inner_genes){
-          variants_single_reported <- merge(x = variants_single_reported, y = variants_info[i, ],
-                                            by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
-                                                   "mapped_genes", "reported_genes"), all = TRUE)
-        }
-      }
-      variants_info <- merge(x = variants_info, y = variants_single_mapped,
-                             by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
-                                    "mapped_genes", "reported_genes"), all = TRUE)
-    }
-  }  else if (is.na(params[[1]]) == FALSE && is.na(params[[3]]) == FALSE
-              && is.na(params[[4]]) && is.na(params[[6]]) == FALSE) {
-    # Case 7: Restrict by both chromosome and gene.
-    gwas_cat <- create_gwas(params[[1]])
-    for(trait in params[[3]]){
-      if(!(trait %in% gwas_cat$`DISEASE/TRAIT`)){
-        stop(paste0("gwas trait '", trait, "' not found in gwas catalog, stopping now."))
-      }
-    }
-    variants_traits_chrs <- gwascat::subsetByChromosome(x = gwas_cat, ch = params[[4]])
-    variants_traits_chrs <- variants_traits_chrs[which(IRanges::overlapsAny(variants_traits_chrs,
-                                                                            gwas_cat))]
-    variants_traits <- gwascat::subsetByTraits(x = variants_traits_chrs, tr = params[[3]])
-    variants_traits <- variants_traits[which(IRanges::overlapsAny(variants_traits,
-                                                                  gwas_cat))]
-    if(params[[7]] == 1){
-      variants_info <- cbind(variants_traits$"SNPS", variants_traits$"SNP_GENE_IDS",
-                             variants_traits$"P-VALUE", variants_traits$"MAPPED_GENE",
-                             variants_traits$"REPORTED GENE(S)")
-      colnames(variants_info) <- cbind("rsid", "ensembl_gene_id",
-                                       "p-value", "mapped_genes",
-                                       "reported_genes")
-      
-      variants_info <- data.frame(variants_info)
-      variants_single <- subset(variants_info,
-                                variants_info[["mapped_genes"]] == params[[6]])
-      
-      for(i in 1:nrow(variants_info)){
-        print(paste0("searching ", i, " out of ", nrow(variants_info), " special cases."))
-        inner_genes <- strsplit(variants_info[["mapped_genes"]], ", ")[[i]]
-        if(params[[6]] %in% inner_genes){
-          variants_single <- merge(x = variants_single, y = variants_info[i, ],
-                                   by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
-                                          "mapped_genes", "reported_genes"), all = TRUE)
-        }
-      }
-      variants_traits <- variants_single
-      
-    } else if(params[[7]] == 0) {
-      variants_info <- cbind(gwas_cat$"SNPS", gwas_cat$"SNP_GENE_IDS",
-                             gwas_cat$"P-VALUE", gwas_cat$"MAPPED_GENE",
-                             gwas_cat$"REPORTED GENE(S)")
-      colnames(variants_info) <- cbind("rsid", "ensembl_gene_id",
-                                       "p-value", "mapped_genes",
-                                       "reported_genes")
-      
-      variants_info <- data.frame(variants_info)
-      variants_multi <- subset(variants_info,
-                               variants_info[["reported_genes"]] == params[[6]])
-      
-      for(i in 1:nrow(variants_info)){
-        print(paste0("searching ", i, " out of ", nrow(variants_info), " special cases."))
-        inner_genes <- strsplit(variants_info[["reported_genes"]], ", ")[[i]]
-        if(params[[6]] %in% inner_genes){
-          variants_multi <- merge(x = variants_single, y = variants_info[i, ],
-                                  by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
-                                         "mapped_genes", "reported_genes"), all = TRUE)
-        }
-      }
-      variants_info <- variants_multi
-    } else {
-      variants_info <- cbind(gwas_cat$"SNPS", gwas_cat$"SNP_GENE_IDS",
-                             gwas_cat$"P-VALUE", gwas_cat$"MAPPED_GENE",
-                             gwas_cat$"REPORTED GENE(S)")
-      colnames(variants_info) <- cbind("rsid", "ensembl_gene_id",
-                                       "p-value", "mapped_genes",
-                                       "reported_genes")
-      
-      variants_info <- data.frame(variants_info)
-      variants_single_reported <- subset(variants_info,
-                                         variants_info[["reported_genes"]] == params[[6]])
-      variants_single_mapped <- subset(variants_info,
-                                       variants_info[["mapped_genes"]] == params[[6]])
-      
-      for(i in 1:nrow(variants_info)){
-        print(paste0("searching ", i, " out of ", nrow(variants_info), " special cases."))
-        inner_genes_reported <- strsplit(variants_info[["reported_genes"]], ", ")[[i]]
-        inner_genes_mapped <- strsplit(variants_info[["mapped_genes"]], ", ")[[i]]
-        if(params[[6]] %in% inner_genes){
-          variants_single_reported <- merge(x = variants_single_reported, y = variants_info[i, ],
-                                            by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
-                                                   "mapped_genes", "reported_genes"), all = TRUE)
-        }
-      }
-      variants_info <- merge(x = variants_info, y = variants_single_mapped,
-                             by = c("rsid", "ensembl_gene_id", "p.value", "reported_genes",
-                                    "mapped_genes", "reported_genes"), all = TRUE)
-    }
-  } else if(   is.na(params[[1]])) {
-    # Case 8: This case should never happen as it should already be caught.
-    stop(paste0("No VarGen directory was found."))
   } else {
-    # Case 9: No restrictions given.
-    gwas_cat <- create_gwas(params[[1]])
-    variants_traits <- gwas_cat
+    if(is.na(params[[1]]) == FALSE) {
+        gwas_cat <- create_gwas(params[[1]])
+        for(rsid in params[[8]]) {
+          if(!(rsid %in% gwas_cat$`SNPS`)) {
+            stop(paste0("gwas snp '", rsid, "' not found in gwas catalog, stopping now."))
+          }
+        }
+        variant_info <- cbind(gwas_cat$"SNPS", gwas_cat$"SNP_GENE_IDS", 
+                              gwas_cat$"DISEASE/TRAIT", gwas_cat$"P-VALUE", 
+                              gwas_cat$"MAPPED_GENE", gwas_cat$"REPORTED GENE(S)")
+        colnames(variant_info) <- cbind("rsid", "ensembl_gene_id", "disease", "p_value",
+                                        "mapped_genes", "reported_genes")
+        variant_info <- data.frame(variant_info)
+        variant_info <- subset(variant_info, variant_info[["rsid"]] == params[[8]])
+          
+        View(variant_info)
+    } else {
+      stop(paste("No directory to vargen_data given"))
+    }
   }
 }
 
