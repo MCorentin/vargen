@@ -58,6 +58,8 @@ The data.frame will contain the following columns:
   \item ensembl_gene_id ("gene id" of the gene associated with the variant)
   \item hgnc_symbol ("hgnc symbol" of the gene associated with the variant)
   \item source ("omim", "fantom5", "gtex" or "gwas")
+  \item trait (the "omim ids" seperated by ';' for omim,fantom and gtex variants and the gwas trait
+  for the gwas variants).
 }
 }
 \description{
