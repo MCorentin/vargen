@@ -160,9 +160,9 @@
 #' @return If passed: A vector containing all values possible even if not
 #' passed into the function by the user and fixed values if something was
 #' not right and they could be corrected. If falsed: then is FALSE
-.check_kegg_validity <- function(params){
+.check_kegg_validity <- function(params) {
   # Check the directory exists for the VarGen data.
-  if(dir.exists(params[[1]]) == FALSE){
+  if(dir.exists(params[[1]]) == FALSE) {
     stop(paste0("The directory used for vargen_dir: ", params[[1]],
                 " was not found in the current directory ", getwd()))
   }
@@ -258,10 +258,9 @@
   }
 
   #Check that the show_pval_thresh is a boolean
-  if(params[[13]] != 1 || params[[13]] != 0){
-    print(paste0("parameter: ", params[[13]], " is not valid. Set to 1")){
-      params[[13]] = 1
-    }
+  if(params[[13]] != 1 && params[[13]] != 0) {
+    print(paste0("parameter: ", params[[13]], " is not valid. Set to 1"))
+    params[[13]] = 1
   }
 
   return(params)
@@ -348,25 +347,19 @@
        && is.na(params[[4]]) && is.na(params[[6]])) {
       # Case 1: Restrict the variants by trait only.
       gwas_cat <- create_gwas(params[[1]])
-      # Holds the indeces for the hits of variants.
-      index <- c()
-      traits <- gwas_cat$"DISEASE/TRAIT"
       for(trait in params[[3]]){
-        for(i in 1:length(traits)){
-          # Check the traits without any case sensitivity.
-          if(grepl(tolower(trait), tolower(traits[[i]]))) {
-            index <- c(index, i)
-          }
+        if(!(trait %in% gwas_cat$`DISEASE/TRAIT`)){
+          stop(paste0("gwas trait '", trait,
+                      "' not found in gwas catalog, stopping now."))
         }
       }
-
-      variants_traits <- (gwas_cat[index, ])
+      variants_traits <- gwascat::subsetByTraits(x = gwas_cat, tr = params[[3]])
 
     } else if(is.na(params[[1]]) == FALSE && is.na(params[[3]])
               && is.na(params[[4]]) == FALSE && is.na(params[[6]])) {
       # Case 2: Restrict the variants by chromosome only.
       gwas_cat <- create_gwas(params[[1]])
-      variants_traits <- gwascat::subsetByChromosome(x = gwas_cat, ch = chrs)
+      variants_traits <- gwascat::subsetByChromosome(x = gwas_cat, ch = params[[4]])
       variants_traits <- variants_traits[which(IRanges::overlapsAny(variants_traits,
                                                                     gwas_cat))]
     } else if(is.na(params[[1]]) == FALSE && is.na(params[[3]])
@@ -464,20 +457,15 @@
                && is.na(params[[4]]) && is.na(params[[6]]) == FALSE) {
       # Case 5: Restrict by both trait and gene.
       gwas_cat <- create_gwas(params[[1]])
-      # Holds the indeces for the hits of variants.
-      index <- c()
-      traits <- gwas_cat$"DISEASE/TRAIT"
       for(trait in params[[3]]){
-        for(i in 1:length(traits)){
-          # Check the traits without any case sensitivity.
-          if(grepl(tolower(trait), tolower(traits[[i]]))) {
-            index <- c(index, i)
-          }
+        if(!(trait %in% gwas_cat$`DISEASE/TRAIT`)){
+          stop(paste0("gwas trait '", trait,
+                      "' not found in gwas catalog, stopping now."))
         }
       }
-
-      variants_traits <- (gwas_cat[index, ])
-
+      variants_traits <- gwascat::subsetByTraits(x = gwas_cat, tr = params[[3]])
+      variants_traits <- variants_traits_chrs[which(IRanges::overlapsAny(variants_traits,
+                                                                         gwas_cat))]
       if(params[[7]] == 1){
         variants_info <- cbind(variants_traits$"SNPS", variants_traits$"SNP_GENE_IDS",
                                variants_traits$"P-VALUE", variants_traits$"MAPPED_GENE",
@@ -728,19 +716,17 @@
       # Case 7: Restrict by both chromosome and trait.
       gwas_cat <- create_gwas(params[[1]])
       # Holds the indeces for the hits of variants.
-      index <- c()
-      traits <- gwas_cat$"DISEASE/TRAIT"
+      gwas_cat <- create_gwas(params[[1]])
       for(trait in params[[3]]){
-        for(i in 1:length(traits)){
-          # Check the traits without any case sensitivity.
-          if(grepl(tolower(trait), tolower(traits[[i]]))) {
-            index <- c(index, i)
-          }
+        if(!(trait %in% gwas_cat$`DISEASE/TRAIT`)){
+          stop(paste0("gwas trait '", trait,
+                      "' not found in gwas catalog, stopping now."))
         }
       }
-
-      variants_traits <- (gwas_cat[index, ])
-      variants_traits_chrs <- gwascat::subsetByChromosome(x = gwas_cat, ch = params[[4]])
+      variants_traits <- gwascat::subsetByTraits(x = gwas_cat, tr = params[[3]])
+      variants_traits <- variants_traits_chrs[which(IRanges::overlapsAny(variants_traits,
+                                                                              gwas_cat))]
+      variants_traits_chrs <- gwascat::subsetByChromosome(x = variants_traits, ch = params[[4]])
       variants_traits_chrs <- variants_traits_chrs[which(IRanges::overlapsAny(variants_traits_chrs,
                                                                               gwas_cat))]
 
@@ -1595,7 +1581,7 @@ pathview_maker <- function(vargen_dir, output_dir = NA, traits = NA,
       }
 
       #Remove the empty Entrez ID and KEGG pathway information.
-      kegg_paths <- subset(variant_info, is.na(variant_info[["entrezgene_id"]]) == FALSE)
+      kegg_paths <- subset(variant_info, is.na(variant_info[["mapped_genes"]]) == FALSE)
       kegg_paths <- subset(kegg_paths, is.na(kegg_paths[["kegg_enzyme"]]) == FALSE)
       kegg_paths <- subset(kegg_paths, kegg_paths[["kegg_enzyme"]] != "")
       kegg_paths <- subset(kegg_paths, is.na(kegg_paths[["pdb"]]) == FALSE)
@@ -1637,7 +1623,10 @@ pathview_maker <- function(vargen_dir, output_dir = NA, traits = NA,
            }
 
            print(sel_genes)
-           print(sel_cpds)
+           print(unlist(sel_cpds))
+           View(sel_genes)
+           View(sel_cpds)
+
            # pv.out <- pathview::pathview(gene.data = sel_genes, cpd.data = sel_cpds, pathway.id = kegg_id,
            #                             gene.idtype ="entrez", cpd.idtype = "kegg",
            #                             species = "hsa", out.suffix = title, keys.align = "y",
@@ -1648,6 +1637,9 @@ pathview_maker <- function(vargen_dir, output_dir = NA, traits = NA,
            #                             low = list(gene = low_col, cpd = low_cpd_col),
            #                             mid = list(gene = mid_col, cpd = mid_cpd_col),
            #                             high = list(gene = high_col, cpd = high_cpd_col))
+
+
+
 
         pv.out <- pathview::pathview(gene.data = sel_genes, cpd.data = sel_cpds, pathway.id = kegg_id,
                            gene.idtype ="entrez", cpd.idtype = "PDB accession",
