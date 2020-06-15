@@ -556,7 +556,6 @@ get_variants_from_phenotypes <- function(phenotypes, snp_mart) {
   return(pheno_variants)
 }
 
-
 #---- OMIM ----
 
 #' @title List the available OMIM morbid IDs and descriptions
