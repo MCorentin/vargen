@@ -806,7 +806,7 @@
 .get_final_output_gwas <- function(index, matched, kegg_paths, kegg_genes,
                                    color, params, kegg_paths_low, kegg_paths_high,
                                    pval_low_col, pval_high_col, fg, bg, ko_ids,
-                                   ko_matched){
+                                   ko_matched, kegg_paths_mixed, pval_mix_col){
   if (anyNA(unique(kegg_paths[["mapped_gene"]])) == FALSE) {
     if (params[[7]] == 1 && params[[13]] == 1) {
       # No P-value threshold save for colors and gene mode is 1.
@@ -828,6 +828,14 @@
       fg <- c(fg, matched_info[[2]])
       bg <- c(bg, matched_info[[3]])
       ko_matched <- c(ko_matched, matched_info[[4]])
+
+      if(length(kegg_paths_mixed) != 0) {
+        matched_info <- .mapped_mixed_paths_info_helper(kegg_paths_mixed, kegg_genes, ko_ids, pval_mix_col)
+        matched <- c(matched, matched_info[[1]])
+        fg <- c(fg, matched_info[[2]])
+        bg <- c(bg, matched_info[[3]])
+        ko_matched <- c(ko_matched, matched_info[[4]])
+      }
     } else if (params[[7]] == 0 && params[[13]] == 1) {
       # No P-value threshold save for colors and gene mode is 0.
       matched_info <- .reported_info_helper(kegg_paths, kegg_genes, ko_ids, color)
@@ -848,6 +856,14 @@
       fg <- c(fg, matched_info[[2]])
       bg <- c(bg, matched_info[[3]])
       ko_matched <- c(ko_matched, matched_info[[4]])
+
+      if(length(kegg_paths_mixed) != 0) {
+        matched_info <- .reported_mixed_paths_info_helper(kegg_paths_mixed, kegg_genes, ko_ids, pval_mix_col)
+        matched <- c(matched, matched_info[[1]])
+        fg <- c(fg, matched_info[[2]])
+        bg <- c(bg, matched_info[[3]])
+        ko_matched <- c(ko_matched, matched_info[[4]])
+      }
     } else if (params[[7]] == 2 && params[[13]] == 1) {
       # No P-value threshold save for colors and gene mode is 2.
       matched_info <- .mapped_info_helper(kegg_paths, kegg_genes, ko_ids, color)
@@ -861,6 +877,14 @@
       fg <- c(fg, matched_info[[2]])
       bg <- c(bg, matched_info[[3]])
       ko_matched <- c(ko_matched, matched_info[[4]])
+
+      if(length(kegg_paths_mixed) != 0) {
+        matched_info <- .reported_mixed_paths_info_helper(kegg_paths_mixed, kegg_genes, ko_ids, pval_mix_col)
+        matched <- c(matched, matched_info[[1]])
+        fg <- c(fg, matched_info[[2]])
+        bg <- c(bg, matched_info[[3]])
+        ko_matched <- c(ko_matched, matched_info[[4]])
+      }
     } else if (params[[7]] == 2 && params[[13]] == 0) {
       # P-value threshold save for colors and gene mode is 2.
       matched_info <- .mapped_low_paths_info_helper(kegg_paths_low, kegg_genes, ko_ids, pval_low_col)
@@ -875,6 +899,14 @@
       bg <- c(bg, matched_info[[3]])
       ko_matched <- c(ko_matched, matched_info[[4]])
 
+      if(length(kegg_paths_mixed) != 0) {
+        matched_info <- .mapped_mixed_paths_info_helper(kegg_paths_mixed, kegg_genes, ko_ids, pval_mix_col)
+        matched <- c(matched, matched_info[[1]])
+        fg <- c(fg, matched_info[[2]])
+        bg <- c(bg, matched_info[[3]])
+        ko_matched <- c(ko_matched, matched_info[[4]])
+      }
+
       matched_info <- .reported_low_paths_info_helper(kegg_paths_low, kegg_genes, ko_ids, pval_low_col)
       matched <- c(matched, matched_info[[1]])
       fg <- c(fg, matched_info[[2]])
@@ -886,6 +918,14 @@
       fg <- c(fg, matched_info[[2]])
       bg <- c(bg, matched_info[[3]])
       ko_matched <- c(ko_matched, matched_info[[4]])
+
+      if(length(kegg_paths_mixed) != 0) {
+        matched_info <- .reported_mixed_paths_info_helper(kegg_paths_mixed, kegg_genes, ko_ids, pval_mix_col)
+        matched <- c(matched, matched_info[[1]])
+        fg <- c(fg, matched_info[[2]])
+        bg <- c(bg, matched_info[[3]])
+        ko_matched <- c(ko_matched, matched_info[[4]])
+      }
     }
   }
 
@@ -1024,6 +1064,36 @@
   return(list(matched, fg_low, bg_low, ko_matched))
 }
 
+#' @title Helper for reported genes in p-value restricting for mixed threshold
+#' coloring
+#' @description Helper for reported genes in p-value restricting that finds the
+#' matched values for each of the values in the matched genes column in the
+#' kegg_paths.
+#' @param kegg_paths: data set containing resticted values.
+#' @param kegg_genes: genes to be matched by.
+#' @param pval_low_col: The color of p-values that are significant given the
+#' p-value threshold aka the alpha.
+#' @return The matched values
+.reported_mixed_paths_info_helper <- function(kegg_paths, kegg_genes, ko_ids, pval_mixed_col){
+  matched <- c()
+  index <- c()
+  ko_matched <- c()
+  for (i in 1:length(unique(kegg_paths[["reported_genes"]]))) {
+    if (anyNA(match(unique(kegg_paths[["reported_genes"]])[i], unlist(kegg_genes))) == FALSE) {
+      index <- c(index, match(unique(kegg_paths[["reported_genes"]])[i], unlist(kegg_genes)))
+      for (j in 1:length(index)) {
+        matched <- c(matched, unlist(kegg_genes)[index[j]])
+        ko_matched <- c(ko_matched, unlist(ko_ids)[index[j]])
+      }
+    }
+  }
+
+  fg_low <- replicate(length(matched), pval_mixed_col)
+  bg_low <- replicate(length(matched), "#000000")
+
+  return(list(matched, fg_low, bg_low, ko_matched))
+}
+
 #' @title Helper for mapped genes in p-value restricting for low threshold
 #' coloring
 #' @description Helper for reported genes in p-value restricting that finds the
@@ -1082,6 +1152,36 @@
   bg_high <- replicate(length(matched), "#000000")
 
   return(list(matched, fg_high, bg_high, ko_matched))
+}
+
+#' @title Helper for mapped genes in p-value restricting for mixed threshold
+#' coloring
+#' @description Helper for reported genes in p-value restricting that finds the
+#' matched values for each of the values in the matched genes column in the
+#' kegg_paths.
+#' @param kegg_paths: data set containing resticted values.
+#' @param kegg_genes: genes to be matched by.
+#' @param pval_low_col: The color of p-values that are significant given the
+#' p-value threshold aka the alpha.
+#' @return The matched values
+.mapped_mixed_paths_info_helper <- function(kegg_paths, kegg_genes, ko_ids, pval_mixed_col){
+  matched <- c()
+  index <- c()
+  ko_matched <- c()
+  for (i in 1:length(unique(kegg_paths[["mapped_genes"]]))) {
+    if (anyNA(match(unique(kegg_paths[["mapped_genes"]])[i], unlist(kegg_genes))) == FALSE) {
+      index <- c(index, match(unique(kegg_paths[["mapped_genes"]])[i], unlist(kegg_genes)))
+      for (j in 1:length(index)) {
+        matched <- c(matched, unlist(kegg_genes)[index[j]])
+        ko_matched <- c(ko_matched, unlist(ko_ids)[index[j]])
+      }
+    }
+  }
+
+  fg_low <- replicate(length(matched), pval_mixed_col)
+  bg_low <- replicate(length(matched), "#000000")
+
+  return(list(matched, fg_low, bg_low, ko_matched))
 }
 
 #' @title Helper for reported genes in p-value restricting for low threshold
@@ -1157,8 +1257,9 @@
 kegg_graph <- function(vargen_dir, output_dir = NA, traits = NA,
                        chrs = NA, title = NA, genes = NA, gene_mode = 2,
                        rsids = NA, omim_ids = NA, pval_thresh = NA,
-                       color = "#da8cde", pval_low_col = "#09873e",
-                       pval_high_col = "#1254c7", pval_thresh_show = 1) {
+                       color = "#da8cde", pval_low_col = "#14e06a",
+                       pval_high_col = "#14c5e0", pval_mix_col = "#14e0c1",
+                       pval_thresh_show = 1) {
 
   # 1. Check if the parameters are valid.
   params = .check_kegg_validity(list(vargen_dir, output_dir, traits, chrs, title,
@@ -1256,15 +1357,31 @@ kegg_graph <- function(vargen_dir, output_dir = NA, traits = NA,
 
     kegg_paths_low <- kegg_paths
     kegg_paths_high <- kegg_paths
+    kegg_paths_mixed <- c()
     # 6.4 Restrict it by p-value threshold
     if(is.na(pval_thresh) == FALSE){
       # Column must be changed to be numeric else it's not calculated properly.
       kegg_paths[["p_value"]] <- as.numeric(as.character(kegg_paths[["p_value"]]))
       if(params[[13]] == 0){
           # If the user wants to show the p-value threshold colors that are below
-          # and above the threshold.
+          # and above the threshold. For any p-values that are found to be both above and
+          # below the threshold they will be colored according to the mixed color.
+          # 6.4.1 Find the values in the high and low categories.
           kegg_paths_high <- kegg_paths[which(kegg_paths[["p_value"]] >= params[[9]]), ]
           kegg_paths_low <- kegg_paths[which(kegg_paths[["p_value"]] < params[[9]]), ]
+
+          # 6.4.2 Find if there were any intersection between them and if there were remove and
+          # add them to the mixed paths.
+          intersect <- intersect(kegg_paths_high[["rsid"]], kegg_paths_low[["rsid"]])
+          if(length(intersect) != 0) {
+            kegg_paths_mixed.1 <- subset(kegg_paths_high, kegg_paths_high[["rsid"]] %in% intersect[["rsid"]])
+            kegg_paths_mixed.2 <- subset(kegg_paths_low, kegg_paths_low[["rsid"]] %in% intersect[["rsid"]])
+            kegg_paths_mixed <- merge(kegg_paths_mixed.1, kegg_paths_mixed.2, by = "rsid")
+
+            kegg_paths_high[!kegg_paths_high[["rsid"]] %in% intersect[["rsid"]],]
+            kegg_paths_low[!kegg_paths_low[["rsid"]] %in% intersect[["rsid"]],]
+          }
+
       } else {
           kegg_paths <- kegg_paths[which(kegg_paths[["p_value"]] < params[[9]]), ]
       }
@@ -1298,7 +1415,7 @@ kegg_graph <- function(vargen_dir, output_dir = NA, traits = NA,
         final_info <- .get_final_output_gwas(index, matched, kegg_paths, kegg_genes,
                                              color, params, kegg_paths_low, kegg_paths_high,
                                              pval_low_col, pval_high_col, fg, bg, ko_ids,
-                                             ko_matched)
+                                             ko_matched, kegg_paths_mixed, pval_mix_col)
 
         matched <- final_info[[1]]
         fg <- final_info[[2]]
