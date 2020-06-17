@@ -1641,45 +1641,145 @@ omim_graph_online <- function(type = "linear", omim_id){
   }
 }
 
-#' @title Makes a treemap from the VarGen pipeline.
-#' @description Makes a treemap from the vargen pipeline.
-#' @param data: The output from the vargen pipeline.
+#' @title Makes a treemap using data from the VarGen pipeline.
+#' @description Makes a treemap from the VarGen pipeline using the treemap package.
+#' The number of variants are counted per gene which is then displayed are a treemap.
+#' Each block is colored accoding to the raw variant counts and the size is also dependent
+#' on the raw variant counts. Normalized variant counts are available to be used if the
+#' mode is set to be 'norm'; however, the defualt is raw counts. If a large portion is
+#' missing their positional data, then the user may want to select Euclidean normalization
+#' to normalize the count data instead. The variants with the highest counts can also be
+#' retrieved given at an n amount using 'top_thresh' parameter.
+#' @param data: The output from the VarGen pipeline.
 #' @param title: The title of the figure.
-#' @param threshold: The number of the top most found values in the dataset.
+#' @param top_thresh: The number of the top most found values in the dataset.
 #' @param mode: Sets the counts to be either the raw or normalized counts
-#' (# variants / kbp). The modes are 'raw' for the raw counts, and 'norm' for
-#' normalized counts.
+#' (# variants / kbp). The modes are 'raw' for the raw counts, 'norm' for
+#' normalized counts using # variants/kbp, and 'eucli' for Euclidean normalization to 1.
 #' @return Nothing; A treemap graph.
-treemap_graph <- function(data, title = "VarGen Treemap Graph", top_thresh = NULL, mode = "raw") {
-  # 1. Get the count data.
+treemap_graph <- function(data, title = "VarGen Treemap Graph", top_thresh = NULL,
+                          mode = "raw") {
+  # 1. Check that each of the parameters to see if they are valid.
+  # 1.1 Check if the dataset is null, na, or contains no data.
+  if(is.null(data) || is.na(data) || nrow(data) == 0) {
+    stop(print(paste("The given data from the VarGen pipeline is either null,",
+                     "na, or contains no data."), sep = ""))
+  }
+  # 1.2 Check if the threshold is a number or can be converted to one if
+  # given as a string.
+  if(typeof(top_thresh) != "double" && is.na(top_thresh) == FALSE
+     && is.null(top_thresh) == FALSE) {
+    if(is.na(as.double(top_thresh))) {
+      print(paste0("The top threshold '", top_thresh,
+                   "' could not be converted to a numeric value, ",
+                   "so threshold will be used."))
+      top_thresh <- NULL
+    }
+  }
+  # 1.3 Check that the mode is either 'raw' or 'norm' and nothing else.
+  if(!(mode %in% c("raw", "norm", "eucli"))) {
+    print(paste0("Setting mode to raw as mode '", mode, "' is not a valid mode."))
+    mode = "raw"
+  }
+  # 1.4 If the title is set to be null or na, then make the title empty.
+  if(is.null(title) || is.na(title)) {
+    title = ""
+  }
+
+  # 2. Get the count data for the genes.
   hgnc_cnt <- data.frame(table(data[["hgnc_symbol"]]))
   colnames(hgnc_cnt) <- c("hgnc_symbol", "cnts")
 
+  # Option: normilization of the variant counts.
   if(mode == "norm") {
-    # 2. Get the gene length data for normalization.
+    # 2.1.a Get the gene length data for normalization.  All data that doesn't have a start
+    # and stop position can't be normalized and is removed from the dataset. The user is
+    # alerted to this point being removed.
     length_info <- get_omim_genes(omim_ids = data[["trait"]], connect_to_gene_ensembl())
     data <- merge(data[3:7], length_info, by = c("ensembl_gene_id", "hgnc_symbol"),
-                         all.x = TRUE)
+                  all.x = TRUE)
     data <- data[!is.na(data[["end_position"]]), ]
     data <- unique(data)
 
-    # 3. Normalize the count data.
+    # 2.2.a. Normalize the count data.
     norm_hgnc <- merge(hgnc_cnt, data[, c(2,7,8)], by = c("hgnc_symbol"),
                        all.x = TRUE)
     norm_hgnc <- unique(norm_hgnc)
     norm_hgnc$"len" <- (norm_hgnc[["end_position"]] - norm_hgnc[["start_position"]])
     norm_hgnc$"cnts" <- (norm_hgnc[["cnts"]] / norm_hgnc[["len"]])
     hgnc_cnt <- norm_hgnc
+    # rounding off the counts.
+    hgnc_cnt[["cnts"]] <- round(hgnc_cnt[["cnts"]], digit = 3)
+  } else if(mode == "eucli") {
+    # 2.1.b Normalize the data to Euclidean normalization.
+    hgnc_cnt$"norm" <-  1
+    hgnc_cnt$"cnts" <-  (hgnc_cnt[["norm"]] / hgnc_cnt[["cnts"]])
+    hgnc_cnt$"cnts" <-  (hgnc_cnt[["cnts"]] - hgnc_cnt[["norm"]])
+    hgnc_cnt$"cnts" <-  (abs(hgnc_cnt[["cnts"]]))
+    hgnc_cnt[["cnts"]] <- round(hgnc_cnt[["cnts"]], digit = 3)
   }
 
+  # Option: restrict by n number of the most hit counts as given by the user.
   if(is.null(top_thresh) == FALSE) {
     hgnc_cnt <- hgnc_cnt[order(-hgnc_cnt[["cnts"]]),]
     hgnc_cnt <- hgnc_cnt[1:top_thresh,]
   }
 
+  # 2.3. Alert the user to the genes that were removed due to not having positions
+  # if any have been removed during the normalization process.
+  removed <- intersect(hgnc_cnt[["hgnc_symbol"]], data[["hgnc_symbol"]])
+  if(length(removed) != nrow(hgnc_cnt) && mode == "norm") {
+    removed <- data.frame(removed)
+    removed <- setdiff(hgnc_cnt[["hgnc_symbol"]], removed[["removed"]])
+    removed <- data.frame(removed)
+    print(paste0("There were some genes without positions and couldn't be normalized",
+                 " thus were removed: ", removed[["removed"]]))
+  }
+
+  # 3. Add in the labels that include the counts and genes.
   hgnc_cnt$"labels" <- paste(hgnc_cnt[["hgnc_symbol"]], hgnc_cnt[["cnts"]], sep = ": ")
 
   x11()
-  treemap(dtf = hgnc_cnt, index = "labels", vSize = "cnts",
-           type = "value", vColor = "cnts", title = title)
+  # 4. Grpah the information gathered for the treemap package.
+  treemap::treemap(dtf = hgnc_cnt, index = "labels", vSize = "cnts",
+                   type = "value", vColor = "cnts", title = title)
+}
+
+
+
+
+
+
+LD_visual <- function(data) {
+
+  temp <- data
+  sub = 1000
+  while(nrow(temp) >= 1000) {
+    temp_cut = as.numeric(nrow(temp)) - sub
+    print(temp[temp_cut:nrow(data.frame(temp)),])
+    print(temp_cut)
+    print(nrow(data.frame(temp)))
+
+    sub = sub + 1000
+  }
+#
+#   ld_info <- biomaRt::getBM(attributes=c('refsnp_id'
+#                                          ,'minor_allele_freq'),
+#                             filters = 'snp_filter',
+#                             values = data[1:1000, 3],
+#                             mart = connect_to_snp_ensembl(), uniqueRows = TRUE)
+#  View(ld_info)
+
+  # ld_visual <- data.frame()
+  # for(i in 1:nrow(data)) {
+  #   for(j in 1:nrow(data)) {
+  #     query <- paste0("/ld/human/pairwise/", data[["rsid"]][[i]], "/", data[["rsid"]][[j]], "?content-type=application/json")
+  #     get_output <- httr::GET(paste("https://rest.ensembl.org", query, sep = ""), httr::content_type("application/json"))
+  #     ld_visual <- rbind(ld_visual, jsonlite::fromJSON(
+  #       jsonlite::toJSON(httr::content(get_output))))
+  #     print(get_output)
+  #     print(paste0("Queries left ", print(as.numeric(nrow(data))*as.numeric(nrow(data)) - j), "."))
+  #   }
+  # }
+
 }
