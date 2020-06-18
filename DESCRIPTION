@@ -1,7 +1,7 @@
 Type: Package
 Package: vargen
 Title: Fetching Variants Related to Phenotypes Using Public Databases
-Version: 0.2.0
+Version: 0.2.1
 Authors@R: c(
     person("Corentin", "Molitor", email = "c.molitor@cranfield.ac.uk", role = c("aut", "cre")),
 	person("Matt", "Brember", role = "aut"),
@@ -37,9 +37,9 @@ Imports:
 	stringr (>= 1.4.0),
 	utils (>= 3.6.0)
 Suggests:
-	ggbio (>= 1.32.0),
-	grDevices (>= 3.6.0),
-	Gviz (>= 1.28.1)
+    ggbio (>= 1.32.0),
+    grDevices (>= 3.6.0),
+    Gviz (>= 1.28.1)
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 7.1.0

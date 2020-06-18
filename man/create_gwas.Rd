@@ -15,6 +15,9 @@ If more than one is found, the user will have to choose one via a text menu}
 
 \item{verbose}{if true, will print progress information (default: FALSE)}
 }
+\value{
+a gwaswloc object containing the information from the gwas catalog.
+}
 \description{
 Create a gwaswloc object by reading the file at
 "http://www.ebi.ac.uk/gwas/api/search/downloads/alternative"

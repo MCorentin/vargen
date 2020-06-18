@@ -14,6 +14,5 @@ the formatted vector of chromosome names (eg: "chr1" instead of "1")
 }
 \description{
 Transform 1 to 22, X, Y and MT into chr1 to chr22, chrX, chrY and chMT.
-Regex needed because some region are named CHR17_... and we do not want
-chrCHR17...
+Regex needed because some chr are named CHR17_... and we do not want chrCHR17
 }
