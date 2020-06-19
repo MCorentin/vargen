@@ -1658,7 +1658,7 @@ omim_graph_online <- function(type = "linear", omim_id){
 #' normalized counts using # variants/kbp, and 'eucli' for Euclidean normalization to 1.
 #' @return Nothing; A treemap graph.
 treemap_graph <- function(data, title = "VarGen Treemap Graph", top_thresh = NULL,
-                          mode = "raw") {
+                          mode = "raw", ontology = FALSE, ontol_genes = NULL) {
   # 1. Check that each of the parameters to see if they are valid.
   # 1.1 Check if the dataset is null, na, or contains no data.
   if(is.null(data) || is.na(data) || nrow(data) == 0) {
@@ -1677,7 +1677,7 @@ treemap_graph <- function(data, title = "VarGen Treemap Graph", top_thresh = NUL
     }
   }
   # 1.3 Check that the mode is either 'raw' or 'norm' and nothing else.
-  if(!(mode %in% c("raw", "norm", "eucli"))) {
+  if(!(mode %in% c("raw", "norm"))) {
     print(paste0("Setting mode to raw as mode '", mode, "' is not a valid mode."))
     mode = "raw"
   }
@@ -1685,10 +1685,38 @@ treemap_graph <- function(data, title = "VarGen Treemap Graph", top_thresh = NUL
   if(is.null(title) || is.na(title)) {
     title = ""
   }
+  # 1.5 Check if the ontology is either true or false
+  if(ontology != TRUE && ontology != FALSE) {
+    ontology == FALSE
+  }
+  # 1.6 Give a warning to the user if restriction genes are given and
+  # the ontology mode is not set.
+  if(ontology != TRUE && is.null(ontol_genes) == FALSE) {
+    print("genes can only be restricted when using ontology mode.")
+  }
 
-  # 2. Get the count data for the genes.
-  hgnc_cnt <- data.frame(table(data[["hgnc_symbol"]]))
-  colnames(hgnc_cnt) <- c("hgnc_symbol", "cnts")
+
+
+  # Option: ontology is being counted or just the number of variants are being counted.
+  if(ontology == FALSE) {
+    # 2.a Get the count data for the genes.
+    hgnc_cnt <- data.frame(table(data[["hgnc_symbol"]]))
+  } else {
+    # 2.b Get the count data for the ontology
+    hgnc_cnt <- data.frame(table(data[c(7,5)]))
+    hgnc_cnt <- subset(hgnc_cnt, hgnc_cnt[["Freq"]] != 0)
+    # Option subset by a certain gene only for traits
+    if(is.na(ontol_genes) == FALSE && is.null(ontol_genes) == FALSE) {
+      attempt <- hgnc_cnt[hgnc_cnt[["hgnc_symbol"]] %in% ontol_genes,]
+      if(nrow(attempt) != 0) {
+        hgnc_cnt <- attempt
+      } else {
+        print(paste0("No traits found for gene '", ontol_genes,
+                     "', so all genes were used."))
+      }
+    }
+    colnames(hgnc_cnt) <- c("Var1", "Var2", "Freq")
+  }
 
   # Option: normilization of the variant counts.
   if(mode == "norm") {
@@ -1701,49 +1729,84 @@ treemap_graph <- function(data, title = "VarGen Treemap Graph", top_thresh = NUL
     data <- data[!is.na(data[["end_position"]]), ]
     data <- unique(data)
 
-    # 2.2.a. Normalize the count data.
-    norm_hgnc <- merge(hgnc_cnt, data[, c(2,7,8)], by = c("hgnc_symbol"),
-                       all.x = TRUE)
-    norm_hgnc <- unique(norm_hgnc)
-    norm_hgnc$"len" <- (norm_hgnc[["end_position"]] - norm_hgnc[["start_position"]])
-    norm_hgnc$"cnts" <- (norm_hgnc[["cnts"]] / norm_hgnc[["len"]])
-    hgnc_cnt <- norm_hgnc
-    # rounding off the counts.
-    hgnc_cnt[["cnts"]] <- round(hgnc_cnt[["cnts"]], digit = 3)
-  } else if(mode == "eucli") {
-    # 2.1.b Normalize the data to Euclidean normalization.
-    hgnc_cnt$"norm" <-  1
-    hgnc_cnt$"cnts" <-  (hgnc_cnt[["norm"]] / hgnc_cnt[["cnts"]])
-    hgnc_cnt$"cnts" <-  (hgnc_cnt[["cnts"]] - hgnc_cnt[["norm"]])
-    hgnc_cnt$"cnts" <-  (abs(hgnc_cnt[["cnts"]]))
-    hgnc_cnt[["cnts"]] <- round(hgnc_cnt[["cnts"]], digit = 3)
+    if(length(hgnc_cnt) == 2) {
+      # 2.2.a. Normalize the count data.
+      colnames(hgnc_cnt) <- c("hgnc_symbol", "Freq")
+      norm_hgnc <- merge(hgnc_cnt, data[, c(2,7,8)], by = c("hgnc_symbol"),
+                         all.x = TRUE)
+      norm_hgnc <- unique(norm_hgnc)
+      norm_hgnc$"len" <- (norm_hgnc[["end_position"]] - norm_hgnc[["start_position"]])
+      norm_hgnc$"Freq" <- (norm_hgnc[["Freq"]] / norm_hgnc[["len"]])
+      hgnc_cnt <- norm_hgnc
+      # rounding off the counts.
+      hgnc_cnt[["Freq"]] <- round(hgnc_cnt[["Freq"]], digit = 3)
+      colnames(hgnc_cnt) <- c("Var1", "Freq")
+    } else {
+      # 2.2.b. Normalize the count data for ontology.
+      colnames(hgnc_cnt) <- c("trait", "hgnc_symbol", "Freq")
+      norm_hgnc <- merge(hgnc_cnt, data[, c(2,7,8)], by = c("hgnc_symbol"),
+                         all.x = TRUE)
+      norm_hgnc <- unique(norm_hgnc)
+      norm_hgnc$"len" <- (norm_hgnc[["end_position"]] - norm_hgnc[["start_position"]])
+      norm_hgnc$"Freq" <- (norm_hgnc[["Freq"]] / norm_hgnc[["len"]])
+      hgnc_cnt <- norm_hgnc
+      # rounding off the counts.
+      hgnc_cnt[["Freq"]] <- round(hgnc_cnt[["Freq"]], digit = 3)
+      colnames(hgnc_cnt) <- c("Var1", "Var2", "Freq")
+    }
   }
 
   # Option: restrict by n number of the most hit counts as given by the user.
   if(is.null(top_thresh) == FALSE) {
-    hgnc_cnt <- hgnc_cnt[order(-hgnc_cnt[["cnts"]]),]
+    hgnc_cnt <- hgnc_cnt[order(-hgnc_cnt[["Freq"]]),]
     hgnc_cnt <- hgnc_cnt[1:top_thresh,]
   }
 
   # 2.3. Alert the user to the genes that were removed due to not having positions
-  # if any have been removed during the normalization process.
-  removed <- intersect(hgnc_cnt[["hgnc_symbol"]], data[["hgnc_symbol"]])
-  if(length(removed) != nrow(hgnc_cnt) && mode == "norm") {
-    removed <- data.frame(removed)
-    removed <- setdiff(hgnc_cnt[["hgnc_symbol"]], removed[["removed"]])
-    removed <- data.frame(removed)
-    print(paste0("There were some genes without positions and couldn't be normalized",
-                 " thus were removed: ", removed[["removed"]]))
+  # if any have been removed during the 'norm' normalization process.
+  if(mode == "norm") {
+    removed <- intersect(hgnc_cnt[["Var1"]], data[["hgnc_symbol"]])
+    if(length(removed) != nrow(hgnc_cnt) && mode == "norm") {
+      removed <- data.frame(removed)
+      removed <- setdiff(hgnc_cnt[["Var1"]], removed[["removed"]])
+      removed <- data.frame(removed)
+      print(paste0("There were some genes without positions and couldn't be normalized",
+                   " thus were removed: ", removed[["removed"]]))
+    }
+
+    if(length(na.omit(removed[["removed"]])) == length(na.omit(unique(hgnc_cnt[["Var1"]])))) {
+      stop("No genes found with proper elements for this analysis with given data.")
+    }
   }
 
   # 3. Add in the labels that include the counts and genes.
-  hgnc_cnt$"labels" <- paste(hgnc_cnt[["hgnc_symbol"]], hgnc_cnt[["cnts"]], sep = ": ")
+  if((length(hgnc_cnt) == 2 && mode == "raw") ||
+     (length(hgnc_cnt) == 5 && mode == "norm")) {
+    hgnc_cnt$"labels" <- paste(hgnc_cnt[["Var1"]], hgnc_cnt[["Freq"]], sep = ": ")
 
-  x11()
-  # 4. Grpah the information gathered for the treemap package.
-  treemap::treemap(dtf = hgnc_cnt, index = "labels", vSize = "cnts",
-                   type = "value", vColor = "cnts", title = title)
+    # 4. Grpah the information gathered for the treemap package.
+    if(nrow(hgnc_cnt) != 0) {
+      x11()
+      treemap::treemap(dtf = hgnc_cnt, index = "labels", vSize = "Freq",
+                       type = "value", vColor = "Freq", title = title)
+    }
+  } else {
+    hgnc_cnt$"labels" <- paste(hgnc_cnt[["Var1"]], hgnc_cnt[["Freq"]], sep = ": ")
+
+    # 4. Grpah the information gathered for the treemap package.
+    if(nrow(hgnc_cnt) != 0) {
+      x11()
+      treemap::treemap(dtf = hgnc_cnt, index = c("Var2", "labels"), vSize = "Freq",
+                       type = "value", vColor = "Freq", title = title,
+                       overlap.labels=0.5, align.labels=list(
+                         c("center", "center"),
+                         c("right", "bottom")
+                       ))
+    }
+  }
 }
+
+
 
 
 
@@ -1762,13 +1825,13 @@ LD_visual <- function(data) {
 
     sub = sub + 1000
   }
-#
-#   ld_info <- biomaRt::getBM(attributes=c('refsnp_id'
-#                                          ,'minor_allele_freq'),
-#                             filters = 'snp_filter',
-#                             values = data[1:1000, 3],
-#                             mart = connect_to_snp_ensembl(), uniqueRows = TRUE)
-#  View(ld_info)
+  #
+  #   ld_info <- biomaRt::getBM(attributes=c('refsnp_id'
+  #                                          ,'minor_allele_freq'),
+  #                             filters = 'snp_filter',
+  #                             values = data[1:1000, 3],
+  #                             mart = connect_to_snp_ensembl(), uniqueRows = TRUE)
+  #  View(ld_info)
 
   # ld_visual <- data.frame()
   # for(i in 1:nrow(data)) {
