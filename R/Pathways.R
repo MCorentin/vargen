@@ -1806,43 +1806,47 @@ treemap_graph <- function(data, title = "VarGen Treemap Graph", top_thresh = NUL
   }
 }
 
-
-
-
-
-
-
-
-LD_visual <- function(data) {
-
-  temp <- data
-  sub = 1000
-  while(nrow(temp) >= 1000) {
-    temp_cut = as.numeric(nrow(temp)) - sub
-    print(temp[temp_cut:nrow(data.frame(temp)),])
-    print(temp_cut)
-    print(nrow(data.frame(temp)))
-
-    sub = sub + 1000
+#' @title Makes a linkage Disequilibrium map using data from the VarGen pipeline.
+#' @description Makes a linkage Disequilibrium heatmap from the VarGen pipeline using
+#' the LDlinR package and the gplots package.
+#' @param data: The output from the VarGen pipeline.
+#' @param rsid: The variant that is to be compared against other variants found in the dataset
+#' that are on the same chromosome.
+#' @param dendro: A boolean that indicates if the dendrogram is to be shown or not.
+#' @return Nothing; linkage disequilibrium map
+LD_visual <- function(data, rsid, dendro = FALSE) {
+  # 1. Check that each of the parameters to see if they are valid.
+  # 1.1 Check if the dataset is null, na, or contains no data.
+  if(is.null(data) || is.na(data) || nrow(data) == 0) {
+    stop(print(paste("The given data from the VarGen pipeline is either null,",
+                     "na, or contains no data."), sep = ""))
   }
-  #
-  #   ld_info <- biomaRt::getBM(attributes=c('refsnp_id'
-  #                                          ,'minor_allele_freq'),
-  #                             filters = 'snp_filter',
-  #                             values = data[1:1000, 3],
-  #                             mart = connect_to_snp_ensembl(), uniqueRows = TRUE)
-  #  View(ld_info)
+  # 1.2 Check if the dendro is valid
+  if(dendro != FALSE || dendro != TRUE) {
+    print(paste0("The given value for dendro: ", dendro, " is not valid."))
+    dendro = FALSE
+  }
 
-  # ld_visual <- data.frame()
-  # for(i in 1:nrow(data)) {
-  #   for(j in 1:nrow(data)) {
-  #     query <- paste0("/ld/human/pairwise/", data[["rsid"]][[i]], "/", data[["rsid"]][[j]], "?content-type=application/json")
-  #     get_output <- httr::GET(paste("https://rest.ensembl.org", query, sep = ""), httr::content_type("application/json"))
-  #     ld_visual <- rbind(ld_visual, jsonlite::fromJSON(
-  #       jsonlite::toJSON(httr::content(get_output))))
-  #     print(get_output)
-  #     print(paste0("Queries left ", print(as.numeric(nrow(data))*as.numeric(nrow(data)) - j), "."))
-  #   }
-  # }
-
+  # 2. Clean the data
+  data <- data[grep("rs", data[["rsid"]]), ]
+  # 3. Get the chromosome of the given rsid
+  rsid_chrom <- data[grep(rsid, data[["rsid"]]), ][["chr"]]
+  # 4. subset the other chromosomes by this chromosome
+  data <- data[grep(rsid_chrom, data[["chr"]]), ]
+  # 5. Make LD Matrix
+  LD <- LDlinkR::LDmatrix(snps = data[, 3], pop = c("YRI", "CEU"),
+                          token = "b25a0c38e313", r2d = "r2")
+  LD <- data.frame(LD)
+  rownames(LD) <- LD[,1]
+  LD[,1] <- NULL
+  # 6. Remove missing values.
+  LD <- LD[rowSums(is.na(LD)) != ncol(LD),]
+  LD <- LD[, colSums(is.na(LD)) < nrow(LD)]
+  # 7. Make the heatmap for the LD
+  matrix <- data.matrix(LD[,c(2:length(LD))], rownames.force = NA)
+  gplots::heatmap.2(as.matrix(matrix), Colv="Rowv", trace="none", Rowv = dendro,
+                    scale="none", offsetRow=0.3, offsetCol=0.3, rowsep = c(1:length(matrix)),
+                    colsep = c(1:nrow(matrix)), main = paste("LD Map of ", rsid, sep = ""),
+                    na.rm = FALSE)
 }
+
