@@ -1614,25 +1614,27 @@ pathview_vargen <- function(data, output_dir = NA, title = NULL, top_thresh = NU
 }
 
 #' @title Visualize the online OMIM Graphs.
-#' @description Takes the user to the OMIM website's graphic for a given OMIM
-#' ID. Users can choose either radial or linear as a mode - with the default
-#' being linear.
-#' @param type: the type of graph to go to either as "linear" or "radial". Can
-#' also be given as 'l' or 'r'.
+#' @description Takes the user to the OMIM website's graphic for a given OMIM ID. Users
+#' can choose either radial or linear as a mode - with the default being linear. For
+#' more information on OMIM's PheneGene graphics, please see the offical OMIM website.
+#' @param type: the type of graph to go to either as 'linear' or 'radial'.
+#' The type can also be given as 'l', 'L' or 'r', 'R'.
 #' @param omim_id: A single OMIM ID given as a string.
 #' @return Nothing; Takes user to url of omim id selected.
 omim_graph_online <- function(type = "linear", omim_id){
   # 1. Check the type to see if it is valid then check if the omim id is not null or na.
-  if(!(type %in% c("linear", "l", "Linear", "r", "radial", "Radial"))) {
+  type <- tolower(type)
+  if(!(type %in% c("linear", "l", "r", "radial"))) {
     stop(print(paste0("There is no option '", type,
-                      "' for parameter type. Type options are 'linear' or 'radial'.")))
+                      "' for parameter type. Options are 'linear', 'radial', ",
+                      "'l', 'L' or 'r', 'R'.")))
   }
   if(is.null(omim_id) || is.na(omim_id)) {
     stop(print("There is no OMIM ID given."))
   }
 
   # 2. Get the url from the OMIM database depending on the omim id.
-  if(type == "linear") {
+  if(type %in% c("linear", "l")) {
     url <- paste0("https://omim.org/graph/linear/", omim_id, sep = "")
     browseURL(url)
   } else {
