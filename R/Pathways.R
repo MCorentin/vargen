@@ -1613,6 +1613,53 @@ pathview_vargen <- function(data, output_dir = NA, title = NULL, top_thresh = NU
   setwd(old_dir)
 }
 
+
+#' @title Makes a linkage Disequilibrium map using data from the VarGen pipeline.
+#' @description Makes a linkage Disequilibrium heatmap from the VarGen pipeline using
+#' the LDlinR package and the gplots package.
+#' @param data: The output from the VarGen pipeline.
+#' @param rsid: The variant that is to be compared against other variants found in the dataset
+#' that are on the same chromosome.
+#' @param dendro: A boolean that indicates if the dendrogram is to be shown or not.
+#' @return Nothing; linkage disequilibrium map
+LD_visual <- function(data, rsid, dendro = FALSE) {
+  # 1. Check that each of the parameters to see if they are valid.
+  # 1.1 Check if the dataset is null, na, or contains no data.
+  if(is.null(data) || is.na(data) || nrow(data) == 0) {
+    stop(print(paste("The given data from the VarGen pipeline is either null,",
+                     "na, or contains no data."), sep = ""))
+  }
+  # 1.2 Check if the dendro is valid
+  if(dendro != FALSE || dendro != TRUE) {
+    print(paste0("The given value for dendro: ", dendro, " is not valid."))
+    dendro = FALSE
+  }
+
+  # 2. Clean the data
+  data <- data[grep("rs", data[["rsid"]]), ]
+  # 3. Get the chromosome of the given rsid
+  rsid_chrom <- data[grep(rsid, data[["rsid"]]), ][["chr"]]
+  # 4. subset the other chromosomes by this chromosome
+  data <- data[grep(rsid_chrom, data[["chr"]]), ]
+  # 5. Make LD Matrix
+  LD <- LDlinkR::LDmatrix(snps = data[, 3], pop = c("YRI", "CEU"),
+                          token = "b25a0c38e313", r2d = "r2")
+  LD <- data.frame(LD)
+  rownames(LD) <- LD[,1]
+  LD[,1] <- NULL
+  # 6. Remove missing values.
+  LD <- LD[rowSums(is.na(LD)) != ncol(LD),]
+  LD <- LD[, colSums(is.na(LD)) < nrow(LD)]
+  # 7. Make the heatmap for the LD
+  matrix <- data.matrix(LD[,c(2:length(LD))], rownames.force = NA)
+  gplots::heatmap.2(as.matrix(matrix), Colv="Rowv", trace="none", Rowv = dendro,
+                    scale="none", offsetRow=0.3, offsetCol=0.3, rowsep = c(1:length(matrix)),
+                    colsep = c(1:nrow(matrix)), main = paste("LD Map of ", rsid, sep = ""),
+                    na.rm = FALSE)
+}
+
+#---- Updated Visualizations ----
+
 #' @title Visualize the online OMIM Graphs.
 #' @description Takes the user to the OMIM website's graphic for a given OMIM ID. Users
 #' can choose either radial or linear as a mode - with the default being linear. For
@@ -1648,16 +1695,22 @@ omim_graph_online <- function(type = "linear", omim_id){
 #' The number of variants are counted per gene which is then displayed are a treemap.
 #' Each block is colored accoding to the raw variant counts and the size is also dependent
 #' on the raw variant counts. Normalized variant counts are available to be used if the
-#' mode is set to be 'norm'; however, the defualt is raw counts. If a large portion is
-#' missing their positional data, then the user may want to select Euclidean normalization
-#' to normalize the count data instead. The variants with the highest counts can also be
-#' retrieved given at an n amount using 'top_thresh' parameter.
+#' mode is set to be 'norm'. The variants with the highest counts can also be
+#' retrieved given at an n amount using 'top_thresh' parameter. In Ontology Mode two graphs
+#' will be displayed. One shows all information while the other allows for the user to
+#' iteractivly click through each catagory/matched gene to see the traits. The graph with all
+#' information displayed may be a bit hard to read, soit should be used as a guide for exploring
+#' the data if large subsets are origionally graphed.
 #' @param data: The output from the VarGen pipeline.
 #' @param title: The title of the figure.
 #' @param top_thresh: The number of the top most found values in the dataset.
-#' @param mode: Sets the counts to be either the raw or normalized counts
-#' (# variants / kbp). The modes are 'raw' for the raw counts, 'norm' for
-#' normalized counts using # variants/kbp, and 'eucli' for Euclidean normalization to 1.
+#' @param mode: Sets the counts to be either the raw or normalized counts.
+#' #' (# variants / kbp). The modes are 'raw' for the raw counts, 'norm' for
+#' normalized counts using # variants/kbp.
+#' @param ontology: Sets the ontology mode which allows the traits to be grouped on their
+#' corresponding gene.
+#' @param ontol_genes: The genes that are to be included in the ontology mode's graph.
+#' This may be useful if a certain gene is obscuring a large portion of the other genes.
 #' @return Nothing; A treemap graph.
 treemap_graph <- function(data, title = "VarGen Treemap Graph", top_thresh = NULL,
                           mode = "raw", ontology = FALSE, ontol_genes = NULL) {
@@ -1694,9 +1747,8 @@ treemap_graph <- function(data, title = "VarGen Treemap Graph", top_thresh = NUL
   # 1.6 Give a warning to the user if restriction genes are given and
   # the ontology mode is not set.
   if(ontology != TRUE && is.null(ontol_genes) == FALSE) {
-    print("genes can only be restricted when using ontology mode.")
+    print("Genes can only be restricted when using ontology mode.")
   }
-
 
 
   # Option: ontology is being counted or just the number of variants are being counted.
@@ -1755,6 +1807,11 @@ treemap_graph <- function(data, title = "VarGen Treemap Graph", top_thresh = NUL
       # rounding off the counts.
       hgnc_cnt[["Freq"]] <- round(hgnc_cnt[["Freq"]], digit = 3)
       colnames(hgnc_cnt) <- c("Var1", "Var2", "Freq")
+
+      #Check if no positions are found and report it to the user.
+      if(is.na(unique(hgnc_cnt[["Freq"]]))) {
+        stop(print("None of the genes found can be normalized due to not have positional data."))
+      }
     }
   }
 
@@ -1768,15 +1825,15 @@ treemap_graph <- function(data, title = "VarGen Treemap Graph", top_thresh = NUL
   # if any have been removed during the 'norm' normalization process.
   if(mode == "norm") {
     removed <- intersect(hgnc_cnt[["Var1"]], data[["hgnc_symbol"]])
-    if(length(removed) != nrow(hgnc_cnt) && mode == "norm") {
-      removed <- data.frame(removed)
-      removed <- setdiff(hgnc_cnt[["Var1"]], removed[["removed"]])
+    removed <- data.frame(removed)
+    if(nrow(removed) != nrow(hgnc_cnt) && mode == "norm" && nrow(removed) != 0) {
+      removed <- setdiff(hgnc_cnt[["Var1"]], removed[["V1"]])
       removed <- data.frame(removed)
       print(paste0("There were some genes without positions and couldn't be normalized",
-                   " thus were removed: ", removed[["removed"]]))
+                   " thus were removed: ", removed[["V1"]]))
     }
 
-    if(length(na.omit(removed[["removed"]])) == length(na.omit(unique(hgnc_cnt[["Var1"]])))) {
+    if(length(na.omit(removed[["V1"]])) == length(na.omit(unique(hgnc_cnt[["Var1"]])))) {
       stop("No genes found with proper elements for this analysis with given data.")
     }
   }
@@ -1790,65 +1847,33 @@ treemap_graph <- function(data, title = "VarGen Treemap Graph", top_thresh = NUL
     if(nrow(hgnc_cnt) != 0) {
       x11()
       treemap::treemap(dtf = hgnc_cnt, index = "labels", vSize = "Freq",
-                       type = "value", vColor = "Freq", title = title)
+                       type = "value", vColor = "Freq", title = title,
+                       border.lwds=c(5,2), border.col=c("black","white"))
     }
   } else {
     hgnc_cnt$"labels" <- paste(hgnc_cnt[["Var1"]], hgnc_cnt[["Freq"]], sep = ": ")
 
-    # 4. Grpah the information gathered for the treemap package.
+    # 4. Graph the information gathered for the treemap package.
     if(nrow(hgnc_cnt) != 0) {
       x11()
       treemap::treemap(dtf = hgnc_cnt, index = c("Var2", "labels"), vSize = "Freq",
                        type = "value", vColor = "Freq", title = title,
-                       overlap.labels=0.5, align.labels=list(
-                         c("center", "center"),
+                       overlap.labels = 0.5, align.labels = list(
+                         c("left", "top"),
                          c("right", "bottom")
-                       ))
+                       ), fontsize.labels = c(14, 11),
+                       border.col = c("black","white"), border.lwds = c(5,2),
+                       bg.labels = "#abe1f5", fontfamily.labels = c("serif", "sans"))
+
+      d3treeR::d3tree(treemap(dtf = hgnc_cnt, index = c("Var2", "labels"), vSize = "Freq",
+                              type = "value", vColor = "Freq", title = title,
+                              overlap.labels = 0.5, align.labels = list(
+                                c("left", "top"),
+                                c("right", "bottom")
+                              ), fontsize.labels = c(14, 11),
+                              border.col = c("black","white"), border.lwds = c(5,2),
+                              bg.labels = "#abe1f5", fontfamily.labels = c("serif", "sans")))
+
     }
   }
 }
-
-#' @title Makes a linkage Disequilibrium map using data from the VarGen pipeline.
-#' @description Makes a linkage Disequilibrium heatmap from the VarGen pipeline using
-#' the LDlinR package and the gplots package.
-#' @param data: The output from the VarGen pipeline.
-#' @param rsid: The variant that is to be compared against other variants found in the dataset
-#' that are on the same chromosome.
-#' @param dendro: A boolean that indicates if the dendrogram is to be shown or not.
-#' @return Nothing; linkage disequilibrium map
-LD_visual <- function(data, rsid, dendro = FALSE) {
-  # 1. Check that each of the parameters to see if they are valid.
-  # 1.1 Check if the dataset is null, na, or contains no data.
-  if(is.null(data) || is.na(data) || nrow(data) == 0) {
-    stop(print(paste("The given data from the VarGen pipeline is either null,",
-                     "na, or contains no data."), sep = ""))
-  }
-  # 1.2 Check if the dendro is valid
-  if(dendro != FALSE || dendro != TRUE) {
-    print(paste0("The given value for dendro: ", dendro, " is not valid."))
-    dendro = FALSE
-  }
-
-  # 2. Clean the data
-  data <- data[grep("rs", data[["rsid"]]), ]
-  # 3. Get the chromosome of the given rsid
-  rsid_chrom <- data[grep(rsid, data[["rsid"]]), ][["chr"]]
-  # 4. subset the other chromosomes by this chromosome
-  data <- data[grep(rsid_chrom, data[["chr"]]), ]
-  # 5. Make LD Matrix
-  LD <- LDlinkR::LDmatrix(snps = data[, 3], pop = c("YRI", "CEU"),
-                          token = "b25a0c38e313", r2d = "r2")
-  LD <- data.frame(LD)
-  rownames(LD) <- LD[,1]
-  LD[,1] <- NULL
-  # 6. Remove missing values.
-  LD <- LD[rowSums(is.na(LD)) != ncol(LD),]
-  LD <- LD[, colSums(is.na(LD)) < nrow(LD)]
-  # 7. Make the heatmap for the LD
-  matrix <- data.matrix(LD[,c(2:length(LD))], rownames.force = NA)
-  gplots::heatmap.2(as.matrix(matrix), Colv="Rowv", trace="none", Rowv = dendro,
-                    scale="none", offsetRow=0.3, offsetCol=0.3, rowsep = c(1:length(matrix)),
-                    colsep = c(1:nrow(matrix)), main = paste("LD Map of ", rsid, sep = ""),
-                    na.rm = FALSE)
-}
-
