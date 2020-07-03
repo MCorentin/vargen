@@ -1,4 +1,198 @@
-#---- Utils ----
+#---- Universal Utils ----
+
+#' @title Checks Dataframe.
+#' @description Checks if a dataframe is valid and if not then stops the
+#' program. This was meant for the VarGen pipeline dataset but can be
+#' used for any dataframe.
+#' @param data: Meant for data given from the VarGen pipeline.
+#' @return None; stops the program if the dataframe is not valid.
+.check_dataframe <- function(data) {
+  # Check if the dataset is null, na, or contains no data.
+  if(is.na(data) || is.null(data) || nrow(data) == 0) {
+    stop(paste0("The given data from the VarGen pipeline is either null,",
+                "na, or contains no data."), sep = "")
+  }
+}
+
+#' @title Makes output directory for Windows, Linux, or Unix system.
+#' @description Checks if a directory is valid and if it exists.
+#' If it doesn't exist, then it makes the directory. The function works
+#' on Linux, Mac, and windows OS.
+#' @example output_dir = ./this_is_an_exmaple_dir/
+#' @example output_dir = /this_is_an_exmaple_dir
+#' @example output_dir = /this_is_an_exmaple_dir/to_my_nonExisting_dir/
+#' @example this will cause an error: output_dir = help_is_an_exmaple_dir/
+#' @param output_dir: The user given directory from function input.
+#' @param name: The name of the function using this util function.
+#' @return The output directory.
+.check_output_dir <- function(output_dir, name = NULL) {
+  if(is.na(output_dir) || is.null(output_dir)) {
+    if(.Platform$OS.type == "windows") {
+      if(dir.exists(paste0(getwd(), "\\", name, "\\")) == FALSE) {
+        dir.create(name)
+      }
+      output_dir <- paste0(getwd(), "\\", name, "\\")
+    } else {
+      if(dir.exists(paste0(getwd(), "/", name, "/")) == FALSE){
+        dir.create(name)
+      }
+      output_dir <- paste0(getwd(), "/", name, "/")
+      print(paste0("Using output directory ", output_dir))
+    }
+  } else {
+    output_dir <- gsub("[.\\/]+", "VARGENrEPLACEsTRING", output_dir)
+    if(.Platform$OS.type == "windows") {
+      output_dir <- gsub("VARGENrEPLACEsTRING", "[\\]", output_dir)
+      if(dir.exists(paste0(getwd(), output_dir)) == FALSE) {
+        dir.create(name)
+      }
+      output_dir <- paste0(getwd(), output_dir, "[\\]")
+    } else {
+      output_dir <- gsub("VARGENrEPLACEsTRING", "/", output_dir)
+      if(dir.exists(paste0(getwd(), output_dir)) == FALSE){
+        dir.create(name)
+      }
+      output_dir <- paste0(getwd(), output_dir)
+      print(paste0("Using output directory ", output_dir))
+    }
+  }
+
+  return(output_dir)
+}
+
+
+#---- KEGG Utils ----
+
+.check_vargen_dir <- function(vargen_dir) {
+  # 1. Check the directory exists for the VarGen data.
+  if(dir.exists(vargen_dir) == FALSE) {
+    stop(paste0("The directory used for vargen_dir: ", params[[1]],
+                " was not found in the current directory ", getwd()))
+  }
+}
+
+.check_gene_mode <- function(gene_mode, genes) {
+  # 2. Check that the gene mode is valid.
+  if((!(gene_mode %in% c(0,1,2)) && is.na(gene_mode) == FALSE && is.na(gene_mode)) ||
+     (!(gene_mode %in% c(0,1,2)) && is.na(gene_mode) == FALSE && is.na(gene_mode) == FALSE)) {
+    # Case 1: If the given gene mode is not in one of the valid selection types.
+    print(paste0("Gene_mode: ", gene_mode,
+                 " does not exist so the default mode of 2 is being used instead."))
+    gene_mode <- 2
+  } else if(gene_mode %in% c(0,1) && is.na(gene_mode) == FALSE && is.na(genes)) {
+    # Case 2: If the given gene mode is in one of the valid selection types, but no genes are given.
+    # Only 1 and 0 are selected here as the default is 2 in the program.
+    print("No genes were given with gene mode, thus no gene mode can/will be used")
+  }
+
+  return(gene_mode)
+}
+
+.check_pval <- function(pval) {
+  # 3. Check that the p-value is valid.
+  if(typeof(pval) != "double" && is.na(pval) == FALSE) {
+    if(is.na(as.double(pval))){
+      print(paste0("p-value threshold could not be converted to a double from the given value: '",
+                   pval, "'. No p-value threshold will be used."))
+      pval <- NA
+    }
+  }
+
+  return(pval)
+}
+
+.check_chrs <-function(chrs) {
+  # 4. Check if the chromosome/s are valid and if they are not attempt to fix them.
+  if(length(grep("chr[0-9]", x = chrs)) != length(chrs) && is.na(chrs) == FALSE){
+    #Separate the bad and good chromosomes
+    bad_chrs <- chrs[!(chrs %in% chrs[grep("chr[0-9]", x = chrs)])]
+    good_chrs <- chrs[grep("chr[0-9]", x = chrs)]
+
+    print(paste0("Chromosomes must be given as a value 'chr3'. Currently given badly as: ",
+                 bad_chrs, ". Cleaning up bad entries to fit entry format as possible."))
+
+    for(i in 1:length(bad_chrs)){
+      if(anyNA(as.double(bad_chrs[i])) == FALSE) {
+        bad_chrs[i] <- paste("chr", bad_chrs[i], sep = "")
+      } else {
+        bad_chrs <- bad_chrs[bad_chrs!= bad_chrs[i]]
+      }
+    }
+    if(length(good_chrs) != 0){
+      chrs <- c(good_chrs, bad_chrs)
+      out_print <- paste(chrs, collapse = '')
+      out_print <- gsub("(\\d+)\\c", "\\1\\ \\c", out_print)
+      print(paste0("These are the remaining chromosomes after fixing: ", out_print))
+    } else {
+      print(paste0("Chromosomes must be given as a value 'chr3'. Currently given badly as: ",
+                   bad_chrs, ". All chromosomes to be used by default"))
+    }
+  }
+
+  return(chrs)
+}
+
+.check_rsid <-function(rsid, genes, traits, chrs) {
+  # 6. If a rsid is given then search just by the rsid and not by any other params even
+  # if they have been given. A default title should made for each rsid as well and
+  # not just the default; This is done later on.
+  if(is.null(rsid)) {
+    rsid = NA
+  } else if(is.na(rsid) == FALSE) {
+    genes = NA
+    traits = NA
+    chrs = NA
+  }
+
+  return(list(rsid, genes, traits, chrs))
+}
+
+.check_omim <- function(omim, pval_thresh, pval_thresh_show) {
+  # 7. Check the OMIM IDs
+  if(is.null(omim)) {
+    params[[14]] = NA
+  } else if(is.null(omim) == FALSE && is.null(pval_thresh == FALSE)) {
+    print("No p-value threshold restriction available for OMIM searching.")
+    pval_thresh = NA
+    pval_thresh_show = 1
+  }
+
+  return(list(omim, pval_thresh, pval_thresh_show))
+}
+
+.check_colors <- function(color, pval_low_col, pval_high_col) {
+  # 8. Check that the colors are properly set.
+  if(is.null(color) || is.na(color)){
+    color = "#da8cde"
+  }
+  if(is.null(pval_high_col) || is.na(pval_high_col)){
+    pval_high_col = "#1254c7"
+  }
+  if(is.null(pval_low_col) || is.na(pval_low_col)){
+    pval_low_col = "#09873e"
+  }
+
+  return(list(color, pval_low_col, pval_high_col))
+}
+
+.check_show_pval_thresh <- function(show_pval_thresh) {
+  # 9. Check that the show_pval_thresh is a boolean
+  if(show_pval_thresh != 1 && show_pval_thresh != 0) {
+    print(paste0("parameter: ", show_pval_thresh, " is not valid. Set to 1"))
+    show_pval_thresh = 1
+  }
+
+  return(show_pval_thresh)
+}
+
+.check_trait <- function(trait) {
+  # 10. Check that traits not given as null and if so change to be NA.
+  if(is.null(trait)) {
+    trait = NA
+  }
+
+  return(trait)
+}
 
 #' @title Checks if the params given for the kegg_graph function are valid.
 #' @description Checks if any given param for othe kegg_graph function are
@@ -22,194 +216,86 @@
 #' @return If passed: A vector containing all values possible even if not
 #' passed into the function by the user and fixed values if something was
 #' not right and they could be corrected. If falsed: then is FALSE
-.check_kegg_validity <- function(params) {
+.kegg_validity_check <- function(params) {
   print("Checking traits to see if they are valid")
   # 1. Check the directory exists for the VarGen data.
-  if(dir.exists(params[[1]]) == FALSE) {
-    stop(paste0("The directory used for vargen_dir: ", params[[1]],
-                " was not found in the current directory ", getwd()))
-  }
-
+  .check_vargen_dir(params[[1]])
   # 2. Check that the gene mode is valid.
-  if((!(params[[7]] %in% c(0,1,2)) && is.na(params[[7]]) == FALSE && is.na(params[[6]])) ||
-     (!(params[[7]] %in% c(0,1,2)) && is.na(params[[7]]) == FALSE && is.na(params[[6]]) == FALSE)) {
-    # Case 1: If the given gene mode is not in one of the valid selection types.
-    print(paste0("Gene_mode: ", params[[7]],
-                 " does not exist so the default mode of 2 is being used instead."))
-    params[[7]] <- 2
-  } else if(params[[7]] %in% c(0,1) && is.na(params[[7]]) == FALSE && is.na(params[[6]])) {
-    # Case 2: If the given gene mode is in one of the valid selection types, but no genes are given.
-    # Only 1 and 0 are selected here as the default is 2 in the program.
-    print("No genes were given with gene mode, thus no gene mode can/will be used")
-  }
-
+  params[[7]] <- .check_gene_mode(params[[7]], params[[6]])
   # 3. Check that the p-value is valid.
-  if(typeof(params[[9]]) != "double" && is.na(params[[9]]) == FALSE) {
-    if(is.na(as.double(params[[9]]))){
-      print(paste0("p-value threshold could not be converted to a double from the given value: '",
-                   params[[9]], "'. No pvalue threshold will be used."))
-      params[[9]] <- NA
-    }
-  }
-
+  params[[9]] <- .check_pval(params[[9]])
   # 4. Check if the chromosome/s are valid and if they are not attempt to fix them.
-  if(length(grep("chr[0-9]", x = params[[4]])) != length(params[[4]]) && is.na(params[[4]]) == FALSE){
-    #Separate the bad and good chromosomes
-    bad_chrs <- params[[4]][!(params[[4]] %in% params[[4]][grep("chr[0-9]", x = params[[4]])])]
-    good_chrs <- params[[4]][grep("chr[0-9]", x = params[[4]])]
-
-    print(paste0("Chromosomes must be given as a value 'chr3'. Currently given badly as: ",
-                 bad_chrs, ". Cleaning up bad entries to fit entry format as possible."))
-
-    for(i in 1:length(bad_chrs)){
-      if(anyNA(as.double(bad_chrs[i])) == FALSE) {
-        bad_chrs[i] <- paste("chr", bad_chrs[i], sep = "")
-      } else {
-        bad_chrs <- bad_chrs[bad_chrs!= bad_chrs[i]]
-      }
-    }
-    if(length(good_chrs) != 0){
-      params[[4]] <- c(good_chrs, bad_chrs)
-      out_print <- paste(params[[4]], collapse = '')
-      out_print <- gsub("(\\d+)\\c", "\\1\\ \\c", out_print)
-      print(paste0("These are the remaining chromosomes after fixing: ", out_print))
-    } else {
-      print(paste0("Chromosomes must be given as a value 'chr3'. Currently given badly as: ",
-                   bad_chrs, ". All chromosomes to be used by default"))
-    }
-  }
-
+  params[[4]] <- .check_chrs(params[[4]])
   # 5. Check if the output directory exists and if it doesn't then make it.
-  if(is.na(params[[2]]) == FALSE) {
-    if(dir.exists(params[[2]]) == FALSE) {
-      # Make the proper output directory if one isn't given.
-      if(.Platform$OS.type == "windows"){
-        if(dir.exists(paste0(getwd(), "\\", "KEGG_images\\")) == FALSE){
-          dir.create("KEGG_images")
-        }
-        params[[2]] <- paste0(getwd(), "\\", "KEGG_images\\")
-      } else {
-        if(dir.exists(paste0(getwd(), "/", "KEGG_images/")) == FALSE){
-          dir.create("KEGG_images")
-        }
-        params[[2]] <- paste0(getwd(), "/", "KEGG_images/")
-        print(paste0("Using output directory ", params[[2]]))
-      }
-    } else {
-      print(paste0("Using output directory ", params[[2]]))
-    }
-  }
-
+  params[[2]] <- .check_output_dir(params[[2]], "KEGG_images")
   # 6. If a rsid is given then search just by the rsid and not by any other params even
   # if they have been given. A default title should made for each rsid as well and
   # not just the default; This is done later on.
-  if(is.null(params[[8]])) {
-    params[[8]] = NA
-  } else if(is.na(params[[8]]) == FALSE) {
-    params[[3]] = NA
-    params[[6]] = NA
-    params[[4]] = NA
-  }
-
-  # 7 .Check the OMIM IDs
-  if(is.null(params[[14]])) {
-    params[[14]] = NA
-  } else if(is.null(params[[14]]) == FALSE && is.null(params[[9]] == FALSE)) {
-    print("No p-value threshold restiction available for OMIM searching.")
-    params[[9]] = NA
-    params[[13]] = 1
-  }
-
+  out <- .check_rsid(params[[8]], params[[3]], params[[6]], params[[4]])
+  params[[8]] <- out[[1]]
+  params[[3]] <- out[[2]]
+  params[[6]] <- out[[3]]
+  params[[4]] <- out[[4]]
+  # 7. Check the OMIM IDs
+  out <- .check_omim(params[[14]], params[[9]], params[[13]])
+  params[[14]] <- out[[1]]
+  params[[9]] <- out[[2]]
+  params[[13]] <- out[[3]]
   # 8. Check that the colors are properly set.
-  if(is.null(params[[10]]) || is.na(params[[10]])){
-    params[[10]] = "#da8cde"
-  }
-  if(is.null(params[[12]]) || is.na(params[[12]])){
-    params[[12]] = "#1254c7"
-  }
-  if(is.null(params[[11]]) || is.na(params[[11]])){
-    params[[11]] = "#09873e"
-  }
-
+  out <- .check_colors(params[[10]], params[[12]], params[[11]])
+  params[[10]] <- out[[1]]
+  params[[12]] <- out[[2]]
+  params[[11]] <- out[[3]]
   # 9. Check that the show_pval_thresh is a boolean
-  if(params[[13]] != 1 && params[[13]] != 0) {
-    print(paste0("parameter: ", params[[13]], " is not valid. Set to 1"))
-    params[[13]] = 1
-  }
-
+  params[[13]] <- .check_show_pval_thresh(params[[13]])
   # 10. Check that traits not given as null and if so change to be NA.
-  if(is.null(params[[3]])) {
-    params[[3]] = NA
-  }
+  params[[3]] <- .check_trait(params[[3]])
 
   return(params)
 }
 
-#' @title Restricts variants by for the kegg_graph function.
-#' @description Takes the variant list after it has been checked for
-#' validity and restricts the OMIM database and restricts by the given
-#' parameters from the user.
-#' @param params: A vector containing all values possible even if not passed into
-#' the function by the user after they have been deemed valid.
-#' @param omim_info: An empty vector that will returned with the dataset.
-#' @return a dataframe for restricted variants from the OMIM catelog
-.restrict_snp_omim <- function(omim_info, params) {
-  if(is.na(params[[14]]) == FALSE && is.na(params[[3]]) == FALSE) {
-    omim_ids <- list_omim_accessions(connect_to_gene_ensembl(), params[[3]])[["mim_morbid_accession"]]
-    if(length(omim_ids) != 0) {
-      omim_genes <- get_omim_genes(omim_ids, connect_to_gene_ensembl())
-      omim_info <- omim_genes
-      #Start the restiction from the other processes.
-      if(nrow(omim_info) != 0) {
-        if(is.na(params[[8]])){
-          if(is.na(params[[3]]) == FALSE && is.na(params[[4]]) && is.na(params[[6]])) {
-            return(omim_info)
-          } else if(is.na(params[[3]]) == FALSE && is.na(params[[4]]) == FALSE
-                    && is.na(params[[6]])) {
-            # Restrict by only chromosomes.
-            omim_info <- subset(omim_info, omim_info[["chromosome_name"]] == params[[4]])
-          } else if(is.na(params[[3]]) == FALSE && is.na(params[[4]])
-                    && is.na(params[[6]]) == FALSE) {
-            # Restrict by only genes.
-            omim_info <- subset(omim_info, omim_info[["hgnc_symbol"]] == params[[6]])
-          } else {
-            # Restrict by only genes and chromosomes.
-            omim_info <- subset(omim_info, omim_info[["chromosome_name"]] == params[[4]])
-            omim_info <- subset(omim_info, omim_info[["hgnc_symbol"]] == params[[6]])
-          }
-        }
-      } else {
-        stop(paste("No information found in the OMIM database for the traits given."))
-      }
-    } else {
-      stop(print("No OMIM ID found."))
-    }
-  } else if(is.na(params[[14]]) == FALSE && is.na(params[[3]])) {
-    omim_info <- get_omim_genes(params[[14]])
-    #Start the restiction from the other processes.
-    if(nrow(omim_info) != 0) {
-      if(is.na(params[[8]])){
-        if(is.na(params[[4]]) && is.na(params[[6]])) {
-          return(omim_info)
-        } else if(is.na(params[[4]]) == FALSE && is.na(params[[6]])) {
-          # Restrict by only chromosomes.
-          omim_info <- subset(omim_info, omim_info[["chromosome_name"]] == params[[4]])
-        } else if(is.na(params[[4]]) && is.na(params[[6]]) == FALSE) {
-          # Restrict by only genes.
-          omim_info <- subset(omim_info, omim_info[["hgnc_symbol"]] == params[[6]])
-        } else {
-          # Restrict by only genes and chromosomes.
-          omim_info <- subset(omim_info, omim_info[["chromosome_name"]] == params[[4]])
-          omim_info <- subset(omim_info, omim_info[["hgnc_symbol"]] == params[[6]])
-        }
-      }
-    } else {
-      stop(paste("No information found in the OMIM database for the traits given."))
-    }
-  }
+#' @title Get genes from a kegg pathway.
+#' @description Gets all the genes from a given pathway.
+#' @param kegg pathway: The kegg pathway.
+#' @return A list of containing two values, one with
+#' the genes from a given pathway and the other with the
+#' kegg path ids, and the kegg id.
+.make_genes <- function(kegg_pathway){
+  # Separate pathway ID from the enzyme/s.
+  kegg_path_id <- unlist(strsplit(kegg_pathway, "\\+"))[1]
+  #Get the list of numbers, gene symbols and gene description
+  kegg_path_id <- paste0("hsa", kegg_path_id)
+  #1. Get genes.
+  kegg_genes <- tryCatch({
+    KEGGREST::keggGet(kegg_path_id)[[1]][["GENE"]]
+  }, error = function(e) {
+    NULL
+  })
 
-  return(omim_info)
+  ko_ids <- c()
+  # 2. Check the values and get the id split form the actual genes
+  if(is.null(kegg_genes) == FALSE){
+    kegg_id <- kegg_genes[seq(1, length(kegg_genes), by = 2)]
+    kegg_info <- kegg_genes[seq(0, length(kegg_genes), 2)]
+
+    kegg_info <- sub(";.*\\[KO:", ",", kegg_info)
+    kegg_info <- sub(" \\[EC:.*", "", kegg_info)
+    kegg_info <- sub("]", "", kegg_info)
+    kegg_info <- strsplit(kegg_info, ",")
+
+    # Two column dataset with matching ko ids and genes.
+    kegg_info <- t(data.frame(kegg_info))
+    kegg_info <- data.frame(kegg_info)
+
+    return(list(kegg_info[["X1"]],
+                gsub("hsa", "map", kegg_path_id),
+                kegg_id, kegg_info[["X2"]]))
+  } else {
+    return(list(kegg_genes, gsub("hsa", "map", kegg_path_id), kegg_id = NULL, ko_ids))
+  }
 }
+
+#---- KEGG Functions ----
 
 #' @title Restricts variants by for the kegg_graph function.
 #' @description Takes the variant list after it has been checked for
@@ -712,74 +798,6 @@
   }
 }
 
-#' @title Makes output directory for Windows, Linux, or Unix system.
-#' @description Makes a directory if none is given or returns the
-#' directory of the computer system so that figures can be placed
-#' in a given directory.
-#' @param dir: The path name that should be made.
-#' @param name: The name for the final directory.
-#' @return a the directory or make a directory is none is given.
-.make_dir <- function(dir, name = ".") {
-  if(is.na(dir[[1]])  || dir[[1]] == " " || is.double(dir[[1]])) {
-    # Make the proper output directory if one isn't given.
-    if(.Platform$OS.type == "windows") {
-      dir.create(name)
-      output_dir <- paste0(getwd(), "\\", name, "\\")
-    } else {
-      dir.create(name)
-      output_dir <- paste0(getwd(), "/", name, "/")
-    }
-  } else {
-    if(.Platform$OS.type == "windows") {
-      output_dir <- paste0(dir[[1]], "\\", name, "\\")
-    } else {
-      output_dir <- paste0(dir[[1]], "/", name, "/")
-    }
-  }
-  return(output_dir)
-}
-
-#' @title Get genes from a kegg pathway.
-#' @description Gets all the genes from a given pathway.
-#' @param kegg pathway: The kegg pathway.
-#' @return A list of containing two values, one with
-#' the genes from a given pathway and the other with the
-#' kegg path ids, and the kegg id.
-.make_genes <- function(kegg_pathway){
-  # Separate pathway ID from the enzyme/s.
-  kegg_path_id <- unlist(strsplit(kegg_pathway, "\\+"))[1]
-  #Get the list of numbers, gene symbols and gene description
-  kegg_path_id <- paste0("hsa", kegg_path_id)
-  #1. Get genes.
-  kegg_genes <- tryCatch({
-    KEGGREST::keggGet(kegg_path_id)[[1]][["GENE"]]
-  }, error = function(e) {
-    NULL
-  })
-
-  ko_ids <- c()
-  # 2. Check the values and get the id split form the actual genes
-  if(is.null(kegg_genes) == FALSE){
-    kegg_id <- kegg_genes[seq(1, length(kegg_genes), by = 2)]
-    kegg_info <- kegg_genes[seq(0, length(kegg_genes), 2)]
-
-    kegg_info <- sub(";.*\\[KO:", ",", kegg_info)
-    kegg_info <- sub(" \\[EC:.*", "", kegg_info)
-    kegg_info <- sub("]", "", kegg_info)
-    kegg_info <- strsplit(kegg_info, ",")
-
-    # Two column dataset with matching ko ids and genes.
-    kegg_info <- t(data.frame(kegg_info))
-    kegg_info <- data.frame(kegg_info)
-
-    return(list(kegg_info[["X1"]],
-                gsub("hsa", "map", kegg_path_id),
-                kegg_id, kegg_info[["X2"]]))
-  } else {
-    return(list(kegg_genes, gsub("hsa", "map", kegg_path_id), kegg_id = NULL, ko_ids))
-  }
-}
-
 #' @title Gets the information needed for the KEGG Api.
 #' @description Depending on if the user wants to show values falling below
 #' the value threshold or if they want the regular mode showing only those
@@ -974,7 +992,36 @@
   return(list(matched, fg, bg, ko_matched))
 }
 
-#---- Helpers ----
+#---- KEGG Helper Functions ----
+
+#' @title Helper for VarGen pipeline dataset.
+#' @description Finds the matched values for each of the
+#' values in the matched genes column in the VarGen pipeline
+#' dataset.
+#' @param data: Data set containing resticted values.
+#' @param kegg_genes: Genes to be matched by.
+#' @param color: Color for foundvariants in pathway.
+#' @return The matched values
+.info_helper <- function(data, kegg_genes, ko_ids, color){
+  matched <- c()
+  index <- c()
+  ko_matched <- c()
+
+  for (i in 1:length(unique(data[["hgnc_symbol"]]))) {
+    if (anyNA(match(unique(data[["hgnc_symbol"]])[i], unlist(kegg_genes))) == FALSE) {
+      index <- c(index, match(unique(data[["hgnc_symbol"]])[i], unlist(kegg_genes)))
+      for (j in 1:length(index)) {
+        matched <- c(matched, unlist(kegg_genes)[index[j]])
+        ko_matched <- c(ko_matched, unlist(ko_ids)[index[j]])
+      }
+    }
+  }
+
+  fg <- replicate(length(matched), color)
+  bg <- replicate(length(matched), "#000000")
+
+  return(list(matched, fg, bg, ko_matched))
+}
 
 #' @title Helper for mapped genes in p-value restricting
 #' @description Helper for mapped genes in p-value restricting that finds the
@@ -1234,16 +1281,6 @@
 #' @param title: The title that each of the graphics will be given with a
 #' counter added.
 #' @param pval_thresh: The cut off threshold for the p-values of the variants.
-#' @param vargen_dir: The directory that the VarGen information has been
-#' download to or is being stored in.
-#' @param output_dir: The directory where the files will be put as desired
-#' by the user.
-#' @param traits: A vector containing the traits that can be seached for. Can be
-#' given as either a vector or as a single string.
-#' @param chrs: A vector containing the chromosomes that can be seached for.
-#' Can be given as either a vector or as a single string. Ex: "chr1"
-#' @param title: The title that each of the graphics will be given with a
-#' counter added.
 #' @param omim_ids: The omim id or ids to be searched only in a KEGG pathway.
 #' @param rsids: A single snp rsid identifier or a vector of identifiers which
 #' will return a list of found information from the gwas catalog in a dataframe.
@@ -1252,21 +1289,24 @@
 #' mapped genes should both be search for the given genes or if only one or the
 #' other should be.  0 is for mapped genes only, 1 is for only reported, 2 is
 #' for both. The defualt is 2.
-#' @param pval_thresh: The cut off threshold for the p-values of the variants.
+#' @param color: The color for the variants given no p-value threshold has been given.
+#' @param pval_low_col: The color for the genes given both a low p-value is found.
+#' @param pval_high_col: The color for the genes given both a high p-value is found.
+#' @param pval_mix_col: The color for the genes given both a low and high p-value is found.
+#' @param pval_thresh_show: Show the p-value or not. 1 if not showing values and no
+#' separation of colors if a p-value has been given and 0 if showing separation of p-value
+#' by colors
 #' @return Nothing; The KEGG pathways figures in a given or default directory.
-kegg_graph <- function(vargen_dir, output_dir = NA, traits = NA,
-                       chrs = NA, title = NA, genes = NA, gene_mode = 2,
-                       rsids = NA, omim_ids = NA, pval_thresh = NA,
-                       color = "#da8cde", pval_low_col = "#14e06a",
-                       pval_high_col = "#14c5e0", pval_mix_col = "#14e0c1",
-                       pval_thresh_show = 1) {
-
+kegg_search_graph <- function(vargen_dir = NA, output_dir = NA, traits = NA, chrs = NA, title = NA,
+                              genes = NA, gene_mode = 2, rsids = NA, omim_ids = NA,
+                              pval_thresh = NA, color = "#da8cde",
+                              pval_low_col = "#14e06a", pval_high_col = "#14c5e0",
+                              pval_mix_col = "#14e0c1", pval_thresh_show = 1) {
   # 1. Check if the parameters are valid.
-  params = .check_kegg_validity(list(vargen_dir, output_dir, traits, chrs, title,
+  params = .kegg_validity_check(list(vargen_dir, output_dir, traits, chrs, title,
                                      genes, gene_mode, rsids, pval_thresh, color,
                                      pval_low_col, pval_high_col, pval_thresh_show,
                                      omim_ids))
-
   omim_info <- c()
   variants_traits <- c()
   # 2. Restrict the gwas catelog by the given paramaters.
@@ -1363,27 +1403,27 @@ kegg_graph <- function(vargen_dir, output_dir = NA, traits = NA,
       # Column must be changed to be numeric else it's not calculated properly.
       kegg_paths[["p_value"]] <- as.numeric(as.character(kegg_paths[["p_value"]]))
       if(params[[13]] == 0){
-          # If the user wants to show the p-value threshold colors that are below
-          # and above the threshold. For any p-values that are found to be both above and
-          # below the threshold they will be colored according to the mixed color.
-          # 6.4.1 Find the values in the high and low categories.
-          kegg_paths_high <- kegg_paths[which(kegg_paths[["p_value"]] >= params[[9]]), ]
-          kegg_paths_low <- kegg_paths[which(kegg_paths[["p_value"]] < params[[9]]), ]
+        # If the user wants to show the p-value threshold colors that are below
+        # and above the threshold. For any p-values that are found to be both above and
+        # below the threshold they will be colored according to the mixed color.
+        # 6.4.1 Find the values in the high and low categories.
+        kegg_paths_high <- kegg_paths[which(kegg_paths[["p_value"]] >= params[[9]]), ]
+        kegg_paths_low <- kegg_paths[which(kegg_paths[["p_value"]] < params[[9]]), ]
 
-          # 6.4.2 Find if there were any intersection between them and if there were remove and
-          # add them to the mixed paths.
-          intersect <- intersect(kegg_paths_high[["rsid"]], kegg_paths_low[["rsid"]])
-          if(length(intersect) != 0) {
-            kegg_paths_mixed.1 <- subset(kegg_paths_high, kegg_paths_high[["rsid"]] %in% intersect[["rsid"]])
-            kegg_paths_mixed.2 <- subset(kegg_paths_low, kegg_paths_low[["rsid"]] %in% intersect[["rsid"]])
-            kegg_paths_mixed <- merge(kegg_paths_mixed.1, kegg_paths_mixed.2, by = "rsid")
+        # 6.4.2 Find if there were any intersection between them and if there were remove and
+        # add them to the mixed paths.
+        intersect <- intersect(kegg_paths_high[["rsid"]], kegg_paths_low[["rsid"]])
+        if(length(intersect) != 0) {
+          kegg_paths_mixed.1 <- subset(kegg_paths_high, kegg_paths_high[["rsid"]] %in% intersect[["rsid"]])
+          kegg_paths_mixed.2 <- subset(kegg_paths_low, kegg_paths_low[["rsid"]] %in% intersect[["rsid"]])
+          kegg_paths_mixed <- merge(kegg_paths_mixed.1, kegg_paths_mixed.2, by = "rsid")
 
-            kegg_paths_high[!kegg_paths_high[["rsid"]] %in% intersect[["rsid"]],]
-            kegg_paths_low[!kegg_paths_low[["rsid"]] %in% intersect[["rsid"]],]
-          }
+          kegg_paths_high[!kegg_paths_high[["rsid"]] %in% intersect[["rsid"]],]
+          kegg_paths_low[!kegg_paths_low[["rsid"]] %in% intersect[["rsid"]],]
+        }
 
       } else {
-          kegg_paths <- kegg_paths[which(kegg_paths[["p_value"]] < params[[9]]), ]
+        kegg_paths <- kegg_paths[which(kegg_paths[["p_value"]] < params[[9]]), ]
       }
     }
 
@@ -1393,7 +1433,7 @@ kegg_graph <- function(vargen_dir, output_dir = NA, traits = NA,
       print(paste0("File written in"), getwd())
     }
 
-    # 7. Output KEGG pathways for each pathway in the output firectory
+    # 7. Output KEGG pathways for each pathway in the output directory
     # assuming it doesn't already exist. Also write the file containing
     # the rsids that were aquired by filtered out due to the p-value
     # threshold.
@@ -1422,7 +1462,7 @@ kegg_graph <- function(vargen_dir, output_dir = NA, traits = NA,
         bg <- final_info[[3]]
         ko_matched <- final_info[[4]]
 
-       } else {
+      } else {
         final_info <- .get_final_output_omim(index, matched, kegg_paths, kegg_genes,
                                              color, params, fg, bg, ko_ids,
                                              ko_matched)
@@ -1430,7 +1470,7 @@ kegg_graph <- function(vargen_dir, output_dir = NA, traits = NA,
         fg <- final_info[[2]]
         bg <- final_info[[3]]
         ko_matched <- final_info[[4]]
-       }
+      }
 
       # 7.3 Make sure that some value is found so that a pathway can be made.
       if (is.null(unlist(kegg_genes)) == FALSE
@@ -1438,60 +1478,60 @@ kegg_graph <- function(vargen_dir, output_dir = NA, traits = NA,
           && length(unlist(kegg_genes, use.names=FALSE)) != 0
           && length(matched) != 0) {
 
-          matched <- unlist(matched)
-          fg <- unlist(fg)
-          bg <- unlist(bg)
+        matched <- unlist(matched)
+        fg <- unlist(fg)
+        bg <- unlist(bg)
 
-          df <- data.frame(unlist(kegg_genes), unlist(kegg_info[[3]]))
-          df <- df[is.element(df$"unlist.kegg_genes.", matched),]
-          colnames(df) <- cbind("matched", "id")
+        df <- data.frame(unlist(kegg_genes), unlist(kegg_info[[3]]))
+        df <- df[is.element(df$"unlist.kegg_genes.", matched),]
+        colnames(df) <- cbind("matched", "id")
 
-          # Get unique fg and bg colors for the macthed information as duplicated can occur if reported
-          # and mapped have same information.
-          temp_df <- data.frame(matched, fg, bg, ko_matched)
-          df <- merge(x = df, y = temp_df[!duplicated(temp_df[["matched"]]), ], by = "matched", all.x = TRUE)
+        # Get unique fg and bg colors for the macthed information as duplicated can occur if reported
+        # and mapped have same information.
+        temp_df <- data.frame(matched, fg, bg, ko_matched)
+        df <- merge(x = df, y = temp_df[!duplicated(temp_df[["matched"]]), ], by = "matched", all.x = TRUE)
 
-          temp <- df[["id"]]
-          for(i in 1:length(df[["id"]])) {
-            temp[i] <- paste("hsa:", df[["id"]][i], sep = "")
-          }
-          kegg_id <- temp
+        temp <- df[["id"]]
+        for(i in 1:length(df[["id"]])) {
+          temp[i] <- paste("hsa:", df[["id"]][i], sep = "")
+        }
+        kegg_id <- temp
 
-          kegg_genes <- df[["matched"]]
-          fg <- df[["fg"]]
-          bg <- df[["bg"]]
-          ko_matched <- df[["ko_matched"]]
+        kegg_genes <- df[["matched"]]
+        fg <- df[["fg"]]
+        bg <- df[["bg"]]
+        ko_matched <- df[["ko_matched"]]
 
-          print(paste0("Number of unique variants found for pathway ", kegg_pathway, " : ", length(kegg_genes)))
+        print(paste0("Number of unique variants found for pathway ", kegg_pathway, " : ", length(kegg_genes)))
 
-          if(length(ko_matched) != 0) {
-            url <- KEGGREST::color.pathway.by.objects(paste("path:", kegg_path_id, sep = ""),
-                                                        unlist(ko_matched),
-                                                        fg.color.list = unlist(fg),
-                                                        bg.color.list = unlist(bg))
+        if(length(ko_matched) != 0) {
+          url <- KEGGREST::color.pathway.by.objects(paste("path:", kegg_path_id, sep = ""),
+                                                    unlist(ko_matched),
+                                                    fg.color.list = unlist(fg),
+                                                    bg.color.list = unlist(bg))
 
-            # 6.4 Make the correct titles for each of the pathways.
-            if (titleKey == TRUE) {
-              title <- paste0("hsa_", kegg_path_id, "_kegg.png")
-            } else {
-              if (file.exists(paste0(output_dir, filecnt, "_", title)) == FALSE) {
-                title <- paste0(cnt, "_", title)
-              }
-            }
-
-            if (file.exists(paste(output_dir, title, sep = ""))) {
-              file_cnt <- sapply(output_dir, function(output_dir) {
-                length(list.files(output_dir, pattern = title))
-              })
-              title <- paste0(file_cnt, "_", title, sep = "")
-            }
-            # 6.6 Download the files from the website.
-            download.file(url, paste(output_dir, title, sep = ""), mode = "wb")
-            filecnt <- filecnt + 1
+          # 6.4 Make the correct titles for each of the pathways.
+          if (titleKey == TRUE) {
+            title <- paste0("hsa_", kegg_path_id, "_kegg.png")
           } else {
-            print("Added variant to file containing those not found in directory.")
-            writeLines(c(kegg_paths[["rsid"]][cnt]), file_out)
+            if (file.exists(paste0(output_dir, filecnt, "_", title)) == FALSE) {
+              title <- paste0(cnt, "_", title)
+            }
           }
+
+          if (file.exists(paste(output_dir, title, sep = ""))) {
+            file_cnt <- sapply(output_dir, function(output_dir) {
+              length(list.files(output_dir, pattern = title))
+            })
+            title <- paste0(file_cnt, "_", title, sep = "")
+          }
+          # 6.6 Download the files from the website.
+          download.file(url, paste(output_dir, title, sep = ""), mode = "wb")
+          filecnt <- filecnt + 1
+        } else {
+          print("Added variant to file containing those not found in directory.")
+          writeLines(c(kegg_paths[["rsid"]][cnt]), file_out)
+        }
       } else {
         # 6.5 Write the output files for the paths not found.
         if (is.na(params[[14]] == FALSE)) {
@@ -1502,163 +1542,112 @@ kegg_graph <- function(vargen_dir, output_dir = NA, traits = NA,
           write.table(x = kegg_paths[["mim_morbid_accession"]], file = file_out)
         }
       }
-        cnt <- cnt + 1
-     }
+      cnt <- cnt + 1
+    }
   }
 }
 
-#' @title Make pathview figures for a VarGen variants.
-#' @description Uses the pathview package to make figures for the variants found via the
-#' VarGen pipeline.
-#' @param data: The output from the vargen pipeline.
+#' @title Makes the KEGG graphs from VarGen pipeline
+#' @description Allows for the KEGG graphs to be output into a directory,
+#' from a dataset generated from the VarGen pipeline.
+#' @param data: The output from the VarGen pipeline.
+#' download to or is being stored in.
 #' @param output_dir: The directory where the files will be put as desired
-#' by the user.
-#' @param title: The title that each of the graphics will be given with a
-#' counter added.
-#' @param key_pos: The position of the key for the pathview figure given as either
-#' "topleft", "bottomleft", "topright", or "bottomright".
-#' @param threshold: The number of the top most found values in the dataset.
-#' @return Nothing; The KEGG pathways figures in a given or made directory.
-pathview_vargen <- function(data, output_dir = NA, title = NULL, top_thresh = NULL,
-                            key_pos = "topright") {
-  # 1. Check input parameters to see if they are valid.
-  if(is.na(data) || is.null(data)) {
-    stop(paste0("No data found inside the given dataset from the VarGen pipeline.",
-                " The data frame is either NA or null."), sep = "")
-  } else if(nrow(data) == 0) {
-    stop(paste("No data found inside the given dataset from the VarGen pipeline.",
-               " The data frame has 0 rows."), sep = "")
-  }
-  # 1.2 Check if the output directory exists and if it doesn't then make it.
-  if(is.na(output_dir) == FALSE) {
-    if(dir.exists(output_dir) == FALSE) {
-      # Make the proper output directory if one isn't given.
-      if(.Platform$OS.type == "windows"){
-        if(dir.exists(paste0(getwd(), "\\", "pathview\\")) == FALSE){
-          dir.create("pathview")
-        }
-        output_dir <- paste0(getwd(), "\\", "pathview\\")
-      } else {
-        if(dir.exists(paste0(getwd(), "\\", "pathview\\")) == FALSE){
-          dir.create("pathview")
-        }
-        output_dir <- paste0(getwd(), "\\", "pathview\\")
-        print(paste0("Using output directory ", output_dir))
-      }
-    } else {
-      print(paste0("Using output directory ", output_dir))
-    }
-  }
-  output_dir <- .make_dir(output_dir, "pathview")
+#' @return Nothing; The KEGG pathways figures in a given or default directory.
+kegg_vargen_graph <- function(data, output_dir = NULL, color = "#da8cde") {
+  # 1. Check the dataset and the output directory.  Make the directory if necessary.
+  .check_dataframe(data)
+  output_dir <- .check_output_dir(output_dir, "KEGG_images")
 
-  # 2. Get the Entrez IDs and KEGG pathway IDs for each of the variants.
   kegg_paths <- biomaRt::getBM(
     attributes = c("kegg_enzyme", "ensembl_gene_id", "entrezgene_id"),
     filters = c("ensembl_gene_id"),
     values = data[["ensembl_gene_id"]],
     mart = connect_to_gene_ensembl(), uniqueRows = TRUE)
 
-  # 3. Merge the datasets together if there are KEGG pathways found.
   variants_info <- c()
   if(is.na(unique(kegg_paths[["kegg_enzyme"]]))) {
     variants_info <- merge(data[, c(1,4:5)], kegg_paths, by = c("ensembl_gene_id"),
                            all.x = TRUE)
     # 3.1 Remove any newly added variants that were not found by vargen.
-    variants_info <- subset(variants_info, variants_info[["ensembl_gene_id"]] != "")
+    variants_found <- subset(variants_info, variants_info[["ensembl_gene_id"]] != "")
     # 3.2 Remove those without an Entrez ID as they can't be used.
-    variants_info <- subset(variants_info, is.na(variants_info[["entrezgene_id"]]) == FALSE)
+    variants_Entrez <- subset(variants_found, is.na(variants_found[["entrezgene_id"]]) == FALSE)
+    print(paste0("Number of variants found with Entrez ID: ", nrow(variants_Entrez), " out of ",
+                 nrow(variants_found)))
     # 3.3 Remove those without a Kegg pathway as they also can't be used.
-    variants_info <- subset(variants_info, is.na(variants_info[["kegg_enzyme"]]) == FALSE)
-    variants_info <- subset(variants_info, variants_info[["kegg_enzyme"]] != "")
-    variants_info <- subset(variants_info,
-                            !duplicated(subset(variants_info,
-                                               select=c("kegg_enzyme", "hgnc_symbol"))))
+    variants_info_kegg <- subset(variants_Entrez, is.na(variants_Entrez[["kegg_enzyme"]]) == FALSE)
+    variants_info_kegg <- subset(variants_info_kegg, variants_info_kegg[["kegg_enzyme"]] != "")
+    variants_info_kegg <- subset(variants_info_kegg,
+                                 !duplicated(subset(variants_info_kegg,
+                                                    select=c("kegg_enzyme", "hgnc_symbol"))))
+    print(paste0("Number of variants found with KEGG ID: ", nrow(variants_info_kegg), " out of ",
+                 nrow(variants_Entrez)))
+    variants_info <- variants_info_kegg
   } else {
     stop(paste("No KEGG pathways are available for the variants found in the KEGG database"))
   }
-  hgnc_cnt <- data.frame(table(variants_info[["hgnc_symbol"]]))
-  colnames(hgnc_cnt) <- c("hgnc_symbol", "cnts")
 
-  # 4. Restrict by the top threshold if it is not null.
-  if(is.null(top_thresh) == FALSE) {
-    hgnc_cnt <- hgnc_cnt[order(-hgnc_cnt[["cnts"]]),]
-    hgnc_cnt <- hgnc_cnt[1:top_thresh,]
+  for (kegg_pathway in variants_info[["kegg_enzyme"]]) {
+    # 4. Get the matching genes.
+    kegg_info <- .make_genes(kegg_pathway)
+    kegg_genes <- kegg_info[1]
+    kegg_path_id <- kegg_info[2]
+    ko_ids <- kegg_info[4]
+
+    fg <- c()
+    bg <- c()
+    matched <- c()
+    ko_matched <- c()
+    # 5. Find the unique values that match in the mapped or the reported genes
+    # depending on the mode.
+    matched_info <- .info_helper(variants_info, kegg_genes, ko_ids, color)
+    matched <- matched_info[[1]]
+    fg <- matched_info[[2]]
+    bg <- matched_info[[3]]
+    ko_matched <- matched_info[[4]]
+
+    if (is.null(unlist(kegg_genes)) == FALSE
+        && identical(unlist(kegg_genes), character(0)) == FALSE
+        && length(unlist(kegg_genes, use.names=FALSE)) != 0
+        && length(matched) != 0) {
+
+      matched <- unlist(matched)
+      fg <- unlist(fg)
+      bg <- unlist(bg)
+
+      df <- data.frame(unlist(kegg_genes), unlist(kegg_info[[3]]))
+      df <- df[is.element(df$"unlist.kegg_genes.", matched),]
+      colnames(df) <- cbind("matched", "id")
+
+      # Get unique fg and bg colors for the macthed information as duplicated can occur if reported
+      # and mapped have same information.
+      temp_df <- data.frame(matched, fg, bg, ko_matched)
+      df <- merge(x = df, y = temp_df[!duplicated(temp_df[["matched"]]), ], by = "matched", all.x = TRUE)
+
+      temp <- df[["id"]]
+      for(i in 1:length(df[["id"]])) {
+        temp[i] <- paste("hsa:", df[["id"]][i], sep = "")
+      }
+      kegg_id <- temp
+
+      kegg_genes <- df[["matched"]]
+      fg <- df[["fg"]]
+      bg <- df[["bg"]]
+      ko_matched <- df[["ko_matched"]]
+
+      print(paste0("Number of unique variants found for pathway ", kegg_pathway, " : ", length(kegg_genes)))
+
+      if(length(ko_matched) != 0) {
+        url <- KEGGREST::color.pathway.by.objects(paste("path:", kegg_path_id, sep = ""),
+                                                  unlist(ko_matched),
+                                                  fg.color.list = unlist(fg),
+                                                  bg.color.list = unlist(bg))
+        download.file(url, paste(output_dir, kegg_pathway, ".png", sep = ""), mode = "wb")
+      }
+    }
   }
-
-  # 5. Get the sum of the total genes found, not just those with a pathway.
-  sum <- sum(data.frame(table(data[["hgnc_symbol"]]))[["Freq"]])
-  for(i in 1:nrow(hgnc_cnt)) {
-    hgnc_cnt[["cnts"]][[i]]  <- hgnc_cnt[["cnts"]][[i]] / sum
-  }
-
-  # 6. Get the restricted information since pathways are the limiting factor.
-  hgnc_cnt <- merge(hgnc_cnt, variants_info, by = "hgnc_symbol", all = TRUE)
-
-  # 6. Make the proper input for each of the pathways for the pathview and then create the Pathview images.
-  # The gene data is the frequency of the counts of variants found by VarGen with entrez genes IDs as the
-  # requested ID.  The pathway id is the kedd_id.
-  old_dir = getwd()
-  for(kegg_pathway in hgnc_cnt[["kegg_enzyme"]]) {
-    kegg_id <- unlist(strsplit(kegg_pathway, "\\+"))[1]
-    sel_info <- unique(hgnc_cnt[, c(6,2)])
-    sel_genes <- as.matrix(sel_info[, 2])
-    rownames(sel_genes) <- c(sel_info[, 1])
-
-    setwd(output_dir)
-    pv.out <- pathview::pathview(gene.data = sel_genes, pathway.id = kegg_id,
-                                 gene.idtype = "entrez",
-                                 kegg.native = FALSE, key_pos = key_pos,
-                                 out.suffix = title)
-  }
-  setwd(old_dir)
 }
-
-
-#' @title Makes a linkage Disequilibrium map using data from the VarGen pipeline.
-#' @description Makes a linkage Disequilibrium heatmap from the VarGen pipeline using
-#' the LDlinR package and the gplots package.
-#' @param data: The output from the VarGen pipeline.
-#' @param rsid: The variant that is to be compared against other variants found in the dataset
-#' that are on the same chromosome.
-#' @param dendro: A boolean that indicates if the dendrogram is to be shown or not.
-#' @return Nothing; linkage disequilibrium map
-LD_visual <- function(data, rsid, dendro = FALSE) {
-  # 1. Check that each of the parameters to see if they are valid.
-  # 1.1 Check if the dataset is null, na, or contains no data.
-  if(is.null(data) || is.na(data) || nrow(data) == 0) {
-    stop(print(paste("The given data from the VarGen pipeline is either null,",
-                     "na, or contains no data."), sep = ""))
-  }
-  # 1.2 Check if the dendro is valid
-  if(dendro != FALSE || dendro != TRUE) {
-    print(paste0("The given value for dendro: ", dendro, " is not valid."))
-    dendro = FALSE
-  }
-
-  # 2. Clean the data
-  data <- data[grep("rs", data[["rsid"]]), ]
-  # 3. Get the chromosome of the given rsid
-  rsid_chrom <- data[grep(rsid, data[["rsid"]]), ][["chr"]]
-  # 4. subset the other chromosomes by this chromosome
-  data <- data[grep(rsid_chrom, data[["chr"]]), ]
-  # 5. Make LD Matrix
-  LD <- LDlinkR::LDmatrix(snps = data[, 3], pop = c("YRI", "CEU"),
-                          token = "b25a0c38e313", r2d = "r2")
-  LD <- data.frame(LD)
-  rownames(LD) <- LD[,1]
-  LD[,1] <- NULL
-  # 6. Remove missing values.
-  LD <- LD[rowSums(is.na(LD)) != ncol(LD),]
-  LD <- LD[, colSums(is.na(LD)) < nrow(LD)]
-  # 7. Make the heatmap for the LD
-  matrix <- data.matrix(LD[,c(2:length(LD))], rownames.force = NA)
-  gplots::heatmap.2(as.matrix(matrix), Colv="Rowv", trace="none", Rowv = dendro,
-                    scale="none", offsetRow=0.3, offsetCol=0.3, rowsep = c(1:length(matrix)),
-                    colsep = c(1:nrow(matrix)), main = paste("LD Map of ", rsid, sep = ""),
-                    na.rm = FALSE)
-}
-
-#---- Updated Visualizations ----
 
 #' @title Visualize the online OMIM Graphs.
 #' @description Takes the user to the OMIM website's graphic for a given OMIM ID. Users
@@ -1716,10 +1705,8 @@ treemap_graph <- function(data, title = "VarGen Treemap Graph", top_thresh = NUL
                           mode = "raw", ontology = FALSE, ontol_genes = NULL) {
   # 1. Check that each of the parameters to see if they are valid.
   # 1.1 Check if the dataset is null, na, or contains no data.
-  if(is.null(data) || is.na(data) || nrow(data) == 0) {
-    stop(print(paste("The given data from the VarGen pipeline is either null,",
-                     "na, or contains no data."), sep = ""))
-  }
+  .check_dataframe(data)
+
   # 1.2 Check if the threshold is a number or can be converted to one if
   # given as a string.
   if(typeof(top_thresh) != "double" && is.na(top_thresh) == FALSE
@@ -1865,15 +1852,171 @@ treemap_graph <- function(data, title = "VarGen Treemap Graph", top_thresh = NUL
                        border.col = c("black","white"), border.lwds = c(5,2),
                        bg.labels = "#abe1f5", fontfamily.labels = c("serif", "sans"))
 
-      d3treeR::d3tree(treemap(dtf = hgnc_cnt, index = c("Var2", "labels"), vSize = "Freq",
-                              type = "value", vColor = "Freq", title = title,
-                              overlap.labels = 0.5, align.labels = list(
-                                c("left", "top"),
-                                c("right", "bottom")
-                              ), fontsize.labels = c(14, 11),
-                              border.col = c("black","white"), border.lwds = c(5,2),
-                              bg.labels = "#abe1f5", fontfamily.labels = c("serif", "sans")))
+      d3treeR::d3tree(treemap::treemap(dtf = hgnc_cnt, index = c("Var2", "labels"), vSize = "Freq",
+                                       type = "value", vColor = "Freq", title = title,
+                                       overlap.labels = 0.5, align.labels = list(
+                                         c("left", "top"),
+                                         c("right", "bottom")
+                                       ), fontsize.labels = c(14, 11),
+                                       border.col = c("black","white"), border.lwds = c(5,2),
+                                       bg.labels = "#abe1f5", fontfamily.labels = c("serif", "sans")))
 
     }
   }
 }
+
+#' @title Make pathview figures for a VarGen variants.
+#' @description Uses the pathview package to make figures for the variants found via the
+#' VarGen pipeline.
+#' @param data: The output from the vargen pipeline.
+#' @param output_dir: The directory where the files will be put as desired
+#' by the user.
+#' @param title: The title that each of the graphics will be given with a
+#' counter added.
+#' @param key_pos: The position of the key for the pathview figure given as either
+#' "topleft", "bottomleft", "topright", or "bottomright".
+#' @param top_thresh: The number of the top most found values in the dataset.
+#' @return Nothing; The KEGG pathways figures in a given or made directory.
+pathview_vargen <- function(data, output_dir = NULL, title = NULL,
+                            top_thresh = NULL, key_pos = "topright") {
+  # 1. Check input parameters to see if they are valid.
+  # 1.1 Check if the dataset is null, na, or contains no data.
+  .check_dataframe(data)
+  # 1.2 Check if the output directory exists and if it doesn't then make it.
+  output_dir <- .check_output_dir(output_dir, "pathview")
+  # 1.3 If the title is set to be na, then make the title null so it will be the generic title.
+  if(is.null(title) || is.na(title)) {
+    title = NULL
+  }
+  # 1.4 Check if the threshold is a number or can be converted to one if
+  # given as a string.
+  if(typeof(top_thresh) != "double" && is.na(top_thresh) == FALSE
+     && is.null(top_thresh) == FALSE) {
+    if(is.na(as.double(top_thresh))) {
+      print(paste0("The top threshold '", top_thresh,
+                   "' could not be converted to a numeric value, ",
+                   "so threshold will be used."))
+      top_thresh <- NULL
+    }
+  }
+  # 1.5 Check that the given key is a proper position and if not sets a default.
+  key_pos <- tolower(key_pos)
+  if(!(key_pos %in% c("topleft", "bottomleft", "topright", "bottomright"))) {
+    print(paste0("There is no option '", key_pos,
+                 "' for parameter key_pos. Options are 'topleft', 'bottomleft',
+                      'topright', or 'bottomright'. The default 'topright' will be used."))
+    key_pos <- "topright"
+  }
+
+  # 2. Get the Entrez IDs and KEGG pathway IDs for each of the variants.
+  kegg_paths <- biomaRt::getBM(
+    attributes = c("kegg_enzyme", "ensembl_gene_id", "entrezgene_id"),
+    filters = c("ensembl_gene_id"),
+    values = data[["ensembl_gene_id"]],
+    mart = connect_to_gene_ensembl(), uniqueRows = TRUE)
+
+  # 3. Merge the datasets together if there are KEGG pathways found.
+  variants_info <- c()
+  if(is.na(unique(kegg_paths[["kegg_enzyme"]]))) {
+    variants_info <- merge(data[, c(1,4:5)], kegg_paths, by = c("ensembl_gene_id"),
+                           all.x = TRUE)
+    # 3.1 Remove any newly added variants that were not found by vargen.
+    variants_found <- subset(variants_info, variants_info[["ensembl_gene_id"]] != "")
+    # 3.2 Remove those without an Entrez ID as they can't be used.
+    variants_Entrez <- subset(variants_found, is.na(variants_found[["entrezgene_id"]]) == FALSE)
+    print(paste0("Number of variants found with Entrez ID: ", nrow(variants_Entrez), " out of ",
+                 nrow(variants_found)))
+    # 3.3 Remove those without a Kegg pathway as they also can't be used.
+    variants_info_kegg <- subset(variants_Entrez, is.na(variants_Entrez[["kegg_enzyme"]]) == FALSE)
+    variants_info_kegg <- subset(variants_info_kegg, variants_info_kegg[["kegg_enzyme"]] != "")
+    variants_info_kegg <- subset(variants_info_kegg,
+                                 !duplicated(subset(variants_info_kegg,
+                                                    select=c("kegg_enzyme", "hgnc_symbol"))))
+    print(paste0("Number of variants found with KEGG ID: ", nrow(variants_info_kegg), " out of ",
+                 nrow(variants_Entrez)))
+    variants_info <- variants_info_kegg
+  } else {
+    stop(paste("No KEGG pathways are available for the variants found in the KEGG database"))
+  }
+  hgnc_cnt <- data.frame(table(variants_info[["hgnc_symbol"]]))
+  colnames(hgnc_cnt) <- c("hgnc_symbol", "cnts")
+
+  # 4. Restrict by the top threshold if it is not null.
+  if(is.null(top_thresh) == FALSE) {
+    hgnc_cnt <- hgnc_cnt[order(-hgnc_cnt[["cnts"]]),]
+    hgnc_cnt <- hgnc_cnt[1:top_thresh,]
+  }
+
+  # 5. Get the sum of the total genes found, not just those with a pathway.
+  # This makes the counts into frequencies.
+  sum <- sum( hgnc_cnt[["cnts"]])
+  for(i in 1:nrow(hgnc_cnt)) {
+    hgnc_cnt[["cnts"]][[i]]  <- hgnc_cnt[["cnts"]][[i]] / sum
+  }
+  # 6. Get the restricted information since pathways are the limiting factor.
+  hgnc_cnt <- merge(hgnc_cnt, variants_info, by = "hgnc_symbol", all = TRUE)
+
+  # 7. Make the proper input for each of the pathways for the pathview and then create the Pathview images.
+  # The gene data is the frequency of the counts of variants found by VarGen with entrez genes IDs as the
+  # requested ID.  The pathway id is the kedd_id.
+  old_dir = getwd()
+  setwd(output_dir)
+  for(kegg_pathway in hgnc_cnt[["kegg_enzyme"]]) {
+    kegg_id <- unlist(strsplit(kegg_pathway, "\\+"))[1]
+    sel_info <- unique(hgnc_cnt[, c(6,2)])
+    sel_genes <- as.matrix(sel_info[, 2])
+    rownames(sel_genes) <- c(sel_info[, 1])
+
+    pathview::pathview(gene.data = sel_genes, pathway.id = kegg_id,
+                       gene.idtype = "entrez", species = "hsa",
+                       kegg.native = FALSE, key_pos = key_pos,
+                       out.suffix = title)
+  }
+  setwd(old_dir)
+}
+
+
+#' @title Makes a linkage Disequilibrium map using data from the VarGen pipeline.
+#' @description Makes a linkage Disequilibrium heatmap from the VarGen pipeline using
+#' the LDlinR package and the gplots package.
+#' @param data: The output from the VarGen pipeline.
+#' @param rsid: The variant that is to be compared against other variants found in the dataset
+#' that are on the same chromosome.
+#' @param dendro: A boolean that indicates if the dendrogram is to be shown or not.
+#' @return Nothing; linkage disequilibrium map
+LD_visual <- function(data, rsid, dendro = FALSE) {
+  # 1. Check that each of the parameters to see if they are valid.
+  # 1.1 Check if the dataset is null, na, or contains no data.
+  if(is.null(data) || is.na(data) || nrow(data) == 0) {
+    stop(print(paste("The given data from the VarGen pipeline is either null,",
+                     "na, or contains no data."), sep = ""))
+  }
+  # 1.2 Check if the dendro is valid
+  if(dendro != FALSE || dendro != TRUE) {
+    print(paste0("The given value for dendro: ", dendro, " is not valid."))
+    dendro = FALSE
+  }
+
+  # 2. Clean the data
+  data <- data[grep("rs", data[["rsid"]]), ]
+  # 3. Get the chromosome of the given rsid
+  rsid_chrom <- data[grep(rsid, data[["rsid"]]), ][["chr"]]
+  # 4. subset the other chromosomes by this chromosome
+  data <- data[grep(rsid_chrom, data[["chr"]]), ]
+  # 5. Make LD Matrix
+  LD <- LDlinkR::LDmatrix(snps = data[, 3], pop = c("YRI", "CEU"),
+                          token = "b25a0c38e313", r2d = "r2")
+  LD <- data.frame(LD)
+  rownames(LD) <- LD[,1]
+  LD[,1] <- NULL
+  # 6. Remove missing values.
+  LD <- LD[rowSums(is.na(LD)) != ncol(LD),]
+  LD <- LD[, colSums(is.na(LD)) < nrow(LD)]
+  # 7. Make the heatmap for the LD
+  matrix <- data.matrix(LD[,c(2:length(LD))], rownames.force = NA)
+  gplots::heatmap.2(as.matrix(matrix), Colv="Rowv", trace="none", Rowv = dendro,
+                    scale="none", offsetRow=0.3, offsetCol=0.3, rowsep = c(1:length(matrix)),
+                    colsep = c(1:nrow(matrix)), main = paste("LD Map of ", rsid, sep = ""),
+                    na.rm = FALSE)
+}
+
