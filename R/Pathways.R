@@ -798,6 +798,70 @@
   }
 }
 
+#' @title Restricts variants by for the kegg_graph function.
+#' @description Takes the variant list after it has been checked for
+#' validity and restricts the OMIM database and restricts by the given
+#' parameters from the user.
+#' @param params: A vector containing all values possible even if not passed into
+#' the function by the user after they have been deemed valid.
+#' @param omim_info: An empty vector that will returned with the dataset.
+#' @return a dataframe for restricted variants from the OMIM catelog
+.restrict_snp_omim <- function(omim_info, params) {
+  if(is.na(params[[14]]) == FALSE && is.na(params[[3]]) == FALSE) {
+    omim_ids <- list_omim_accessions(connect_to_gene_ensembl(), params[[3]])[["mim_morbid_accession"]]
+    if(length(omim_ids) != 0) {
+      omim_genes <- get_omim_genes(omim_ids, connect_to_gene_ensembl())
+      omim_info <- omim_genes
+      #Start the restiction from the other processes.
+      if(nrow(omim_info) != 0) {
+        if(is.na(params[[8]])){
+          if(is.na(params[[3]]) == FALSE && is.na(params[[4]]) && is.na(params[[6]])) {
+            return(omim_info)
+          } else if(is.na(params[[3]]) == FALSE && is.na(params[[4]]) == FALSE
+                    && is.na(params[[6]])) {
+            # Restrict by only chromosomes.
+            omim_info <- subset(omim_info, omim_info[["chromosome_name"]] == params[[4]])
+          } else if(is.na(params[[3]]) == FALSE && is.na(params[[4]])
+                    && is.na(params[[6]]) == FALSE) {
+            # Restrict by only genes.
+            omim_info <- subset(omim_info, omim_info[["hgnc_symbol"]] == params[[6]])
+          } else {
+            # Restrict by only genes and chromosomes.
+            omim_info <- subset(omim_info, omim_info[["chromosome_name"]] == params[[4]])
+            omim_info <- subset(omim_info, omim_info[["hgnc_symbol"]] == params[[6]])
+          }
+        }
+      } else {
+        stop(paste("No information found in the OMIM database for the traits given."))
+      }
+    } else {
+      stop(print("No OMIM ID found."))
+    }
+  } else if(is.na(params[[14]]) == FALSE && is.na(params[[3]])) {
+    omim_info <- get_omim_genes(params[[14]])
+    #Start the restiction from the other processes.
+    if(nrow(omim_info) != 0) {
+      if(is.na(params[[8]])){
+        if(is.na(params[[4]]) && is.na(params[[6]])) {
+          return(omim_info)
+        } else if(is.na(params[[4]]) == FALSE && is.na(params[[6]])) {
+          # Restrict by only chromosomes.
+          omim_info <- subset(omim_info, omim_info[["chromosome_name"]] == params[[4]])
+        } else if(is.na(params[[4]]) && is.na(params[[6]]) == FALSE) {
+          # Restrict by only genes.
+          omim_info <- subset(omim_info, omim_info[["hgnc_symbol"]] == params[[6]])
+        } else {
+          # Restrict by only genes and chromosomes.
+          omim_info <- subset(omim_info, omim_info[["chromosome_name"]] == params[[4]])
+          omim_info <- subset(omim_info, omim_info[["hgnc_symbol"]] == params[[6]])
+        }
+      }
+    } else {
+      stop(paste("No information found in the OMIM database for the traits given."))
+    }
+  }
+}
+
 #' @title Gets the information needed for the KEGG Api.
 #' @description Depending on if the user wants to show values falling below
 #' the value threshold or if they want the regular mode showing only those
@@ -1261,6 +1325,52 @@
   return(list(matched, fg_high, bg_high, ko_matched))
 }
 
+#---- LD Functions ----
+
+#' @title Population Code finders for 1000 genomes.
+#' @description Find population code for LD plots and dataframe.
+#' @returns Dataframe with codes and description of each
+#' # population availble to generate a dataframe with.
+get_LD_populations <- function() {
+  data <- httr::GET(paste("https://rest.ensembl.org",
+                          "/info/variation/populations/homo_sapiens?filter=LD", sep = ""),
+                    httr::content_type("application/json"))
+  data <- jsonlite::fromJSON(jsonlite::toJSON(httr::content(data)))
+  data <- data.frame(data, do.call(rbind, stringr::str_split(data[["name"]], ":")))
+
+  data <- data[, c(2,6)]
+  colnames(data) <- c("Description", "Code")
+
+  return(data)
+}
+
+#' @title Make LD score dataframe.
+#' @description Makes the LD dataframe using the Ensembl API for
+#' the 1000 genomes project and a given population as
+#' selected by the user.  The population has a code associated
+#' with it.
+#' @param rsid: rsid to compare to population for LD.
+#' @param pop_code: Population code given and outlines by Ensembl and the 1000 genomes project
+#' conventions.  This can be found with the get_LD_populations function.
+#' @param d_prime_thresh: The D' alpha value that the dataset can be
+#' resticted by.
+#' @returns Dataframe with LD scores of a specific population.
+get_LD_scores <- function(rsid, pop_code, d_prime_thresh = NULL) {
+  # 1. Retrieve the data from the 1000 genomes project into a usable form of conversion into a Grange.
+  get_output <- httr::GET(paste0("https://rest.ensembl.org/ld/human/",
+                                 rsid, "/1000GENOMES:phase_3:", pop_code,
+                                 "?", sep = ""), httr::content_type("application/json"))
+  get_output <- data.frame(jsonlite::fromJSON(jsonlite::toJSON(httr::content(get_output))))
+
+  get_output$r2 <- as.numeric(as.character(get_output$r2))
+
+  # 2. Restrict the dataset by the D' value.
+  if(is.null(d_prime_thresh) == FALSE) {
+    get_output <- subset(get_output, get_output$d_prime >= d_prime_thresh)
+  }
+
+  return(get_output)
+}
 
 #---- Visualizations ----
 
@@ -1274,8 +1384,8 @@
 #' download to or is being stored in.
 #' @param output_dir: The directory where the files will be put as desired
 #' by the user.
-#' @param traits: A vector containing the traits that can be seached for. Can be
-#' given as either a vector or as a single string.
+#' @param traits: A vector containing the gwas traits that can be seached for.
+#' Can be given as either a vector or as a single string.
 #' @param chrs: A vector containing the chromosomes that can be seached for.
 #' Can be given as either a vector or as a single string. Ex: "chr1"
 #' @param title: The title that each of the graphics will be given with a
@@ -1284,7 +1394,7 @@
 #' @param omim_ids: The omim id or ids to be searched only in a KEGG pathway.
 #' @param rsids: A single snp rsid identifier or a vector of identifiers which
 #' will return a list of found information from the gwas catalog in a dataframe.
-#' @param genes: The mapped and reported genes that are found in the file.
+#' @param genes: The mapped and reported genes that are found in the gwas file.
 #' @param gene_mode: The mode for selecting if the reported genes and the
 #' mapped genes should both be search for the given genes or if only one or the
 #' other should be.  0 is for mapped genes only, 1 is for only reported, 2 is
@@ -1549,9 +1659,12 @@ kegg_search_graph <- function(vargen_dir = NA, output_dir = NA, traits = NA, chr
 
 #' @title Makes the KEGG graphs from VarGen pipeline
 #' @description Allows for the KEGG graphs to be output into a directory,
-#' from a dataset generated from the VarGen pipeline.
+#' from a dataset generated from the VarGen pipeline. The function takes
+#' data directly from the VarGen pipeline and vargen_custom. please refer to:
+#' \code{\link{vargen_pipeline}}
 #' @param data: The output from the VarGen pipeline.
 #' download to or is being stored in.
+#' @param color: The color for when a gene is found found in a pathway.
 #' @param output_dir: The directory where the files will be put as desired
 #' @return Nothing; The KEGG pathways figures in a given or default directory.
 kegg_vargen_graph <- function(data, output_dir = NULL, color = "#da8cde") {
@@ -1692,7 +1805,8 @@ omim_graph_online <- function(type = "linear", omim_id){
 #' the data if large subsets are origionally graphed.
 #' @param data: The output from the VarGen pipeline.
 #' @param title: The title of the figure.
-#' @param top_thresh: The number of the top most found values in the dataset.
+#' @param top_thresh: The number of the top most frequent hits of counts in the dataset
+#' relating to the variants found on that gene.
 #' @param mode: Sets the counts to be either the raw or normalized counts.
 #' #' (# variants / kbp). The modes are 'raw' for the raw counts, 'norm' for
 #' normalized counts using # variants/kbp.
@@ -1980,43 +2094,51 @@ pathview_vargen <- function(data, output_dir = NULL, title = NULL,
 #' @description Makes a linkage Disequilibrium heatmap from the VarGen pipeline using
 #' the LDlinR package and the gplots package.
 #' @param data: The output from the VarGen pipeline.
-#' @param rsid: The variant that is to be compared against other variants found in the dataset
-#' that are on the same chromosome.
+#' @param rsid: The variant that is to be compared against other variants found in the
+#' dataset that are on the same chromosome.
 #' @param dendro: A boolean that indicates if the dendrogram is to be shown or not.
 #' @return Nothing; linkage disequilibrium map
-LD_visual <- function(data, rsid, dendro = FALSE) {
-  # 1. Check that each of the parameters to see if they are valid.
-  # 1.1 Check if the dataset is null, na, or contains no data.
-  if(is.null(data) || is.na(data) || nrow(data) == 0) {
-    stop(print(paste("The given data from the VarGen pipeline is either null,",
-                     "na, or contains no data."), sep = ""))
-  }
-  # 1.2 Check if the dendro is valid
-  if(dendro != FALSE || dendro != TRUE) {
-    print(paste0("The given value for dendro: ", dendro, " is not valid."))
-    dendro = FALSE
-  }
+LD_heatmap <- function(get_output) {
+  get_output$d_prime <- NULL
 
-  # 2. Clean the data
-  data <- data[grep("rs", data[["rsid"]]), ]
-  # 3. Get the chromosome of the given rsid
-  rsid_chrom <- data[grep(rsid, data[["rsid"]]), ][["chr"]]
-  # 4. subset the other chromosomes by this chromosome
-  data <- data[grep(rsid_chrom, data[["chr"]]), ]
-  # 5. Make LD Matrix
-  LD <- LDlinkR::LDmatrix(snps = data[, 3], pop = c("YRI", "CEU"),
-                          token = "b25a0c38e313", r2d = "r2")
-  LD <- data.frame(LD)
-  rownames(LD) <- LD[,1]
-  LD[,1] <- NULL
-  # 6. Remove missing values.
-  LD <- LD[rowSums(is.na(LD)) != ncol(LD),]
-  LD <- LD[, colSums(is.na(LD)) < nrow(LD)]
-  # 7. Make the heatmap for the LD
-  matrix <- data.matrix(LD[,c(2:length(LD))], rownames.force = NA)
-  gplots::heatmap.2(as.matrix(matrix), Colv="Rowv", trace="none", Rowv = dendro,
-                    scale="none", offsetRow=0.3, offsetCol=0.3, rowsep = c(1:length(matrix)),
-                    colsep = c(1:nrow(matrix)), main = paste("LD Map of ", rsid, sep = ""),
-                    na.rm = FALSE)
+  # 2. Make a Grange object.
+  # 2.1 Make the start, end columns, and width dataframe.
+  get_output$"start" <- 1:nrow(get_output)
+  get_output$"end" <- 1
+  get_output$"end" <- 1 + get_output[["start"]]
+  # 2.2 Make a random chromosome called 'N' since there is no information
+  # of which to find what chromosome the rsid resides upon.
+  get_output$"chromosome" <- "chromN"
+  # 2.3 get the rsids with only their numeric parts.
+  get_output$"num_variation2" <- as.numeric(gsub("rs([0-9]+).*", "\\1",
+                                                 get_output[["variation2"]]))
+  get_output <- get_output[order(get_output[["num_variation2"]]),]
+
+  ld_visual <- get_output[["r2"]]
+  ld_visual <- t(ld_visual)
+  ld_visual$"start" <- 1
+  ld_visual$"end" <- 2
+  ld_visual$"chromosome" <- "chromN"
+
+  ld_visual <- as.data.frame(ld_visual)
+  i <- startsWith(names(ld_visual),"X0")
+  names(ld_visual)[i] <- paste0(get_output[["variation2"]][i])
+
+  # 3. Make the grange to the for the heatmap.
+  ld_visual <- GenomicRanges::makeGRangesFromDataFrame(ld_visual,
+                                                       keep.extra.columns=TRUE)
+
+  # 4. Plot the r^2 values.
+  heatmap <- Gviz::DataTrack(ld_visual, name = "LD Heatmap",
+                             gradient = c("#F7FBFF", "#DEEBF7", "#C6DBEF",
+                                          "#9ECAE1", "#6BAED6", "#4292C6",
+                                          "#2171B5", "#08519C", "#08306B"),
+                             type = "heatmap", background.title = "white",
+                             col.title = "transparent", col.axis = "black",
+                             cex.title = NULL, fontsize = 8,
+                             showSampleNames = TRUE, col.sampleNames = "black",
+                             cex.sampleNames = 1, size = 1, cex.axis = 2)
+
+  plotTracks(heatmap)
 }
 
