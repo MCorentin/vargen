@@ -1327,21 +1327,35 @@
 
 #---- LD Functions ----
 
-#' @title Population Code finders for 1000 genomes.
-#' @description Find population code for LD plots and dataframe.
+#' @title Population code finders for 1000 genomes.
+#' @description Finds the population code for LD plots and dataframe.
 #' @returns Dataframe with codes and description of each
 #' # population availble to generate a dataframe with.
 get_LD_populations <- function() {
-  data <- httr::GET(paste("https://rest.ensembl.org",
-                          "/info/variation/populations/homo_sapiens?filter=LD", sep = ""),
-                    httr::content_type("application/json"))
-  data <- jsonlite::fromJSON(jsonlite::toJSON(httr::content(data)))
-  data <- data.frame(data, do.call(rbind, stringr::str_split(data[["name"]], ":")))
+  tryCatch(
+    {
+      data <- httr::GET(paste("https://rest.ensembl.org",
+                              "/info/variation/populations/homo_sapiens?filter=LD",
+                              sep = ""),
+                        httr::content_type("application/json"))
+      data <- jsonlite::fromJSON(jsonlite::toJSON(httr::content(data)))
+      data <- data.frame(data, do.call(rbind, stringr::str_split(data[["name"]], ":")))
 
-  data <- data[, c(2,6)]
-  colnames(data) <- c("Description", "Code")
+      data <- data[, c(2,6)]
+      colnames(data) <- c("Description", "Code")
 
-  return(data)
+      return(data)
+    },
+    error = function(UnableToRetrieveDataError) {
+      print(paste0("ERROR in get_LD_populations: Either the data was queried properly ",
+                   "form the site or couldn't be formatted from url ",
+                   "'https://rest.ensembl.org/info/variation/populations/homo_sapiens?filter=LD'.",
+                   sep = ""))
+
+      print(paste0("R thown error:"))
+      message(UnableToRetrieveDataError)
+    }
+  )
 }
 
 #' @title Make LD score dataframe.
@@ -1350,26 +1364,42 @@ get_LD_populations <- function() {
 #' selected by the user.  The population has a code associated
 #' with it.
 #' @param rsid: rsid to compare to population for LD.
-#' @param pop_code: Population code given and outlines by Ensembl and the 1000 genomes project
-#' conventions.  This can be found with the get_LD_populations function.
+#' @param pop_code: Population code given and outlines by Ensembl and the
+#' 1000 genomes project conventions.  This can be found with the
+#' get_LD_populations function.
 #' @param d_prime_thresh: The D' alpha value that the dataset can be
 #' resticted by.
 #' @returns Dataframe with LD scores of a specific population.
 get_LD_scores <- function(rsid, pop_code, d_prime_thresh = NULL) {
-  # 1. Retrieve the data from the 1000 genomes project into a usable form of conversion into a Grange.
-  get_output <- httr::GET(paste0("https://rest.ensembl.org/ld/human/",
-                                 rsid, "/1000GENOMES:phase_3:", pop_code,
-                                 "?", sep = ""), httr::content_type("application/json"))
-  get_output <- data.frame(jsonlite::fromJSON(jsonlite::toJSON(httr::content(get_output))))
+  # 1. Retrieve the data from the 1000 genomes project into a usable form of conversion
+  # into a Grange.
+  tryCatch(
+    {
+      get_output <- httr::GET(paste0("https://rest.ensembl.org/ld/human/",
+                                     rsid, "/1000GENOMES:phase_3:", pop_code,
+                                     "?", sep = ""),
+                              httr::content_type("application/json"))
+      get_output <- data.frame(jsonlite::fromJSON(jsonlite::toJSON(httr::content(get_output))))
 
-  get_output$r2 <- as.numeric(as.character(get_output$r2))
+      get_output$r2 <- as.numeric(as.character(get_output$r2))
+      get_output$r2 <- as.numeric(as.character(get_output$d_prime))
 
-  # 2. Restrict the dataset by the D' value.
-  if(is.null(d_prime_thresh) == FALSE) {
-    get_output <- subset(get_output, get_output$d_prime >= d_prime_thresh)
-  }
+      # 2. Restrict the dataset by the D' value.
+      if(is.null(d_prime_thresh) == FALSE) {
+        get_output <- subset(get_output, get_output$d_prime >= d_prime_thresh)
+      }
 
-  return(get_output)
+      return(get_output)
+    },
+    error = function(UnableToRetrieveDataError) {
+      print(paste0("ERROR in get_LD_scores: Either the data was queried properly ",
+                   "form the site or couldn't be formatted from url ",
+                   "'https://rest.ensembl.org/ld/human/rsid/1000GENOMES:phase_3:pop_code'.",
+                   sep = ""))
+      print(paste0("R thown error:"))
+      message(UnableToRetrieveDataError)
+    }
+  )
 }
 
 #---- Visualizations ----
@@ -2099,8 +2129,6 @@ pathview_vargen <- function(data, output_dir = NULL, title = NULL,
 #' @param dendro: A boolean that indicates if the dendrogram is to be shown or not.
 #' @return Nothing; linkage disequilibrium map
 LD_heatmap <- function(get_output) {
-  get_output$d_prime <- NULL
-
   # 2. Make a Grange object.
   # 2.1 Make the start, end columns, and width dataframe.
   get_output$"start" <- 1:nrow(get_output)
@@ -2127,7 +2155,6 @@ LD_heatmap <- function(get_output) {
   # 3. Make the grange to the for the heatmap.
   ld_visual <- GenomicRanges::makeGRangesFromDataFrame(ld_visual,
                                                        keep.extra.columns=TRUE)
-
   # 4. Plot the r^2 values.
   heatmap <- Gviz::DataTrack(ld_visual, name = "LD Heatmap",
                              gradient = c("#F7FBFF", "#DEEBF7", "#C6DBEF",
@@ -2140,5 +2167,156 @@ LD_heatmap <- function(get_output) {
                              cex.sampleNames = 1, size = 1, cex.axis = 2)
 
   plotTracks(heatmap)
+}
+
+#' @title Create a Lolliplot.
+#' @description Makes the LD dataframe using the Ensembl API for
+#' the 1000 genomes project and a given population as
+#' selected by the user.  The population has a code associated
+#' with it.
+#' @param rsid: rsid to compare to population for LD.
+#' @param pop_code: Population code given and outlines by Ensembl and the
+#' 1000 genomes project conventions.  This can be found with the
+#' get_LD_populations function.
+#' @param d_prime_thresh: The D' alpha value that the dataset can be
+#' resticted by.
+#' @returns Dataframe with LD scores of a specific population.
+lolliplot_LD <- function(get_output) {
+  # 1. Check to make sure the dataframe input isn't empty.
+  .check_dataframe(get_output)
+  # This needs to be removed as it creates unnessary categories if it is included.
+  get_output$d_prime <- NULL
+
+  # 2. Make a Grange object.
+  # 2.1 get the rsids with only their numeric parts.
+  get_output$"num_variation2" <- as.numeric(gsub("rs([0-9]+).*", "\\1", get_output[["variation2"]]))
+  get_output <- get_output[order(get_output[["num_variation2"]]),]
+
+  # 3. Get the variables needed for the GRanges.
+  # A. The chromosome information and genes names.
+  rsids_info <- biomaRt::getBM(
+    attributes = c("refsnp_id", "chr_name", "ensembl_gene_stable_id", "chrom_start", "chrom_end"),
+    filters = "snp_filter",
+    values = unlist(get_output[["variation2"]]),
+    mart = connect_to_snp_ensembl(), uniqueRows = TRUE)
+  # B.1 Removing variants without any stable gene id and adding them into a separate
+  # dataframe to be added to the figure after.
+  rsids_unknown <- subset(rsids_info, rsids_info[["ensembl_gene_stable_id"]] == "")
+  rsids_info <- subset(rsids_info, rsids_info[["ensembl_gene_stable_id"]] != "")
+
+  chrom <- unique(rsids_info[["chr_name"]])
+  # C. Get the start and stop position for the genes as well as their symbol.
+  gene_info <- biomaRt::getBM(
+    attributes = c("hgnc_symbol","ensembl_gene_id", "start_position","end_position"),
+    filters = "ensembl_gene_id",
+    values = rsids_info[["ensembl_gene_stable_id"]],
+    mart = connect_to_gene_ensembl(), uniqueRows = TRUE)
+
+  cnt <- 1
+  rep_col <- c()
+  rep_index <- which(gene_info[["hgnc_symbol"]] %in% "")
+  for(item in rep_index) {
+    gene_info[["hgnc_symbol"]][[item]] <- paste("Uknown", cnt, sep = "")
+    cnt <- cnt + 1
+  }
+
+  colnames(rsids_info) <- c("refsnp_id", "chr_name", "ensembl_gene_id",
+                            "start_position_rsid","end_position_rsid")
+  all_info <- merge(rsids_info, gene_info, by = "ensembl_gene_id", all.x = TRUE)
+  res_all <- unique(all_info[,c(6,7,8)])
+
+  genes <- unlist(res_all[["hgnc_symbol"]])
+  # D. The variant IDs and names.
+  rsid_pos <- unlist(all_info[["start_position_rsid"]])
+  rsid <- unlist(all_info[["refsnp_id"]])
+  # E. The width of each gene.
+  gene_width <- unlist(unique(res_all[["start_position"]]))
+
+  # 3. Get all the information into the same dataset restricted by the origional data
+  get_output <- as.data.frame(lapply(get_output, unlist))
+  colnames(get_output) <- gsub("variation2", "refsnp_id", colnames(get_output))
+  all_info <- merge(get_output, all_info, by = "refsnp_id", all.x = TRUE)
+
+  unknown2 <- subset(all_info, is.na(all_info[["chr_name"]]))
+  unknown <- merge(rsids_unknown, unknown2, by = "refsnp_id", all = TRUE)
+  all_info <- subset(all_info, is.na(all_info[["chr_name"]]) == FALSE)
+
+  # 4. Get the total width of the gene in a column with the start and end right after the other.
+  all_info <- all_info[order(all_info[["start_position"]]),]
+
+  height_score <- all_info[["r2"]] * 100
+  gene_length_height <- replicate(length(genes), .018)
+
+  start <- unlist(unique(all_info[["start_position"]]))
+  stop <- unlist(unique(all_info[["end_position"]]))
+  diff <- stop - start
+
+  # Make the scores much like a heatmap for the gradiant.
+  gradient <- c("#F7FBFF", "#DEEBF7", "#C6DBEF", "#9ECAE1", "#6BAED6",
+                "#4292C6", "#2171B5", "#08519C", "#08306B")
+  all_info$"color_score" <- "#F7FBFF"
+  r2 <- unlist(all_info[["r2"]])
+  rep_col <- c()
+  for(value in r2) {
+    if(value*100 <= 100/length(gradient)) {
+      rep_col <- c(rep_col, "#F7FBFF")
+    }
+    if(value*100 > 100/length(gradient) && value*100 <= 100/length(gradient)*2) {
+      rep_col <- c(rep_col, "#DEEBF7")
+    }
+    if(value*100 > 100/length(gradient)*2 && value*100 <= 100/length(gradient)*3) {
+      rep_col <- c(rep_col, "#C6DBEF")
+    }
+    if(value*100 > 100/length(gradient)*3 && value*100 <= 100/length(gradient)*4) {
+      rep_col <- c(rep_col, "#9ECAE1")
+    }
+    if(value*100 > 100/length(gradient)*4 && value*100 <= 100/length(gradient)*5) {
+      rep_col <- c(rep_col, "#6BAED6")
+    }
+    if(value*100 > 100/length(gradient)*5 && value*100 <= 100/length(gradient)*6) {
+      rep_col <- c(rep_col, "#4292C6")
+    }
+    if(value*100 > 100/length(gradient)*6 && value*100 <= 100/length(gradient)*7) {
+      rep_col <- c(rep_col, "#2171B5")
+    }
+    if(value*100 > 100/length(gradient)*7 && value*100 <= 100/length(gradient)*8) {
+      rep_col <- c(rep_col, "#08519C")
+    }
+    if(value*100 > 100/length(gradient)*8 && value*100 <= 100/length(gradient)*9) {
+      rep_col <- c(rep_col, "#08306B")
+    }
+  }
+  all_info[["color_score"]] <- rep_col
+
+  legend <- gradient
+  legend_info <- c(100/length(gradient), 100/length(gradient)*2, 100/length(gradient)*3, 100/length(gradient)*4, 100/length(gradient)*5, 100/length(gradient)*6, 100/length(gradient)*7, 100/length(gradient)*8, 100/length(gradient)*9)
+
+  # 5. Make the GRanges and plot the track.
+  lolliplot_vargen <- GenomicRanges::GRanges(chrom, IRanges::IRanges(rsid_pos, width = 1, names = rsid))
+
+  features <- GenomicRanges::GRanges(chrom, IRanges::IRanges(c(start),
+                                                             width = c(diff),
+                                                             names = genes))
+
+  # 5. Get the colors for the sections, ends, and the caps.
+  colors <- colorspace::qualitative_hcl((length(genes)), palette = "Set 3")
+  features$fill <- c(colors)
+  lolliplot_vargen$dashline.col <- lolliplot_vargen$color
+
+  lolliplot_vargen$color <- all_info[["color_score"]]
+
+  # 6. Change the height.
+  lolliplot_vargen$score <- height_score
+  features$height <- gene_length_height
+
+  # 7. Change the axis to fit the data.
+  xaxis <- c(start, (start[length(start)] + diff[length(diff)]))
+
+  # 8. Add a legend.
+  names(legend) <- legend_info[1:9]
+
+  trackViewer::lolliplot(lolliplot_vargen, features, xaxis = xaxis)
+  grid::grid.text("Vargen Sample Plot Title", x = .5, y = .98, just = "top",
+                  gp = grid::gpar(cex = 1.5, fontface = "bold"))
 }
 
