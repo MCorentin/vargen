@@ -44,13 +44,17 @@
     if(.Platform$OS.type == "windows") {
       output_dir <- gsub("VARGENrEPLACEsTRING", "[\\]", output_dir)
       if(dir.exists(paste0(getwd(), output_dir)) == FALSE) {
-        dir.create(name)
+        output_dir <- paste0(".", output_dir)
+        dir.create(output_dir)
+        output_dir <- gsub(".", "", output_dir)
       }
       output_dir <- paste0(getwd(), output_dir, "[\\]")
     } else {
       output_dir <- gsub("VARGENrEPLACEsTRING", "/", output_dir)
       if(dir.exists(paste0(getwd(), output_dir)) == FALSE){
-        dir.create(name)
+        output_dir <- paste0(".", output_dir)
+        dir.create(output_dir)
+        output_dir <- gsub(".", "", output_dir)
       }
       output_dir <- paste0(getwd(), output_dir)
       print(paste0("Using output directory ", output_dir))
@@ -1376,9 +1380,9 @@ get_LD_scores <- function(rsid, pop_code, d_prime_thresh = NULL) {
   tryCatch(
     {
       get_output <- httr::GET(paste0("https://rest.ensembl.org/ld/human/",
-                                     rsid, "/1000GENOMES:phase_3:", pop_code,
-                                     "?", sep = ""),
-                              httr::content_type("application/json"))
+                                       rsid, "/1000GENOMES:phase_3:", pop_code,
+                                       "?", sep = ""),
+                                httr::content_type("application/json"))
       get_output <- data.frame(jsonlite::fromJSON(jsonlite::toJSON(httr::content(get_output))))
 
       get_output$r2 <- as.numeric(as.character(get_output$r2))
@@ -1940,8 +1944,8 @@ treemap_graph <- function(data, title = "VarGen Treemap Graph", top_thresh = NUL
       colnames(hgnc_cnt) <- c("Var1", "Var2", "Freq")
 
       #Check if no positions are found and report it to the user.
-      if(is.na(unique(hgnc_cnt[["Freq"]]))) {
-        stop(print("None of the genes found can be normalized due to not have positional data."))
+      if(is.na(unique(hgnc_cnt[["Freq"]])[1]) != TRUE || nrow(hgnc_cnt) >= 2) {
+        stop(print("None of the genes found can be normalized due to not having positional data."))
       }
     }
   }
@@ -2181,31 +2185,43 @@ LD_heatmap <- function(get_output) {
 #' @param d_prime_thresh: The D' alpha value that the dataset can be
 #' resticted by.
 #' @returns Dataframe with LD scores of a specific population.
-lolliplot_LD <- function(get_output) {
+lolliplot_LD <- function(get_output, title = NULL, pdf_out = FALSE) {
   # 1. Check to make sure the dataframe input isn't empty.
   .check_dataframe(get_output)
-  # This needs to be removed as it creates unnessary categories if it is included.
+  # 1.1 Check if the title is null or na.
+  if(is.null(title) || is.na(title)) {
+    title = "Vargen Sample Plot Title"
+  }
+  # 1.2 Check if the pdf_out value is a boolean
+  if(is.null(pdf_out) || is.na(pdf_out)) {
+    pdf_out <- FALSE
+  }
+  # 1.3 This needs to be removed as it creates unnessary
+  # categories if it is included.
   get_output$d_prime <- NULL
 
   # 2. Make a Grange object.
   # 2.1 get the rsids with only their numeric parts.
-  get_output$"num_variation2" <- as.numeric(gsub("rs([0-9]+).*", "\\1", get_output[["variation2"]]))
+  get_output$"num_variation2" <- as.numeric(gsub("rs([0-9]+).*",
+                                                 "\\1",
+                                                 get_output[["variation2"]]))
   get_output <- get_output[order(get_output[["num_variation2"]]),]
 
   # 3. Get the variables needed for the GRanges.
-  # A. The chromosome information and genes names.
+  # 3A. The chromosome information and genes names.
   rsids_info <- biomaRt::getBM(
-    attributes = c("refsnp_id", "chr_name", "ensembl_gene_stable_id", "chrom_start", "chrom_end"),
+    attributes = c("refsnp_id", "chr_name", "ensembl_gene_stable_id",
+                   "chrom_start", "chrom_end"),
     filters = "snp_filter",
     values = unlist(get_output[["variation2"]]),
     mart = connect_to_snp_ensembl(), uniqueRows = TRUE)
-  # B.1 Removing variants without any stable gene id and adding them into a separate
+  # 3B.1 Removing variants without any stable gene id and adding them into a separate
   # dataframe to be added to the figure after.
   rsids_unknown <- subset(rsids_info, rsids_info[["ensembl_gene_stable_id"]] == "")
   rsids_info <- subset(rsids_info, rsids_info[["ensembl_gene_stable_id"]] != "")
 
   chrom <- unique(rsids_info[["chr_name"]])
-  # C. Get the start and stop position for the genes as well as their symbol.
+  # 3C. Get the start and stop position for the genes as well as their symbol.
   gene_info <- biomaRt::getBM(
     attributes = c("hgnc_symbol","ensembl_gene_id", "start_position","end_position"),
     filters = "ensembl_gene_id",
@@ -2226,32 +2242,47 @@ lolliplot_LD <- function(get_output) {
   res_all <- unique(all_info[,c(6,7,8)])
 
   genes <- unlist(res_all[["hgnc_symbol"]])
-  # D. The variant IDs and names.
+  # 3D. The variant IDs and names.
   rsid_pos <- unlist(all_info[["start_position_rsid"]])
   rsid <- unlist(all_info[["refsnp_id"]])
-  # E. The width of each gene.
+  # 3E. The width of each gene.
   gene_width <- unlist(unique(res_all[["start_position"]]))
 
-  # 3. Get all the information into the same dataset restricted by the origional data
+  # 4. Get all the information into the same dataset restricted by the origional data
   get_output <- as.data.frame(lapply(get_output, unlist))
   colnames(get_output) <- gsub("variation2", "refsnp_id", colnames(get_output))
   all_info <- merge(get_output, all_info, by = "refsnp_id", all.x = TRUE)
 
-  unknown2 <- subset(all_info, is.na(all_info[["chr_name"]]))
-  unknown <- merge(rsids_unknown, unknown2, by = "refsnp_id", all = TRUE)
+  unknown <- subset(all_info, is.na(all_info[["chr_name"]]))
+  unknown <- merge(rsids_unknown, unknown, by = "refsnp_id", all = TRUE)
+
+  # This will contain all information that has a gene and positional information
+  # needed for graphing.
   all_info <- subset(all_info, is.na(all_info[["chr_name"]]) == FALSE)
 
-  # 4. Get the total width of the gene in a column with the start and end right after the other.
+  rsid_unknown <- unlist(unknown[["refsnp_id"]])
+
+  rsid_pos_unknown <- c()
+  multi <- 10
+  for(i in 1:length(rsid_unknown)) {
+    rsid_pos_unknown <- c(rsid_pos_unknown, multi)
+    multi <- multi + 10
+  }
+
+  # 5. Get the total width of the gene in a column with the start and end right after the other.
   all_info <- all_info[order(all_info[["start_position"]]),]
 
   height_score <- all_info[["r2"]] * 100
   gene_length_height <- replicate(length(genes), .018)
 
+  height_score_unknown <- unknown[["r2"]] * 100
+  gene_length_height_unknown <- .018
+
   start <- unlist(unique(all_info[["start_position"]]))
   stop <- unlist(unique(all_info[["end_position"]]))
   diff <- stop - start
 
-  # Make the scores much like a heatmap for the gradiant.
+  # 6. Make the scores much like a heatmap for the gradiant.
   gradient <- c("#F7FBFF", "#DEEBF7", "#C6DBEF", "#9ECAE1", "#6BAED6",
                 "#4292C6", "#2171B5", "#08519C", "#08306B")
   all_info$"color_score" <- "#F7FBFF"
@@ -2288,35 +2319,141 @@ lolliplot_LD <- function(get_output) {
   }
   all_info[["color_score"]] <- rep_col
 
-  legend <- gradient
-  legend_info <- c(100/length(gradient), 100/length(gradient)*2, 100/length(gradient)*3, 100/length(gradient)*4, 100/length(gradient)*5, 100/length(gradient)*6, 100/length(gradient)*7, 100/length(gradient)*8, 100/length(gradient)*9)
+  r2 <- unlist(unknown[["r2"]])
+  rep_col_unknown <- c()
+  for(value in r2) {
+    if(value*100 <= 100/length(gradient)) {
+      rep_col_unknown <- c(rep_col_unknown, "#F7FBFF")
+    }
+    if(value*100 > 100/length(gradient) && value*100 <= 100/length(gradient)*2) {
+      rep_col_unknown <- c(rep_col_unknown, "#DEEBF7")
+    }
+    if(value*100 > 100/length(gradient)*2 && value*100 <= 100/length(gradient)*3) {
+      rep_col_unknown <- c(rep_col_unknown, "#C6DBEF")
+    }
+    if(value*100 > 100/length(gradient)*3 && value*100 <= 100/length(gradient)*4) {
+      rep_col_unknown <- c(rep_col_unknown, "#9ECAE1")
+    }
+    if(value*100 > 100/length(gradient)*4 && value*100 <= 100/length(gradient)*5) {
+      rep_col_unknown <- c(rep_col_unknown, "#6BAED6")
+    }
+    if(value*100 > 100/length(gradient)*5 && value*100 <= 100/length(gradient)*6) {
+      rep_col_unknown <- c(rep_col_unknown, "#4292C6")
+    }
+    if(value*100 > 100/length(gradient)*6 && value*100 <= 100/length(gradient)*7) {
+      rep_col_unknown <- c(rep_col_unknown, "#2171B5")
+    }
+    if(value*100 > 100/length(gradient)*7 && value*100 <= 100/length(gradient)*8) {
+      rep_col_unknown <- c(rep_col_unknown, "#08519C")
+    }
+    if(value*100 > 100/length(gradient)*8 && value*100 <= 100/length(gradient)*9) {
+      rep_col_unknown <- c(rep_col_unknown, "#08306B")
+    }
+  }
+  unknown[["color_score"]] <- rep_col_unknown
 
-  # 5. Make the GRanges and plot the track.
+  all_info <- all_info[order(all_info[["start_position"]]),]
+  genes <- unique(unlist(all_info[["hgnc_symbol"]]))
+
+  # 7. Make the GRanges and plot the track.
   lolliplot_vargen <- GenomicRanges::GRanges(chrom, IRanges::IRanges(rsid_pos, width = 1, names = rsid))
-
+  lolliplot_vargen_unknown <- GenomicRanges::GRanges(chrom, IRanges::IRanges(rsid_pos_unknown, width = 1, names = rsid_unknown))
   features <- GenomicRanges::GRanges(chrom, IRanges::IRanges(c(start),
                                                              width = c(diff),
                                                              names = genes))
-
-  # 5. Get the colors for the sections, ends, and the caps.
+  features_unknown <- GenomicRanges::GRanges(chrom, IRanges::IRanges(c(1, max(rsid_pos_unknown)+10)))
+  # 8. Get the colors for the sections, ends, and the caps.
   colors <- colorspace::qualitative_hcl((length(genes)), palette = "Set 3")
-  features$fill <- c(colors)
   lolliplot_vargen$dashline.col <- lolliplot_vargen$color
 
   lolliplot_vargen$color <- all_info[["color_score"]]
+  lolliplot_vargen_unknown$color <- unknown[["color_score"]]
 
-  # 6. Change the height.
+  temp <- cbind(genes, colors)
+  colnames(temp) <- c("hgnc_symbol", "colors")
+  all_info <- merge(all_info, temp, by = "hgnc_symbol")
+  all_info <- all_info[order(all_info[["start_position"]]),]
+
+  label.parameter.gp.col <- grid::gpar(col = all_info[["colors"]])
+  lolliplot_vargen$label.parameter.gp <- label.parameter.gp.col
+
+  # 9. Change the height.
   lolliplot_vargen$score <- height_score
   features$height <- gene_length_height
+  lolliplot_vargen_unknown$score <- height_score_unknown
+  features_unknown$height <- gene_length_height_unknown
+
+  # 10. Get the overlap of the genes and make separate layers for each one by finding
+  # if the start and stop lengths have an overlap.  If they do, then they are
+  # separated into different layers.
+  pos <- c() # Holds the positions that are overlaped.
+  ranges <- split(IRanges::IRanges(all_info[["start_position"]],
+                                   all_info[["end_position"]]),
+                  all_info[["hgnc_symbol"]])
+  for(gr1 in ranges) {
+    for(gr2 in ranges) {
+      overlap <- IRanges::findOverlaps(gr1, gr2)
+      if(length(overlap) != 0 && gr1 != gr2) {
+        temp <- data.frame(gr2)
+        pos <- c(pos, temp[1,1])
+        temp <- data.frame(gr1)
+        pos <- c(pos, temp[1,1])
+      }
+    }
+  }
+  pos <- unique(pos)
+  # Holds the unique genes that are overlaped.
+  gene_overlap <- unique(subset(all_info,
+                                all_info[["start_position"]] == pos)[,c("hgnc_symbol")])
+
+  # # 11. Make the GRanges with each of the genes that overlap not geing on the same layers.
+  features <- GenomicRanges::GRanges(c(seqnames = NULL, ranges = NULL, strand = NULL)) # Holds the feature layers
+  genes <- genes[!(genes %in% gene_overlap)]
+  colors <- c()
+  layerIDs <- c()
+  for(gene in gene_overlap) {
+    # Add gene to the genes vector
+    genes <- c(genes, gene)
+    # Subset the information
+    all_info_ss <- all_info[all_info[["hgnc_symbol"]] %in% genes, ]
+    start <- unlist(unique(all_info_ss[["start_position"]]))
+    stop <- unlist(unique(all_info_ss[["end_position"]]))
+    diff <- stop - start
+
+    genes <- unique(all_info_ss[["hgnc_symbol"]])
+    colors <- c(colors, unique(all_info_ss[["colors"]]))
+
+    feature <- GenomicRanges::GRanges(chrom, IRanges::IRanges(c(start),
+                                                              width = c(diff),
+                                                              names = genes))
+    # Add features to the vector
+    features <- c(features, feature)
+    layerIDs <- c(layerIDs, unique(all_info_ss[["hgnc_symbol"]]))
+  }
+
+  features$fill <- c(colors)
+
+  #features <- GenomicRanges::GRanges(chrom, IRanges::IRanges(c(start), width = c(diff), names = genes))
+  features$featureLayerID <- paste("tx", layerIDs, sep = "_")
 
   # 7. Change the axis to fit the data.
   xaxis <- c(start, (start[length(start)] + diff[length(diff)]))
 
-  # 8. Add a legend.
-  names(legend) <- legend_info[1:9]
+  # 2. Make the file for the output of the pdf if the boolean is True. The
+  # output which the file will be saved is the current working directory.
+  if(pdf_out == TRUE) {
+    pdf(file = paste0(getwd(), "lolliplot_vargen", sep = ""), paper = "a4")
 
-  trackViewer::lolliplot(lolliplot_vargen, features, xaxis = xaxis)
-  grid::grid.text("Vargen Sample Plot Title", x = .5, y = .98, just = "top",
-                  gp = grid::gpar(cex = 1.5, fontface = "bold"))
+    trackViewer::lolliplot(list(B = lolliplot_vargen, A = lolliplot_vargen_unknown),
+                           list(x = features, y = features_unknown), xaxis = c(xaxis, xaxis))
+    grid::grid.text(title, x = .5, y = .98, just = "top",
+                    gp = grid::gpar(cex = 1.5, fontface = "bold"))
+    dev.off()
+  } else {
+    trackViewer::lolliplot(list(B = lolliplot_vargen, A = lolliplot_vargen_unknown),
+                           list(x = features, y = features_unknown), xaxis = c(xaxis, xaxis))
+    grid::grid.text(title, x = .5, y = .98, just = "top",
+                    gp = grid::gpar(cex = 1.5, fontface = "bold"))
+  }
 }
 
