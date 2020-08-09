@@ -91,7 +91,9 @@ get_variants_from_locations <- function(locations, verbose = FALSE) {
       n_reqs <- 1
     }
 
-    query <- paste0("/overlap/region/human/",curr_loc, "?content-type=application/json;feature=variation")
+    query <- paste0("/overlap/region/human/",curr_loc,
+                    "?content-type=application/json;feature=variation")
+
     get_output <- httr::GET(paste("https://rest.ensembl.org", query, sep = ""),
                             httr::content_type("application/json"))
 
@@ -115,7 +117,9 @@ get_variants_from_locations <- function(locations, verbose = FALSE) {
     # If the number of allowed queries is lower than 2:
     if(header$`x-ratelimit-remaining` < 2){
       # We wait until the rate limit is reset (in seconds)
-      if(verbose) print(paste0("Waiting ", header$`x-ratelimit-reset`, " seconds for ensembl rate limit to reset"))
+      if(verbose) print(paste0("Waiting ", header$`x-ratelimit-reset`,
+                               " seconds for ensembl rate limit to reset"))
+
       Sys.sleep(header$`x-ratelimit-reset`)
     }
 
@@ -131,15 +135,16 @@ get_variants_from_locations <- function(locations, verbose = FALSE) {
 
 #' @title Format chromosome names
 #' @description Transform 1 to 22, X, Y and MT into chr1 to chr22, chrX, chrY and chMT.
-#' Regex needed because some region are named CHR17_... and we do not want
-#' chrCHR17...
+#' Regex needed because some chr are named CHR17_... and we do not want chrCHR17
 #'
 #' @param chr a vector of chromosome names
 #' @return the formatted vector of chromosome names (eg: "chr1" instead of "1")
 format_chr <- function(chr){
   # This should match 1 to 22 and X, Y, MT. We need to replace them as
   # chr1, chrX etc....
-  chr_to_rename <- grep(pattern = "^\\d{1,2}$|^X$|^Y$|^MT$", chr, ignore.case = T)
+  chr_to_rename <- grep(pattern = "^\\d{1,2}$|^X$|^Y$|^MT$", chr,
+                        ignore.case = TRUE)
+
   chr[chr_to_rename] <- paste0("chr", chr[chr_to_rename])
 
   return(chr)
@@ -198,8 +203,13 @@ format_output <- function(chr, pos, rsid, ensembl_gene_id, hgnc_symbol) {
 #' annotate_variants(rsid = c("rs1225680362", "rs12395043", "rs746318172"))
 #' @export
 annotate_variants <- function(rsid, verbose = FALSE) {
+
+  myvariant <- myvariant::MyVariant()
+  myvariant@step  <- 700
+
   # First, use "getVariants" to annotate the snps
   rsid_annotated <- myvariant::getVariants(hgvsids = rsid, verbose = verbose,
+                                           myvariant = myvariant,
                                            fields =  c("cadd", "dbnsfp", "clinvar", "snpeff", "vcf"))
 
   # Then, format the output as a data.frame
@@ -259,9 +269,20 @@ annotate_variants <- function(rsid, verbose = FALSE) {
                                     paste, collapse = ";", USE.NAMES = FALSE)
   }
 
+  if(is.null(rsid_annotated$vcf.ref)){
+    vcf.ref <- NA
+  } else{
+    vcf.ref <- rsid_annotated$vcf.ref
+  }
+  if(is.null(rsid_annotated$vcf.alt)){
+    vcf.alt <- NA
+  } else {
+    vcf.alt <- rsid_annotated$vcf.alt
+  }
+
   rsid_annotated_df <- data.frame(rsid = unlist(rsid_annotated$query),
-                                  ref = rsid_annotated$vcf.ref,
-                                  alt = rsid_annotated$vcf.alt,
+                                  ref = vcf.ref,
+                                  alt = vcf.alt,
                                   cadd_phred = cadd_phred,
                                   fathmm_xf_score = fathmm_score,
                                   fathmm_xf_pred = fathmm_pred,
@@ -336,7 +357,8 @@ vargen_visualisation <- function(annotated_snps, outdir = "./", rsid_highlight,
 
   if(missing(gene_mart) || class(gene_mart) != 'Mart'){
     gene_mart <- connect_to_gene_ensembl()
-    warning("Gene mart not provided (or not a valid Mart object). We used one from connect_to_gene_ensembl() instead.")
+    warning("Gene mart not provided (or not a valid Mart object).",
+            "We used one from connect_to_gene_ensembl() instead.")
   }
 
   bckg_col <- "#D95F02"
@@ -493,7 +515,8 @@ get_phenotype_terms <- function(keywords, snp_mart) {
 
   if(missing(snp_mart) || class(snp_mart) != 'Mart'){
     snp_mart <- connect_to_snp_ensembl()
-    warning("Snp mart not provided (or not a valid Mart object). We used one from connect_to_snp_ensembl() instead.")
+    warning("Snp mart not provided (or not a valid Mart object).",
+            "We used one from connect_to_snp_ensembl() instead.")
   }
 
   # Get all the possible values for the phenotype filter:
@@ -541,7 +564,8 @@ get_phenotype_terms <- function(keywords, snp_mart) {
 get_variants_from_phenotypes <- function(phenotypes, snp_mart) {
   if( missing(snp_mart) || class(snp_mart) != 'Mart'){
     snp_mart <- connect_to_snp_ensembl()
-    warning("Snp mart not provided (or not a valid Mart object). We used one from connect_to_snp_ensembl() instead.")
+    warning("Snp mart not provided (or not a valid Mart object).",
+            "We used one from connect_to_snp_ensembl() instead.")
   }
 
   pheno_variants <- biomaRt::getBM(attributes = c("chr_name", "chrom_start",
@@ -555,6 +579,7 @@ get_variants_from_phenotypes <- function(phenotypes, snp_mart) {
   pheno_variants$chr_name <- format_chr(pheno_variants$chr_name)
   return(pheno_variants)
 }
+
 
 #---- OMIM ----
 
@@ -582,7 +607,8 @@ get_variants_from_phenotypes <- function(phenotypes, snp_mart) {
 list_omim_accessions <- function(gene_mart, keywords){
   if(missing(gene_mart) || class(gene_mart) != 'Mart'){
     gene_mart <- connect_to_gene_ensembl()
-    warning("Gene mart not provided (or not a valid Mart object). We used one from connect_to_gene_ensembl() instead.")
+    warning("Gene mart not provided (or not a valid Mart object).",
+            "We used one from connect_to_gene_ensembl() instead.")
   }
 
   omim_list <- biomaRt::getBM(mart = gene_mart,
@@ -597,7 +623,7 @@ list_omim_accessions <- function(gene_mart, keywords){
     keys <- paste(keywords, collapse = "|")
     omim_list <- omim_list[grep(keys,
                                 omim_list$mim_morbid_description,
-                                ignore.case = T),]
+                                ignore.case = TRUE),]
 
     if(nrow(omim_list) == 0) print(paste0("No OMIM ID found for '", keywords, "'"))
   }
@@ -634,7 +660,8 @@ get_omim_genes <- function(omim_ids, gene_mart) {
 
   if(missing(gene_mart) || class(gene_mart) != 'Mart'){
     gene_mart <- connect_to_gene_ensembl()
-    warning("Gene mart not provided (or not a valid Mart object). We used one from connect_to_gene_ensembl() instead.")
+    warning("Gene mart not provided (or not a valid Mart object).",
+            "We used one from connect_to_gene_ensembl() instead.")
   }
 
   mim_genes <- data.frame()
@@ -720,7 +747,8 @@ get_genes_variants <- function(genes, verbose = FALSE){
 #' @return a data.frame containing the file information
 prepare_fantom <- function(enhancer_tss_association) {
   # TSS = Transcripton Start Site
-  fantom <- utils::read.delim(enhancer_tss_association, skip = 1, stringsAsFactors = FALSE)
+  fantom <- utils::read.delim(enhancer_tss_association, skip = 1,
+                              stringsAsFactors = FALSE)
 
   # The enhancer position correspond to the 4th column of the bed file
   # SO we split it by ";" and get the chr, start, stop and gene symbol.
@@ -767,11 +795,14 @@ prepare_fantom <- function(enhancer_tss_association) {
 # get_fantom5_enhancers_from_hgnc(fantom_df = fantom_df,
 #                                 hgnc_symbols = "FOXP3",
 #                                 corr_threshold = 0.30)
-get_fantom5_enhancers_from_hgnc <- function(fantom_df, hgnc_symbols, corr_threshold = 0.25){ #fdr_threshold = 1e-5) {
+get_fantom5_enhancers_from_hgnc <- function(fantom_df, hgnc_symbols,
+                                            corr_threshold = 0.25){
   # Get the enhancers with a decent level of correlations & significance
-  # Correlation is Pearson as a z-score = "(pearson corr - (mean of random motifs)) / std(pearson of random motifs)"
+  # Correlation is Pearson as a z-score:
+  # "(pearson corr - (mean of random motifs)) / std(pearson of random motifs)"
   # https://genomebiology.biomedcentral.com/articles/10.1186/s13059-014-0560-6
-  # A z-score greater than 0 represents an element greater than the mean = more correlation than random motifs ?
+  # A z-score greater than 0 represents an element greater than the mean, this
+  # means "more correlation than random motifs"
   enhancers_corr <- unique(subset(fantom_df,
                                   fantom_df$corr >= corr_threshold,# & fdr < fdr_threshold,
                                   select = c("chr", "start", "end", "symbol", "corr", "fdr"))
@@ -882,6 +913,8 @@ get_fantom5_variants <- function(fantom_df, omim_genes, corr_threshold = 0.25,
 #' If more than one is found, the user will have to choose one via a text menu
 #' @param verbose if true, will print progress information (default: FALSE)
 #'
+#' @return a gwaswloc object containing the information from the gwas catalog.
+#'
 #' @examples
 #' gwas_cat <- create_gwas()
 #' @export
@@ -923,15 +956,18 @@ create_gwas <- function(vargen_dir, verbose = FALSE){
   }
 
   if(useURL == TRUE){
-    gwas_cat <- utils::read.delim(file = url(table.url), check.names = FALSE, quote = "",
-                                  stringsAsFactors = FALSE, header = TRUE, sep = "\t")
+    gwas_cat <- utils::read.delim(file = url(table.url), check.names = FALSE,
+                                  quote = "", stringsAsFactors = FALSE,
+                                  header = TRUE, sep = "\t")
     extract_date <- as.character(Sys.Date())
   } else {
     # File from "https://www.ebi.ac.uk/gwas/api/search/downloads/full"
     # quote = "" is important to avoid error about EOF in quoted string.
-    gwas_cat <- utils::read.delim(file = gwascat_file, check.names = FALSE, quote = "",
-                                  stringsAsFactors = FALSE, header = TRUE, sep = "\t")
-    # This suppose the file is under the format: gwas_catalog_v1.0.2-associations_e93_r2019-01-11.tsv
+    gwas_cat <- utils::read.delim(file = gwascat_file, check.names = FALSE,
+                                  quote = "", stringsAsFactors = FALSE,
+                                  header = TRUE, sep = "\t")
+    # This suppose the file is under the format:
+    # gwas_catalog_v1.0.2-associations_e93_r2019-01-11.tsv
     extract_date <- sub(".*_r", "", gwascat_file)
     extract_date <- sub(".tsv", "", extract_date)
   }
@@ -958,10 +994,10 @@ create_gwas <- function(vargen_dir, verbose = FALSE){
 #' list_gwas_traits(keywords = c("type 1 diabetes", "Obesity"))
 #' @export
 list_gwas_traits <- function(keywords = "", gwas_cat) {
-
   if(missing(gwas_cat) || class(gwas_cat) != 'gwaswloc'){
     gwas_cat <- create_gwas()
-    warning("gwas_cat not provided (or not a gwaswloc object). Created one with create_gwas().")
+    warning("gwas_cat not provided (or not a gwaswloc object).",
+            "Created one with create_gwas().")
   }
 
   traits <- c()
@@ -970,7 +1006,7 @@ list_gwas_traits <- function(keywords = "", gwas_cat) {
   keys <- paste(keywords, collapse = "|")
   traits <- unique(gwas_cat$`DISEASE/TRAIT`[grep(keys,
                                                  gwas_cat$`DISEASE/TRAIT`,
-                                                 ignore.case=T)])
+                                                 ignore.case = TRUE)])
   if(length(traits) == 0) print(paste0("No gwas traits found for '", keys, "'"))
 
   return(unique(traits))
@@ -1007,7 +1043,8 @@ get_gwas_variants <- function(gwas_traits, gwas_cat){
 
   if(missing(gwas_cat) || class(gwas_cat) != 'gwaswloc'){
     gwas_cat <- create_gwas()
-    warning("gwas_cat not provided (or not a gwaswloc object). Created one with create_gwas().")
+    warning("gwas_cat not provided (or not a gwaswloc object).",
+            "Created one with create_gwas().")
   }
 
   gwas_variants <- gwascat::subsetByTraits(x = gwas_cat, tr = gwas_traits)
@@ -1052,13 +1089,13 @@ plot_manhattan_gwas <- function(traits, gwas_cat, list_chr) {
 
   if(missing(gwas_cat) || class(gwas_cat) != 'gwaswloc'){
     gwas_cat <- create_gwas()
-    warning("gwas_cat not provided (or not a gwaswloc object). Created one with create_gwas().")
+    warning("gwas_cat not provided (or not a gwaswloc object).",
+            "Created one with create_gwas().")
   }
 
   # Check if the gwas traits are in the gwas catalog:
   for(trait in traits){
-    if(!(trait %in% gwas_cat$`DISEASE/TRAIT`)) stop(paste0("gwas trait '", trait,
-                                                           "' not found in gwas catalog, stopping now."))
+    if(!(trait %in% gwas_cat$`DISEASE/TRAIT`)) stop(paste0("gwas trait '", trait, "' not found in gwas catalog, stopping now."))
   }
 
   if(!missing(list_chr)){
@@ -1066,8 +1103,10 @@ plot_manhattan_gwas <- function(traits, gwas_cat, list_chr) {
     valid_chr <- unique(gwas_cat@seqnames@values)
     for(chr in list_chr){
       if(!(chr %in% valid_chr)){
-        stop(paste0("Chromosome name: '", chr, "' not found in gwas catalog, stopping now. ",
-                    "Valid chromosome names are: ", paste0(valid_chr, collapse = ", ")))
+        stop(paste0("Chromosome name: '", chr,
+                    "' not found in gwas catalog, stopping now. ",
+                    "Valid chromosome names are: ",
+                    paste0(valid_chr, collapse = ", ")))
       }
     }
   }
@@ -1149,6 +1188,185 @@ plot_manhattan_gwas <- function(traits, gwas_cat, list_chr) {
                                    guide = ggplot2::guide_legend(override.aes = list(color = c("red", "blue"))))
 }
 
+# ---- EWAS ----
+
+#' @title Create an EWAS catalog dataframe
+#' @description Create an EWAS catalog dataframe by reading the file found in
+#' the vargen directory as downloaded by the vargen_install function.
+#' @return a an EWAS catalog dataframe containing the information
+#' from the ewas catalog.
+#'
+#' @examples
+#' ewas_cat <- create_ewas()
+create_ewas <- function(){
+  # 1. Find all the files that start with EWAS and let the user chose which file
+  # they want to select.
+  files <- list.files(pattern = "EWAS_Catalog")
+  # 2. Get the input from the user about which file they wish to use.
+  chosen_cat <- ""
+  if(length(files) > 1) {
+    print("Multiple EWAS Catalogs found")
+    cnt <- 1
+    for(file in files) {
+      print(paste(cnt, file, sep = ": "))
+      cnt <- cnt + 1
+    }
+    index <- as.numeric(readline(prompt = "Please select the number of the file desired as printed above: "))
+    chosen_cat <- files[index]
+  }
+  # 3. Read the file into a data frame.
+  ewas_cat <- read.table(gzfile(chosen_cat), sep = "\t", header = TRUE)
+  # 4. Make the file into a GRange object
+  return(ewas_cat)
+}
+
+#' @title List of EWAS traits
+#' @description Creates a list of traits corresponding to the EWAS catalogs
+#' based upon a given keyword or words from the user.  If the words are not
+#' found then the function stops and provides a warning.
+#' @param keywords: A single trait or vector of traits that is to be
+#' searched through for other related terms.
+#' @param ewas_cat: The dataframe containing the EWAS catalog.
+#' @return vector of unique traits found for te given search parameter
+#' including missing values.
+#'
+#' @examples
+#' ewas_smoking_list <- list_ewas_traits("smoking", ewas_cat)
+#' ewas_FJ_consumption_list <- list_ewas_traits(c("Fruit consumption", "Juice consumption"), ewas_cat)
+list_ewas_traits <- function(keywords = "", ewas_cat) {
+  if(missing(ewas_cat)){
+    ewas_cat <- create_ewas()
+    warning("ewas_cat not provided.", "Created one with create_ewas().")
+  }
+
+  traits <- c()
+  # 1. Collapsing the values with a "|" for "OR" in grep search
+  keys <- paste(keywords, collapse = "|")
+  traits <- unique(ewas_cat[["Trait"]][grep(keys, ewas_cat[["Trait"]],
+                                                  ignore.case = TRUE)])
+  if(length(traits) == 0) {
+    print(paste0("No ewas traits found for '", keys, "'"))
+  }
+
+  return(unique(traits))
+}
+
+#' @title Get Single EWAS Trait Information
+#' @description Gets the EWAS data associated with a certain trait or traits.
+#' @param ewas_traits: A single trait or vector of traits that are found in the EWAS
+#' catalog that are to be used restrict the data by. A trait must be given for this
+#' function to run else an error will occur.
+#' @param ewas_cat: The dataframe containing the EWAS catalog.
+#' @return vector of unique traits found for te given search parameter
+#' including missing values.
+#'
+#' @examples
+#' ewas_smoking_traits <- get_ewas_trait_info("smoking", ewas_cat)
+#' ewas_FJ_consumption_traits <- get_ewas_trait_info(c("Fruit consumption", "Juice consumption"), ewas_cat)
+get_ewas_trait_info <- function(ewas_traits, ewas_cat){
+  if(missing(ewas_cat)){
+    ewas_cat <- create_ewas()
+    warning("ewas_cat not provided.", "Created one with create_ewas().")
+  }
+  ewas_variants <- subset(ewas_cat, ewas_cat[["Trait"]] %in% ewas_traits)
+  ewas_variants <- ewas_variants[, c("PMID", "EFO", "Trait", "Chr", "Gene", "Tissue", "Pos")]
+
+  return(ewas_variants)
+}
+
+#' @title Get an annotated EWAS dataframe
+#' @description Links and annotates information from the GWAS, EWAS, and
+#' GTEX datasets into one dataframe based upon their shared genes. The Files
+#' are linked by first finding common tissue names between the GWAS and GTEx files
+#' (involving the removal of non key words to improve matching such as 'and',
+#' 'nor', 'normal', etc). It should be of note that Cancer and normal tissue samples
+#' are grouped broadly together if they are of the same overarching tissue type,
+#' say 'Lung'. The original GWAS tissue is kept in the final dataset for quality
+#' assurances. Next the genes' are used to link the GTEx information directly with the
+#' EWAS line by line since they are unique in each dataset. Following this the
+#' GWAS catalog is linked to the partially annotated dataset by the Ensembl IDs.
+#'
+#' @param ewas_cat: The dataframe containing the the restricted catalog made
+#' from the get_gwas_variants.
+#' @param gtex_dir: Is the directory contaning the files from
+#' "GTEx_Analysis_v8_eQTL.tar.gz" (cf: https://gtexportal.org/home/datasets)
+#' @return An annotated dataframe with information from the GWAS, EWAS, and GTEX datasets.
+#'
+#' @examples
+#' smoking_anno <- get_ewas_anno(ewas_cat_smoking, "./vargen_data/GTEx_Analysis_v8_eQTL/")
+get_ewas_anno <- function(ewas_cat, gtex_dir) {
+  if(missing(ewas_cat)) {
+    ewas_cat <- create_ewas()
+    warning("ewas_cat not provided.", "Created one with create_ewas().")
+  }
+  if(missing(gtex_dir)) {
+    stop("Please specify the path to the GTEx directory (eg: 'GTEx_Analysis_v8_eQTL')")
+  }
+  # 1. Save a copy of the origional tissue labels.
+  ewas_cat_copy <- ewas_cat
+
+  # 2. Get the tissues and file paths for the gtex files.
+  gtex_tissues <- list_gtex_tissues(gtex_dir)
+  file_paths <- list.files(path = paste0(gtex_dir), full.names = TRUE)
+  var_gene_pairs_paths <- file_paths[grep(".egenes.txt.gz", file_paths)]
+  gtex_tissues[["filepaths"]] <- var_gene_pairs_paths
+
+  colnames(gtex_tissues)[1] <- colnames(ewas_cat)[6]
+
+  # Fix the gaps and case sensitivity so that there is a higher chance of words matching.
+  # Common words are removed so there is also a better chance of tissues matching with the
+  # broader catagory of tissues in the GTEX tissues dataset. This means inclusion of tissues
+  # of a cancerious type are allows into the general catagory for matching.
+  words <- paste0(c("cell", "cells" ,"cancer", "tumor", "tumors",
+                    ",", "\\sand\\s", "\\sor\\s", "normal", "abnormal"), collapse = "|")
+  ewas_cat[["Tissue"]] <- gsub(words, "", tolower(ewas_cat[["Tissue"]]))
+  ewas_cat[["Tissue"]] <- gsub("\\s", "_", tolower(ewas_cat[["Tissue"]]))
+  ewas_cat[["Tissue"]] <- gsub("_{2,}", "", tolower(ewas_cat[["Tissue"]]))
+  ewas_cat[["Tissue"]] <- gsub("_$", "", tolower(ewas_cat[["Tissue"]]))
+  ewas_cat[["EWAS_Tissue"]] <- ewas_cat_copy[["Tissue"]]
+  gtex_tissues[["Tissue"]] <- tolower(gtex_tissues[["Tissue"]])
+
+  ewas_cat_anno <- merge(ewas_cat, gtex_tissues, by = "Tissue", all.x = TRUE)
+
+  cnt = 1
+  tissues <- na.omit(unique(ewas_cat_anno[["Tissue"]]))
+  gtex_file <- c()
+  for(file in na.omit(unique(ewas_cat_anno[["filepaths"]]))) {
+    tissue_file <- read.table(gzfile(file), sep = "\t", header = TRUE)
+    EWAS_tissue <- replicate(nrow(tissue_file), tissues[cnt])
+    tissue_file$"GTEx_tissue_File" <- EWAS_tissue
+
+    gtex_file <- rbind(gtex_file, tissue_file)
+    cnt = cnt + 1
+  }
+
+  # Read in tissue file related to the found filepaths.
+  gtex_file[["gene_id"]] <- gsub("\\..*", "", gtex_file[["gene_id"]])
+
+  # Merge the datasets.
+  colnames(gtex_file)[2] <- "Gene"
+  gtex_file <- merge(ewas_cat_anno, gtex_file, by = c("Gene"), all.x = TRUE)
+
+  # Get the gwas trait from the catalog
+  gwas_cat <- create_gwas()
+  gwas_traits <- cbind(gwas_cat$"DISEASE/TRAIT", gwas_cat$"SNP_GENE_IDS")
+  colnames(gwas_traits) <- cbind("GWAS_trait", "gene_id")
+
+  gtex_file <- merge(gtex_file, gwas_traits, by = c("gene_id"), all.x = TRUE)
+
+  # Reorganize the dataset to make a little more sense.
+  gtex_file <- gtex_file[, c("GTEx_tissue_File", "gene_id", "Gene", "gene_chr", "gene_start",
+                             "gene_end", "Tissue", "EWAS_Tissue", "EFO",
+                             "GWAS_trait", "Trait", "Pos", "pval_true_df", "tss_distance",
+                             "ref", "alt", "maf", "log2_aFC")]
+  colnames(gtex_file) <- c("GTEx_tissue_File", "ensembl_gene_id", "hgnc_symbol", "chr", "gene_start",
+                           "gene_end", "GTEx_tissue", "EWAS_tissue", "EFO",
+                           "GWAS_trait", "EWAS_trait", "ewas_pos", "GTEx_pval", "GTEx_tss_distance",
+                           "GTEx_ref", "GTEx_alt", "GTEx_maf", "GTEx_log2_aFC")
+
+  return(gtex_file)
+}
+
 
 # ---- GTEx ----
 
@@ -1178,6 +1396,7 @@ list_gtex_tissues <- function(gtex_dir){
 
   # We get the tissue name, this will serve as a keyword to select the tissue
   keywords <- sub(pattern = ".v[78].*",  replacement = "", x = var_gene_pairs_names)
+
 
   return(data.frame(keywords = keywords, filepaths = var_gene_pairs_paths))
 }
@@ -1221,7 +1440,8 @@ select_gtex_tissues <- function(gtex_dir, tissues_query = ""){
 
     # If the grep had no rows: tissue does not exists, we exit
     if(dim(corr_tissues)[1] == 0){
-      stop(paste0("Tissue '", tissue_keyword,"' not recognized, aborting... (please check the keyword and the GTEx folder)"))
+      stop(paste0("Tissue '", tissue_keyword,"' not recognized, aborting...",
+                  "(please check the keyword and the GTEx folder)"))
     }
 
     selected_files <- c(selected_files, as.character(corr_tissues[,2]))
@@ -1330,7 +1550,8 @@ get_gtex_variants <- function(tissue_files, omim_genes, gtex_lookup_file,
   if(missing(snp_mart) || class(snp_mart) != 'Mart'){
     if(verbose) print("Connecting to the snp mart...")
     snp_mart <- connect_to_snp_ensembl()
-    warning("Snp mart not provided (or not a valid Mart object). We used one from connect_to_snp_ensembl() instead.")
+    warning("Snp mart not provided (or not a valid Mart object).",
+            "We used one from connect_to_snp_ensembl() instead.")
   }
 
   # First, get the significant variants from all the tissues
@@ -1527,6 +1748,11 @@ vargen_install <- function(install_dir = "./", gtex_version = "v8", verbose = FA
   utils::download.file(url = gtex_lookup_url,
                        destfile = paste0(install_dir, "/", gtex_lookup_filename),
                        mode = "wb")
+
+  # Downloading the EWAS MRC-IEU files.
+  if(verbose) print("Downloading EWAS file.")
+  utils::download.file("http://www.ewascatalog.org/static/docs/EWAS_Catalog_03-07-2019.txt.gz",
+                       destfile = paste0(install_dir, "/EWAS_Catalog_03-07-2019.txt.gz"))
 }
 
 
@@ -1618,13 +1844,15 @@ vargen_pipeline <- function(vargen_dir, omim_morbid_ids, fantom_corr = 0.25,
   if(missing(gene_mart) || class(gene_mart) != 'Mart'){
     if(verbose) print("Connecting to the gene mart...")
     gene_mart <- connect_to_gene_ensembl()
-    warning("Gene mart not provided (or not a valid Mart object). We used one from connect_to_gene_ensembl() instead.")
+    warning("Gene mart not provided (or not a valid Mart object).",
+            "We used one from connect_to_gene_ensembl() instead.")
   }
 
   if(missing(snp_mart) || class(snp_mart) != 'Mart'){
     if(verbose) print("Connecting to the snp mart...")
     snp_mart <- connect_to_snp_ensembl()
-    warning("Snp mart not provided (or not a valid Mart object). We used one from connect_to_snp_ensembl() instead.")
+    warning("Snp mart not provided (or not a valid Mart object).",
+            "We used one from connect_to_snp_ensembl() instead.")
   }
 
   # no gwas traits = no need to generate the gwas_cat object
@@ -1679,7 +1907,9 @@ vargen_pipeline <- function(vargen_dir, omim_morbid_ids, fantom_corr = 0.25,
 
     # We get the variants on the genes:
     genes_variants <- get_genes_variants(genes = omim_all_genes, verbose = verbose)
-    if(length(genes_variants) != 0) master_variants <- rbind(master_variants, genes_variants)
+
+    if(length(genes_variants) != 0) master_variants <- rbind(master_variants,
+                                                             genes_variants)
 
     # We get the variants on the enhancers of the genes:
     fantom_variants <- get_fantom5_variants(fantom_df = fantom_df,
@@ -1687,7 +1917,9 @@ vargen_pipeline <- function(vargen_dir, omim_morbid_ids, fantom_corr = 0.25,
                                             corr_threshold = fantom_corr,
                                             hg19ToHg38.over.chain = hg19ToHg38.over.chain,
                                             verbose = verbose)
-    if(length(fantom_variants) != 0) master_variants <- rbind(master_variants, fantom_variants)
+
+    if(length(fantom_variants) != 0) master_variants <- rbind(master_variants,
+                                                              fantom_variants)
 
     # master_variants$trait <- omim_morbid
     # print(head(master_variants))
@@ -1708,7 +1940,8 @@ vargen_pipeline <- function(vargen_dir, omim_morbid_ids, fantom_corr = 0.25,
                                          snp_mart = snp_mart,
                                          verbose = verbose)
 
-      if(length(gtex_variants) != 0) master_variants <- rbind(master_variants, gtex_variants)
+      if(length(gtex_variants) != 0) master_variants <- rbind(master_variants,
+                                                              gtex_variants)
 
     } else{
       if(verbose) print("No values for 'gtex_tissues', skipping GTEx step...")
@@ -1719,7 +1952,8 @@ vargen_pipeline <- function(vargen_dir, omim_morbid_ids, fantom_corr = 0.25,
 
     for(gene in unique(master_variants$hgnc_symbol)){
       # First get the list of omim ids for this gene:
-      gene_omims <- paste0(unique(omim_all_genes[omim_all_genes$hgnc_symbol == gene,]$mim_morbid_accession), collapse = ";")
+      gene_omims <- paste0(unique(omim_all_genes[omim_all_genes$hgnc_symbol == gene,]$mim_morbid_accession),
+                           collapse = ";")
 
       # Then add it to the "trait" column
       master_variants[master_variants$hgnc_symbol == gene,]$trait <- gene_omims
@@ -1789,9 +2023,9 @@ vargen_pipeline <- function(vargen_dir, omim_morbid_ids, fantom_corr = 0.25,
 #'   \item ensembl_gene_id ("gene id" of the gene associated with the variant)
 #'   \item hgnc_symbol ("hgnc symbol" of the gene associated with the variant)
 #'   \item source ("omim", "fantom5", "gtex" or "gwas")
-#'   \item trait (an empty string for the gene, fantom and gtex variants, since this
-#'   comes from a list of genes, no omim id is associated with them. Contains the
-#'   gwas trait for the gwas variants. )
+#'   \item trait (an empty string for the gene, fantom and gtex variants, since
+#'   this comes from a list of genes, no omim id is associated with them.
+#'   Contains the gwas trait for the gwas variants. )
 #' }
 #'
 #' @examples
@@ -1812,7 +2046,8 @@ vargen_pipeline <- function(vargen_dir, omim_morbid_ids, fantom_corr = 0.25,
 #'               gwas_traits = "Obesity")
 #' @export
 vargen_custom <- function(vargen_dir, gene_ids, fantom_corr = 0.25, outdir = "./",
-                          gtex_tissues, gwas_traits, gene_mart, snp_mart, verbose = FALSE) {
+                          gtex_tissues, gwas_traits, gene_mart, snp_mart,
+                          verbose = FALSE) {
 
   if (!dir.exists(outdir)){
     if(verbose) print(paste0("Creating folder '", outdir, "'"))
@@ -1825,13 +2060,15 @@ vargen_custom <- function(vargen_dir, gene_ids, fantom_corr = 0.25, outdir = "./
   if(missing(gene_mart) || class(gene_mart) != 'Mart'){
     if(verbose) print("Connecting to the gene mart...")
     gene_mart <- connect_to_gene_ensembl()
-    warning("Gene mart not provided (or not a valid Mart object). We used one from connect_to_gene_ensembl() instead.")
+    warning("Gene mart not provided (or not a valid Mart object).",
+            "We used one from connect_to_gene_ensembl() instead.")
   }
 
   if(missing(snp_mart) || class(snp_mart) != 'Mart'){
     if(verbose) print("Connecting to the snp mart...")
     snp_mart <- connect_to_snp_ensembl()
-    warning("Snp mart not provided (or not a valid Mart object). We used one from connect_to_snp_ensembl() instead.")
+    warning("Snp mart not provided (or not a valid Mart object).",
+            "We used one from connect_to_snp_ensembl() instead.")
   }
 
   # no gwas traits = no need to generate the gwas object
@@ -1873,9 +2110,11 @@ vargen_custom <- function(vargen_dir, gene_ids, fantom_corr = 0.25, outdir = "./
 
   if(nrow(genes_info) > 0){
 
-    if(verbose) print(paste0("Writing the list of genes to: ", outdir, "/custom_genes_info.tsv"))
+    if(verbose) print(paste0("Writing the list of genes to: ",
+                             outdir, "/custom_genes_info.tsv"))
 
-    utils::write.table(x = genes_info, quote = FALSE, sep = "\t", row.names = FALSE,
+    utils::write.table(x = genes_info, quote = FALSE, sep = "\t",
+                       row.names = FALSE,
                        file = paste0(outdir, "/custom_genes_info.tsv"))
 
     # Get the variants on the genes:
@@ -1892,7 +2131,8 @@ vargen_custom <- function(vargen_dir, gene_ids, fantom_corr = 0.25, outdir = "./
                                             hg19ToHg38.over.chain = hg19ToHg38.over.chain,
                                             verbose = verbose)
 
-    if(length(fantom_variants) != 0) master_variants <- rbind(master_variants, fantom_variants)
+    if(length(fantom_variants) != 0) master_variants <- rbind(master_variants,
+                                                              fantom_variants)
 
     #_____________________________________________________________________________
     # Getting variants associated with change of expression in GTEx (need tissues as input)
@@ -1905,7 +2145,8 @@ vargen_custom <- function(vargen_dir, gene_ids, fantom_corr = 0.25, outdir = "./
                                          snp_mart = snp_mart,
                                          verbose = verbose)
 
-      if(length(gtex_variants) != 0) master_variants <- rbind(master_variants, gtex_variants)
+      if(length(gtex_variants) != 0) master_variants <- rbind(master_variants,
+                                                              gtex_variants)
 
     } else{
       print("No values for 'gtex_tissues', skipping GTEx step...")
@@ -1923,16 +2164,20 @@ vargen_custom <- function(vargen_dir, gene_ids, fantom_corr = 0.25, outdir = "./
   # GWAS variants (only if list of gwas traits were given)
   if(!missing(gwas_traits)){
     if(verbose) print("Getting the gwas variants...")
-    master_variants <- rbind(master_variants, get_gwas_variants(gwas_traits = gwas_traits,
-                                                                gwas_cat = gwas_cat))
+    master_variants <- rbind(master_variants,
+                             get_gwas_variants(gwas_traits = gwas_traits,
+                                               gwas_cat = gwas_cat))
   } else{
     if(verbose) print("No values for 'gwas_traits', skipping gwas step...")
   }
 
   # writing the variants data.frame to a file
-  if(verbose) print(paste0("Writing the variants to ", paste0(outdir, "/custom_vargen_variants.tsv")))
-  utils::write.table(x = unique(master_variants), append = FALSE, quote = FALSE, sep = "\t",
-                     row.names = FALSE, file = paste0(outdir, "/custom_vargen_variants.tsv"))
+  if(verbose) print(paste0("Writing the variants to ",
+                           paste0(outdir, "/custom_vargen_variants.tsv")))
+
+  utils::write.table(x = unique(master_variants), append = FALSE, quote = FALSE,
+                     sep = "\t", row.names = FALSE,
+                     file = paste0(outdir, "/custom_vargen_variants.tsv"))
 
   return(unique(master_variants))
 }
