@@ -1287,13 +1287,13 @@ get_ewas_trait_info <- function(ewas_traits, ewas_cat){
 #' GWAS catalog is linked to the partially annotated dataset by the Ensembl IDs.
 #'
 #' @param ewas_cat: The dataframe containing the the restricted catalog made
-#' from the get_gwas_variants.
+#' from the get_ewas_variants.
 #' @param gtex_dir: Is the directory contaning the files from
 #' "GTEx_Analysis_v8_eQTL.tar.gz" (cf: https://gtexportal.org/home/datasets)
 #' @return An annotated dataframe with information from the GWAS, EWAS, and GTEX datasets.
 #'
 #' @examples
-#' smoking_anno <- get_ewas_anno(ewas_cat_smoking, "./vargen_data/GTEx_Analysis_v8_eQTL/")
+#' ewas_smoking_traits <- get_ewas_anno(ewas_cat, "./vargen_data/GTEx_Analysis_v8_eQTL/")
 get_ewas_anno <- function(ewas_cat, gtex_dir) {
   if(missing(ewas_cat)) {
     ewas_cat <- create_ewas()
@@ -1311,7 +1311,7 @@ get_ewas_anno <- function(ewas_cat, gtex_dir) {
   var_gene_pairs_paths <- file_paths[grep(".egenes.txt.gz", file_paths)]
   gtex_tissues[["filepaths"]] <- var_gene_pairs_paths
 
-  colnames(gtex_tissues)[1] <- colnames(ewas_cat)[6]
+  colnames(gtex_tissues)[1] <- "Tissue"
 
   # Fix the gaps and case sensitivity so that there is a higher chance of words matching.
   # Common words are removed so there is also a better chance of tissues matching with the
@@ -1324,9 +1324,10 @@ get_ewas_anno <- function(ewas_cat, gtex_dir) {
   ewas_cat[["Tissue"]] <- gsub("_{2,}", "", tolower(ewas_cat[["Tissue"]]))
   ewas_cat[["Tissue"]] <- gsub("_$", "", tolower(ewas_cat[["Tissue"]]))
   ewas_cat[["EWAS_Tissue"]] <- ewas_cat_copy[["Tissue"]]
+
   gtex_tissues[["Tissue"]] <- tolower(gtex_tissues[["Tissue"]])
 
-  ewas_cat_anno <- merge(ewas_cat, gtex_tissues, by = "Tissue", all.x = TRUE)
+ ewas_cat_anno <- merge(ewas_cat, gtex_tissues, by = "Tissue", all.x = TRUE)
 
   cnt = 1
   tissues <- na.omit(unique(ewas_cat_anno[["Tissue"]]))
@@ -1364,7 +1365,8 @@ get_ewas_anno <- function(ewas_cat, gtex_dir) {
                            "GWAS_trait", "EWAS_trait", "ewas_pos", "GTEx_pval", "GTEx_tss_distance",
                            "GTEx_ref", "GTEx_alt", "GTEx_maf", "GTEx_log2_aFC")
 
-  return(gtex_file)
+
+  return(data.frame(gtex_file))
 }
 
 

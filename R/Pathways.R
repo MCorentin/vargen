@@ -2158,9 +2158,14 @@ pathview_vargen <- function(data, output_dir = NULL, title = NULL,
 #' get_LD_populations function.
 #' @param d_prime_thresh: The D' alpha value that the dataset can be
 #' resticted by.
+#' @param xaxis_show: Allows for the positions to be turned off if they are
+#' overlapping with the Genes.
+#' @param tableOff: Allows for the table of variants that are linked but not
+#' able to be graphed to be shown on the figure on not. Sometimes the figure
+#' holds too many variants and overlaps so it may be best to turn it off.
 #' @returns Dataframe with LD scores of a specific population.
 lolliplot_LD <- function(get_output, title = NULL, pdf_out = FALSE,
-                         xaxis_show = FALSE) {
+                         xaxis_show = FALSE, tableOff = TRUE) {
   # 1. Check to make sure the dataframe input isn't empty.
   .check_dataframe(get_output)
   # 1.1 Check if the title is null or na.
@@ -2390,34 +2395,52 @@ lolliplot_LD <- function(get_output, title = NULL, pdf_out = FALSE,
   xaxis <- c(start, (start[length(start)] + diff[length(diff)]))
   # 13. Make the file for the output of the pdf if the boolean is True. The
   # output which the file will be saved is the current working directory.
-  if(pdf_out == TRUE) {
-    pdf(file = paste0(getwd(), "lolliplot_vargen", sep = ""), paper = "a4")
+  if(tableOff == FALSE){
+    if(pdf_out == TRUE) {
+      pdf(file = paste0(getwd(), "lolliplot_vargen", sep = ""), paper = "a4")
 
-    if(xaxis_show == TRUE) {
-      trackViewer::lolliplot(lolliplot_vargen, features,
-                             legend = legend, xaxis = xaxis)
+      if(xaxis_show == TRUE) {
+        trackViewer::lolliplot(lolliplot_vargen, features,
+                               legend = legend, xaxis = xaxis)
+      } else {
+        trackViewer::lolliplot(lolliplot_vargen, features,
+                               legend = legend, xaxis = FALSE)
+      }
+      grid::grid.text(title, x = .5, y = .98, just = "top",
+                      gp = grid::gpar(cex = 1.5, fontface = "bold"))
+      lolli <- grid::grid.grab()
+      cowplot::plot_grid(lolli, table)
+      dev.off()
     } else {
-      trackViewer::lolliplot(lolliplot_vargen, features,
-                             legend = legend, xaxis = FALSE)
+      if(xaxis_show == TRUE) {
+        trackViewer::lolliplot(lolliplot_vargen, features,
+                               legend = legend, xaxis = xaxis)
+      } else {
+        trackViewer::lolliplot(lolliplot_vargen, features,
+                               legend = legend, xaxis = FALSE)
+      }
+      grid::grid.text(title, x = .5, y = .98, just = "top",
+                       gp = grid::gpar(cex = 1.5, fontface = "bold"))
+
+      lolli <- grid::grid.grab()
+      cowplot::plot_grid(lolli, table, ncol = 1)
     }
-    grid::grid.text(title, x = .5, y = .98, just = "top",
-                    gp = grid::gpar(cex = 1.5, fontface = "bold"))
-    lolli <- grid::grid.grab()
-    cowplot::plot_grid(lolli, table)
-    dev.off()
   } else {
-    if(xaxis_show == TRUE) {
-      trackViewer::lolliplot(lolliplot_vargen, features,
-                             legend = legend, xaxis = xaxis)
-    } else {
-      trackViewer::lolliplot(lolliplot_vargen, features,
-                             legend = legend, xaxis = FALSE)
-    }
-    grid::grid.text(title, x = .5, y = .98, just = "top",
-                     gp = grid::gpar(cex = 1.5, fontface = "bold"))
+    if(pdf_out == TRUE) {
+        pdf(file = paste0(getwd(), "lolliplot_vargen", sep = ""), paper = "a4")
 
-    lolli <- grid::grid.grab()
-    cowplot::plot_grid(lolli, table, ncol = 1)
+        trackViewer::lolliplot(lolliplot_vargen, features,
+                               legend = legend, xaxis = xaxis)
+        dev.off()
+    } else {
+      if(xaxis_show == TRUE) {
+          trackViewer::lolliplot(lolliplot_vargen, features,
+                                 legend = legend, xaxis = xaxis)
+      } else {
+        trackViewer::lolliplot(lolliplot_vargen, features,
+                               legend = legend, xaxis = FALSE)
+      }
+    }
   }
 }
 
