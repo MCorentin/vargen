@@ -29,30 +29,38 @@
   if(is.na(output_dir) || is.null(output_dir)) {
     if(.Platform$OS.type == "windows") {
       if(dir.exists(paste0(getwd(), "\\", name, "\\")) == FALSE) {
-        dir.create(name)
+        output_dir <- paste0(".", output_dir)
+        dir.create(output_dir)
+        output_dir <- gsub(".", "", output_dir)
       }
-      output_dir <- paste0(getwd(), "\\", name, "\\")
+      output_dir <- paste0(getwd(), "\\", output_dir, "\\", sep = "")
     } else {
       if(dir.exists(paste0(getwd(), "/", name, "/")) == FALSE){
-        dir.create(name)
+        output_dir <- paste0(".", output_dir)
+        dir.create(output_dir)
+        output_dir <- gsub(".", "", output_dir)
       }
-      output_dir <- paste0(getwd(), "/", name, "/")
-      print(paste0("Using output directory ", output_dir))
+      output_dir <- paste0(getwd(), "/", output_dir, "/", sep = "")
+      print(paste0("Using output directory ", output_dir, "/"))
     }
   } else {
     output_dir <- gsub("[.\\/]+", "VARGENrEPLACEsTRING", output_dir)
     if(.Platform$OS.type == "windows") {
       output_dir <- gsub("VARGENrEPLACEsTRING", "[\\]", output_dir)
       if(dir.exists(paste0(getwd(), output_dir)) == FALSE) {
-        dir.create(name)
+        output_dir <- paste0(".", output_dir)
+        dir.create(output_dir)
+        output_dir <- gsub(".", "", output_dir)
       }
-      output_dir <- paste0(getwd(), output_dir, "[\\]")
+      output_dir <- paste0(getwd(), output_dir, "\\", sep = "")
     } else {
       output_dir <- gsub("VARGENrEPLACEsTRING", "/", output_dir)
       if(dir.exists(paste0(getwd(), output_dir)) == FALSE){
-        dir.create(name)
+        output_dir <- paste0(".", output_dir)
+        dir.create(output_dir)
+        output_dir <- gsub(".", "", output_dir)
       }
-      output_dir <- paste0(getwd(), output_dir)
+      output_dir <- paste0(getwd(), output_dir, "/", sep = "")
       print(paste0("Using output directory ", output_dir))
     }
   }
@@ -66,7 +74,7 @@
 .check_vargen_dir <- function(vargen_dir) {
   # 1. Check the directory exists for the VarGen data.
   if(dir.exists(vargen_dir) == FALSE) {
-    stop(paste0("The directory used for vargen_dir: ", params[[1]],
+    stop(paste0("The directory used for vargen_dir: ", vargen_dir,
                 " was not found in the current directory ", getwd()))
   }
 }
@@ -798,6 +806,70 @@
   }
 }
 
+#' @title Restricts variants by for the kegg_graph function.
+#' @description Takes the variant list after it has been checked for
+#' validity and restricts the OMIM database and restricts by the given
+#' parameters from the user.
+#' @param params: A vector containing all values possible even if not passed into
+#' the function by the user after they have been deemed valid.
+#' @param omim_info: An empty vector that will returned with the dataset.
+#' @return a dataframe for restricted variants from the OMIM catelog
+.restrict_snp_omim <- function(omim_info, params) {
+  if(is.na(params[[14]]) == FALSE && is.na(params[[3]]) == FALSE) {
+    omim_ids <- list_omim_accessions(connect_to_gene_ensembl(), params[[3]])[["mim_morbid_accession"]]
+    if(length(omim_ids) != 0) {
+      omim_genes <- get_omim_genes(omim_ids, connect_to_gene_ensembl())
+      omim_info <- omim_genes
+      #Start the restiction from the other processes.
+      if(nrow(omim_info) != 0) {
+        if(is.na(params[[8]])){
+          if(is.na(params[[3]]) == FALSE && is.na(params[[4]]) && is.na(params[[6]])) {
+            return(omim_info)
+          } else if(is.na(params[[3]]) == FALSE && is.na(params[[4]]) == FALSE
+                    && is.na(params[[6]])) {
+            # Restrict by only chromosomes.
+            omim_info <- subset(omim_info, omim_info[["chromosome_name"]] == params[[4]])
+          } else if(is.na(params[[3]]) == FALSE && is.na(params[[4]])
+                    && is.na(params[[6]]) == FALSE) {
+            # Restrict by only genes.
+            omim_info <- subset(omim_info, omim_info[["hgnc_symbol"]] == params[[6]])
+          } else {
+            # Restrict by only genes and chromosomes.
+            omim_info <- subset(omim_info, omim_info[["chromosome_name"]] == params[[4]])
+            omim_info <- subset(omim_info, omim_info[["hgnc_symbol"]] == params[[6]])
+          }
+        }
+      } else {
+        stop(paste("No information found in the OMIM database for the traits given."))
+      }
+    } else {
+      stop(print("No OMIM ID found."))
+    }
+  } else if(is.na(params[[14]]) == FALSE && is.na(params[[3]])) {
+    omim_info <- get_omim_genes(params[[14]])
+    #Start the restiction from the other processes.
+    if(nrow(omim_info) != 0) {
+      if(is.na(params[[8]])){
+        if(is.na(params[[4]]) && is.na(params[[6]])) {
+          return(omim_info)
+        } else if(is.na(params[[4]]) == FALSE && is.na(params[[6]])) {
+          # Restrict by only chromosomes.
+          omim_info <- subset(omim_info, omim_info[["chromosome_name"]] == params[[4]])
+        } else if(is.na(params[[4]]) && is.na(params[[6]]) == FALSE) {
+          # Restrict by only genes.
+          omim_info <- subset(omim_info, omim_info[["hgnc_symbol"]] == params[[6]])
+        } else {
+          # Restrict by only genes and chromosomes.
+          omim_info <- subset(omim_info, omim_info[["chromosome_name"]] == params[[4]])
+          omim_info <- subset(omim_info, omim_info[["hgnc_symbol"]] == params[[6]])
+        }
+      }
+    } else {
+      stop(paste("No information found in the OMIM database for the traits given."))
+    }
+  }
+}
+
 #' @title Gets the information needed for the KEGG Api.
 #' @description Depending on if the user wants to show values falling below
 #' the value threshold or if they want the regular mode showing only those
@@ -1261,6 +1333,82 @@
   return(list(matched, fg_high, bg_high, ko_matched))
 }
 
+#---- LD Functions ----
+
+#' @title Population code finders for 1000 genomes.
+#' @description Finds the population code for LD plots and dataframe.
+#' @returns Dataframe with codes and description of each
+#' # population availble to generate a dataframe with.
+get_LD_populations <- function() {
+  tryCatch(
+    {
+      data <- httr::GET(paste("https://rest.ensembl.org",
+                              "/info/variation/populations/homo_sapiens?filter=LD",
+                              sep = ""),
+                        httr::content_type("application/json"))
+      data <- jsonlite::fromJSON(jsonlite::toJSON(httr::content(data)))
+      data <- data.frame(data, do.call(rbind, stringr::str_split(data[["name"]], ":")))
+
+      data <- data[, c(2,6)]
+      colnames(data) <- c("Description", "Code")
+
+      return(data)
+    },
+    error = function(UnableToRetrieveDataError) {
+      print(paste0("ERROR in get_LD_populations: Either the data was queried properly ",
+                   "form the site or couldn't be formatted from url ",
+                   "'https://rest.ensembl.org/info/variation/populations/homo_sapiens?filter=LD'.",
+                   sep = ""))
+
+      print(paste0("R thown error:"))
+      message(UnableToRetrieveDataError)
+    }
+  )
+}
+
+#' @title Make LD score dataframe.
+#' @description Makes the LD dataframe using the Ensembl API for
+#' the 1000 genomes project and a given population as
+#' selected by the user.  The population has a code associated
+#' with it.
+#' @param rsid: rsid to compare to population for LD.
+#' @param pop_code: Population code given and outlines by Ensembl and the
+#' 1000 genomes project conventions.  This can be found with the
+#' get_LD_populations function.
+#' @param d_prime_thresh: The D' alpha value that the dataset can be
+#' resticted by.
+#' @returns Dataframe with LD scores of a specific population.
+get_LD_scores <- function(rsid, pop_code, d_prime_thresh = NULL) {
+  # 1. Retrieve the data from the 1000 genomes project into a usable form of conversion
+  # into a Grange.
+  tryCatch(
+    {
+      get_output <- httr::GET(paste0("https://rest.ensembl.org/ld/human/",
+                                       rsid, "/1000GENOMES:phase_3:", pop_code,
+                                       "?", sep = ""),
+                                httr::content_type("application/json"))
+      get_output <- data.frame(jsonlite::fromJSON(jsonlite::toJSON(httr::content(get_output))))
+
+      get_output$r2 <- as.numeric(as.character(get_output$r2))
+      get_output$r2 <- as.numeric(as.character(get_output$d_prime))
+
+      # 2. Restrict the dataset by the D' value.
+      if(is.null(d_prime_thresh) == FALSE) {
+        get_output <- subset(get_output, get_output$d_prime >= d_prime_thresh)
+      }
+
+      return(get_output)
+    },
+    error = function(UnableToRetrieveDataError) {
+      print(paste0("ERROR in get_LD_scores: Either the data was queried properly ",
+                   "form the site or couldn't be formatted from url ",
+                   "'https://rest.ensembl.org/ld/human/rsid/1000GENOMES:phase_3:pop_code'.",
+                   sep = ""))
+      print(paste0("R thown error:"))
+      message(UnableToRetrieveDataError)
+    }
+  )
+}
 
 #---- Visualizations ----
 
@@ -1274,8 +1422,8 @@
 #' download to or is being stored in.
 #' @param output_dir: The directory where the files will be put as desired
 #' by the user.
-#' @param traits: A vector containing the traits that can be seached for. Can be
-#' given as either a vector or as a single string.
+#' @param traits: A vector containing the gwas traits that can be seached for.
+#' Can be given as either a vector or as a single string.
 #' @param chrs: A vector containing the chromosomes that can be seached for.
 #' Can be given as either a vector or as a single string. Ex: "chr1"
 #' @param title: The title that each of the graphics will be given with a
@@ -1284,7 +1432,7 @@
 #' @param omim_ids: The omim id or ids to be searched only in a KEGG pathway.
 #' @param rsids: A single snp rsid identifier or a vector of identifiers which
 #' will return a list of found information from the gwas catalog in a dataframe.
-#' @param genes: The mapped and reported genes that are found in the file.
+#' @param genes: The mapped and reported genes that are found in the gwas file.
 #' @param gene_mode: The mode for selecting if the reported genes and the
 #' mapped genes should both be search for the given genes or if only one or the
 #' other should be.  0 is for mapped genes only, 1 is for only reported, 2 is
@@ -1332,17 +1480,33 @@ kegg_search_graph <- function(vargen_dir = NA, output_dir = NA, traits = NA, chr
      (length(!(variants_traits$"SNP_GENE_IDS" %in% "")) != 0 ||
       length(!(variants_traits$"ensembl_gene_id" %in% "")) != 0)) {
     if(is.na(params[[14]])) {
+      if(is.na(omim_ids) == FALSE) {
       kegg_paths <- biomaRt::getBM(
         attributes = c("kegg_enzyme", "ensembl_gene_id"),
         filters = c("ensembl_gene_id"),
-        values = variants_traits$"SNP_GENE_IDS",
+        values = variants_traits$"ensembl_gene_id",
         mart = connect_to_gene_ensembl(), uniqueRows = TRUE)
+      } else {
+        kegg_paths <- biomaRt::getBM(
+          attributes = c("kegg_enzyme", "ensembl_gene_id"),
+          filters = c("ensembl_gene_id"),
+          values = variants_traits$"SNP_GENE_IDS",
+          mart = connect_to_gene_ensembl(), uniqueRows = TRUE)
+      }
     } else {
-      kegg_paths <- biomaRt::getBM(
-        attributes = c("kegg_enzyme", "ensembl_gene_id"),
-        filters = c("ensembl_gene_id"),
-        values = variants_traits$"SNP_GENE_IDS",
-        mart = connect_to_gene_ensembl(), uniqueRows = TRUE)
+      if(is.na(omim_ids) == FALSE) {
+        kegg_paths <- biomaRt::getBM(
+          attributes = c("kegg_enzyme", "ensembl_gene_id"),
+          filters = c("ensembl_gene_id"),
+          values = variants_traits$"ensembl_gene_id",
+          mart = connect_to_gene_ensembl(), uniqueRows = TRUE)
+      } else {
+        kegg_paths <- biomaRt::getBM(
+          attributes = c("kegg_enzyme", "ensembl_gene_id"),
+          filters = c("ensembl_gene_id"),
+          values = variants_traits$"SNP_GENE_IDS",
+          mart = connect_to_gene_ensembl(), uniqueRows = TRUE)
+      }
     }
   } else {
     stop(print("No variants found for given restrictions."))
@@ -1549,9 +1713,12 @@ kegg_search_graph <- function(vargen_dir = NA, output_dir = NA, traits = NA, chr
 
 #' @title Makes the KEGG graphs from VarGen pipeline
 #' @description Allows for the KEGG graphs to be output into a directory,
-#' from a dataset generated from the VarGen pipeline.
+#' from a dataset generated from the VarGen pipeline. The function takes
+#' data directly from the VarGen pipeline and vargen_custom. please refer to:
+#' \code{\link{vargen_pipeline}}
 #' @param data: The output from the VarGen pipeline.
 #' download to or is being stored in.
+#' @param color: The color for when a gene is found found in a pathway.
 #' @param output_dir: The directory where the files will be put as desired
 #' @return Nothing; The KEGG pathways figures in a given or default directory.
 kegg_vargen_graph <- function(data, output_dir = NULL, color = "#da8cde") {
@@ -1566,7 +1733,8 @@ kegg_vargen_graph <- function(data, output_dir = NULL, color = "#da8cde") {
     mart = connect_to_gene_ensembl(), uniqueRows = TRUE)
 
   variants_info <- c()
-  if(is.na(unique(kegg_paths[["kegg_enzyme"]]))) {
+
+  if(length(unique(kegg_paths[["kegg_enzyme"]])) != 1) {
     variants_info <- merge(data[, c(1,4:5)], kegg_paths, by = c("ensembl_gene_id"),
                            all.x = TRUE)
     # 3.1 Remove any newly added variants that were not found by vargen.
@@ -1584,7 +1752,7 @@ kegg_vargen_graph <- function(data, output_dir = NULL, color = "#da8cde") {
     print(paste0("Number of variants found with KEGG ID: ", nrow(variants_info_kegg), " out of ",
                  nrow(variants_Entrez)))
     variants_info <- variants_info_kegg
-  } else {
+  } else if(na(unique(kegg_paths[["kegg_enzyme"]])[1]) && length(unique(kegg_paths[["kegg_enzyme"]])) == 1) {
     stop(paste("No KEGG pathways are available for the variants found in the KEGG database"))
   }
 
@@ -1643,6 +1811,7 @@ kegg_vargen_graph <- function(data, output_dir = NULL, color = "#da8cde") {
                                                   unlist(ko_matched),
                                                   fg.color.list = unlist(fg),
                                                   bg.color.list = unlist(bg))
+        print(paste(output_dir, kegg_pathway, ".png", sep = ""))
         download.file(url, paste(output_dir, kegg_pathway, ".png", sep = ""), mode = "wb")
       }
     }
@@ -1689,10 +1858,13 @@ omim_graph_online <- function(type = "linear", omim_id){
 #' will be displayed. One shows all information while the other allows for the user to
 #' iteractivly click through each catagory/matched gene to see the traits. The graph with all
 #' information displayed may be a bit hard to read, soit should be used as a guide for exploring
-#' the data if large subsets are origionally graphed.
+#' the data if large subsets are origionally graphed. This method only works with the annotated
+#' VarGen pipeline as it requires the OMIM ID's in the final column of the dataset with the column
+#' name of 'traits'.
 #' @param data: The output from the VarGen pipeline.
 #' @param title: The title of the figure.
-#' @param top_thresh: The number of the top most found values in the dataset.
+#' @param top_thresh: The number of the top most frequent hits of counts in the dataset
+#' relating to the variants found on that gene.
 #' @param mode: Sets the counts to be either the raw or normalized counts.
 #' #' (# variants / kbp). The modes are 'raw' for the raw counts, 'norm' for
 #' normalized counts using # variants/kbp.
@@ -1744,7 +1916,7 @@ treemap_graph <- function(data, title = "VarGen Treemap Graph", top_thresh = NUL
     hgnc_cnt <- data.frame(table(data[["hgnc_symbol"]]))
   } else {
     # 2.b Get the count data for the ontology
-    hgnc_cnt <- data.frame(table(data[c(7,5)]))
+    hgnc_cnt <- data.frame(table(data[,c("trait", "hgnc_symbol")]))
     hgnc_cnt <- subset(hgnc_cnt, hgnc_cnt[["Freq"]] != 0)
     # Option subset by a certain gene only for traits
     if(is.na(ontol_genes) == FALSE && is.null(ontol_genes) == FALSE) {
@@ -1796,8 +1968,8 @@ treemap_graph <- function(data, title = "VarGen Treemap Graph", top_thresh = NUL
       colnames(hgnc_cnt) <- c("Var1", "Var2", "Freq")
 
       #Check if no positions are found and report it to the user.
-      if(is.na(unique(hgnc_cnt[["Freq"]]))) {
-        stop(print("None of the genes found can be normalized due to not have positional data."))
+      if(is.na(unique(hgnc_cnt[["Freq"]])[1]) && nrow(hgnc_cnt) == 1) {
+        stop(print("None of the genes found can be normalized due to not having positional data."))
       }
     }
   }
@@ -1975,48 +2147,300 @@ pathview_vargen <- function(data, output_dir = NULL, title = NULL,
   setwd(old_dir)
 }
 
-
-#' @title Makes a linkage Disequilibrium map using data from the VarGen pipeline.
-#' @description Makes a linkage Disequilibrium heatmap from the VarGen pipeline using
-#' the LDlinR package and the gplots package.
-#' @param data: The output from the VarGen pipeline.
-#' @param rsid: The variant that is to be compared against other variants found in the dataset
-#' that are on the same chromosome.
-#' @param dendro: A boolean that indicates if the dendrogram is to be shown or not.
-#' @return Nothing; linkage disequilibrium map
-LD_visual <- function(data, rsid, dendro = FALSE) {
-  # 1. Check that each of the parameters to see if they are valid.
-  # 1.1 Check if the dataset is null, na, or contains no data.
-  if(is.null(data) || is.na(data) || nrow(data) == 0) {
-    stop(print(paste("The given data from the VarGen pipeline is either null,",
-                     "na, or contains no data."), sep = ""))
+#' @title Create a Lolliplot.
+#' @description Makes the LD dataframe using the Ensembl API for
+#' the 1000 genomes project and a given population as
+#' selected by the user.  The population has a code associated
+#' with it.
+#' @param rsid: rsid to compare to population for LD.
+#' @param pop_code: Population code given and outlines by Ensembl and the
+#' 1000 genomes project conventions.  This can be found with the
+#' get_LD_populations function.
+#' @param d_prime_thresh: The D' alpha value that the dataset can be
+#' resticted by.
+#' @param xaxis_show: Allows for the positions to be turned off if they are
+#' overlapping with the Genes.
+#' @param tableOff: Allows for the table of variants that are linked but not
+#' able to be graphed to be shown on the figure on not. Sometimes the figure
+#' holds too many variants and overlaps so it may be best to turn it off.
+#' @returns Dataframe with LD scores of a specific population.
+lolliplot_LD <- function(get_output, title = NULL, pdf_out = FALSE,
+                         xaxis_show = FALSE, tableOff = TRUE) {
+  # 1. Check to make sure the dataframe input isn't empty.
+  .check_dataframe(get_output)
+  # 1.1 Check if the title is null or na.
+  if(is.null(title) || is.na(title)) {
+    title = "Vargen Sample Plot Title"
   }
-  # 1.2 Check if the dendro is valid
-  if(dendro != FALSE || dendro != TRUE) {
-    print(paste0("The given value for dendro: ", dendro, " is not valid."))
-    dendro = FALSE
+  # 1.2 Check if the pdf_out value is a boolean
+  if(is.null(pdf_out) || is.na(pdf_out)) {
+    pdf_out <- FALSE
+  }
+  # 1.3 This needs to be removed as it creates unnessary
+  # categories if it is included.
+  get_output$d_prime <- NULL
+
+  # 2. Make a Grange object.
+  # 2.1 get the rsids with only their numeric parts.
+  get_output$"num_variation2" <- as.numeric(gsub("rs([0-9]+).*",
+                                                 "\\1",
+                                                 get_output[["variation2"]]))
+  get_output <- get_output[order(get_output[["num_variation2"]]),]
+
+  # 3. Get the variables needed for the GRanges.
+  # 3A. The chromosome information and genes names.
+  rsids_info <- biomaRt::getBM(
+    attributes = c("refsnp_id", "chr_name", "ensembl_gene_stable_id",
+                   "chrom_start", "chrom_end"),
+    filters = "snp_filter",
+    values = unlist(get_output[["variation2"]]),
+    mart = connect_to_snp_ensembl(), uniqueRows = TRUE)
+  # 3B.1 Removing variants without any stable gene id and adding them into a separate
+  # dataframe to be added to the figure after.
+  rsids_unknown <- subset(rsids_info, rsids_info[["ensembl_gene_stable_id"]] == "")
+  rsids_info <- subset(rsids_info, rsids_info[["ensembl_gene_stable_id"]] != "")
+
+  chrom <- unique(rsids_info[["chr_name"]])
+  # 3C. Get the start and stop position for the genes as well as their symbol.
+  gene_info <- biomaRt::getBM(
+    attributes = c("hgnc_symbol","ensembl_gene_id", "start_position","end_position"),
+    filters = "ensembl_gene_id",
+    values = rsids_info[["ensembl_gene_stable_id"]],
+    mart = connect_to_gene_ensembl(), uniqueRows = TRUE)
+
+  cnt <- 1
+  rep_col <- c()
+  rep_index <- which(gene_info[["hgnc_symbol"]] %in% "")
+  for(item in rep_index) {
+    gene_info[["hgnc_symbol"]][[item]] <- paste("Uknown", cnt, sep = "")
+    cnt <- cnt + 1
   }
 
-  # 2. Clean the data
-  data <- data[grep("rs", data[["rsid"]]), ]
-  # 3. Get the chromosome of the given rsid
-  rsid_chrom <- data[grep(rsid, data[["rsid"]]), ][["chr"]]
-  # 4. subset the other chromosomes by this chromosome
-  data <- data[grep(rsid_chrom, data[["chr"]]), ]
-  # 5. Make LD Matrix
-  LD <- LDlinkR::LDmatrix(snps = data[, 3], pop = c("YRI", "CEU"),
-                          token = "b25a0c38e313", r2d = "r2")
-  LD <- data.frame(LD)
-  rownames(LD) <- LD[,1]
-  LD[,1] <- NULL
-  # 6. Remove missing values.
-  LD <- LD[rowSums(is.na(LD)) != ncol(LD),]
-  LD <- LD[, colSums(is.na(LD)) < nrow(LD)]
-  # 7. Make the heatmap for the LD
-  matrix <- data.matrix(LD[,c(2:length(LD))], rownames.force = NA)
-  gplots::heatmap.2(as.matrix(matrix), Colv="Rowv", trace="none", Rowv = dendro,
-                    scale="none", offsetRow=0.3, offsetCol=0.3, rowsep = c(1:length(matrix)),
-                    colsep = c(1:nrow(matrix)), main = paste("LD Map of ", rsid, sep = ""),
-                    na.rm = FALSE)
+  colnames(rsids_info) <- c("refsnp_id", "chr_name", "ensembl_gene_id",
+                            "start_position_rsid","end_position_rsid")
+  all_info <- merge(rsids_info, gene_info, by = "ensembl_gene_id", all.x = TRUE)
+  res_all <- unique(all_info[,c(6,7,8)])
+
+  genes <- unlist(res_all[["hgnc_symbol"]])
+  # 3D. The variant IDs and names.
+  rsid_pos <- unlist(all_info[["start_position_rsid"]])
+  rsid <- unlist(all_info[["refsnp_id"]])
+  # 3E. The width of each gene.
+  gene_width <- unlist(unique(res_all[["start_position"]]))
+
+  # 4. Get all the information into the same dataset restricted by the origional data
+  get_output <- as.data.frame(lapply(get_output, unlist))
+  colnames(get_output) <- gsub("variation2", "refsnp_id", colnames(get_output))
+  all_info <- merge(get_output, all_info, by = "refsnp_id", all.x = TRUE)
+
+  unknown <- subset(all_info, is.na(all_info[["chr_name"]]))
+  unknown <- merge(rsids_unknown, unknown, by = "refsnp_id", all = TRUE)
+
+  # This will contain all information that has a gene and positional information
+  # needed for graphing.
+  all_info <- subset(all_info, is.na(all_info[["chr_name"]]) == FALSE)
+
+  rsid_unknown <- unlist(unknown[["refsnp_id"]])
+
+  rsid_pos_unknown <- c()
+  multi <- 10
+  for(i in 1:length(rsid_unknown)) {
+    rsid_pos_unknown <- c(rsid_pos_unknown, multi)
+    multi <- multi + 10
+  }
+
+  # 5. Get the total width of the gene in a column with the start and end right after the other.
+  all_info <- all_info[order(all_info[["start_position"]]),]
+
+  height_score <- all_info[["r2"]] * 100
+  gene_length_height <- replicate(length(genes), .018)
+
+  height_score_unknown <- unknown[["r2"]] * 100
+  gene_length_height_unknown <- .018
+
+  start <- unlist(unique(all_info[["start_position"]]))
+  stop <- unlist(unique(all_info[["end_position"]]))
+  diff <- stop - start
+
+  # 6. Make the scores much like a heatmap for the gradiant.
+  gradient <- c("#F7FBFF", "#DEEBF7", "#C6DBEF", "#9ECAE1", "#6BAED6",
+                "#4292C6", "#2171B5", "#08519C", "#08306B")
+  all_info$"color_score" <- "#F7FBFF"
+  r2 <- unlist(all_info[["r2"]])
+  rep_col <- c()
+  for(value in r2) {
+    if(value*100 <= 100/length(gradient)) {
+      rep_col <- c(rep_col, "#F7FBFF")
+    }
+    if(value*100 > 100/length(gradient) && value*100 <= 100/length(gradient)*2) {
+      rep_col <- c(rep_col, "#DEEBF7")
+    }
+    if(value*100 > 100/length(gradient)*2 && value*100 <= 100/length(gradient)*3) {
+      rep_col <- c(rep_col, "#C6DBEF")
+    }
+    if(value*100 > 100/length(gradient)*3 && value*100 <= 100/length(gradient)*4) {
+      rep_col <- c(rep_col, "#9ECAE1")
+    }
+    if(value*100 > 100/length(gradient)*4 && value*100 <= 100/length(gradient)*5) {
+      rep_col <- c(rep_col, "#6BAED6")
+    }
+    if(value*100 > 100/length(gradient)*5 && value*100 <= 100/length(gradient)*6) {
+      rep_col <- c(rep_col, "#4292C6")
+    }
+    if(value*100 > 100/length(gradient)*6 && value*100 <= 100/length(gradient)*7) {
+      rep_col <- c(rep_col, "#2171B5")
+    }
+    if(value*100 > 100/length(gradient)*7 && value*100 <= 100/length(gradient)*8) {
+      rep_col <- c(rep_col, "#08519C")
+    }
+    if(value*100 > 100/length(gradient)*8 && value*100 <= 100/length(gradient)*9) {
+      rep_col <- c(rep_col, "#08306B")
+    }
+  }
+  all_info[["color_score"]] <- rep_col
+
+  all_info <- all_info[order(all_info[["start_position"]]),]
+  genes <- unique(unlist(all_info[["hgnc_symbol"]]))
+
+  # 7. Make the GRanges and plot the track.
+  lolliplot_vargen <- GenomicRanges::GRanges(chrom, IRanges::IRanges(rsid_pos, width = 1, names = rsid))
+  lolliplot_vargen_unknown <- GenomicRanges::GRanges(chrom, IRanges::IRanges(rsid_pos_unknown, width = 1, names = rsid_unknown))
+  features <- GenomicRanges::GRanges(chrom, IRanges::IRanges(c(start),
+                                                             width = c(diff),
+                                                             names = genes))
+  features_unknown <- GenomicRanges::GRanges(chrom, IRanges::IRanges(c(1, max(rsid_pos_unknown)+10)))
+  # 8. Get the colors for the sections, ends, and the caps.
+  colors <- colorspace::qualitative_hcl((length(genes)), palette = "Set 3")
+  lolliplot_vargen$dashline.col <- lolliplot_vargen$color
+
+  lolliplot_vargen$color <- all_info[["color_score"]]
+  lolliplot_vargen_unknown$color <- unknown[["color_score"]]
+
+  temp <- cbind(genes, colors)
+  colnames(temp) <- c("hgnc_symbol", "colors")
+  all_info <- merge(all_info, temp, by = "hgnc_symbol")
+  all_info <- all_info[order(all_info[["start_position"]]),]
+
+  label.parameter.gp.col <- grid::gpar(col = all_info[["colors"]])
+  lolliplot_vargen$label.parameter.gp <- label.parameter.gp.col
+
+  # 9. Change the height.
+  lolliplot_vargen$score <- height_score
+  features$height <- gene_length_height
+  lolliplot_vargen_unknown$score <- height_score_unknown
+  features_unknown$height <- gene_length_height_unknown
+
+  # 10. Get the overlap of the genes and make separate layers for each one by finding
+  # if the start and stop lengths have an overlap.  If they do, then they are
+  # separated into different layers.
+  pos <- c() # Holds the positions that are overlaped.
+  ranges <- split(IRanges::IRanges(all_info[["start_position"]],
+                                   all_info[["end_position"]]),
+                  all_info[["hgnc_symbol"]])
+  for(gr1 in ranges) {
+    for(gr2 in ranges) {
+      overlap <- IRanges::findOverlaps(gr1, gr2)
+      if(length(overlap) != 0 && gr1 != gr2) {
+        temp <- data.frame(gr2)
+        pos <- c(pos, temp[1,1])
+        temp <- data.frame(gr1)
+        pos <- c(pos, temp[1,1])
+      }
+    }
+  }
+  pos <- unique(pos)
+  # Holds the unique genes that are overlaped.
+  gene_overlap <- unique(subset(all_info,
+                                all_info[["start_position"]] == pos)[,c("hgnc_symbol")])
+
+  # 11. Make the GRanges with each of the genes that overlap not geing on the same layers.
+  features <- GenomicRanges::GRanges(c(seqnames = NULL, ranges = NULL, strand = NULL)) # Holds the feature layers
+  genes <- genes[!(genes %in% gene_overlap)]
+  colors <- c()
+  layerIDs <- c()
+  for(gene in gene_overlap) {
+    # Add gene to the genes vector
+    genes <- c(genes, gene)
+    # Subset the information
+    all_info_ss <- all_info[all_info[["hgnc_symbol"]] %in% genes, ]
+    start <- unlist(unique(all_info_ss[["start_position"]]))
+    stop <- unlist(unique(all_info_ss[["end_position"]]))
+    diff <- stop - start
+
+    genes <- unique(all_info_ss[["hgnc_symbol"]])
+    colors <- c(colors, unique(all_info_ss[["colors"]]))
+
+    feature <- GenomicRanges::GRanges(chrom, IRanges::IRanges(c(start),
+                                                              width = c(diff),
+                                                              names = genes))
+    # Add features to the vector
+    features <- c(features, feature)
+    layerIDs <- c(layerIDs, unique(all_info_ss[["hgnc_symbol"]]))
+  }
+
+  features$fill <- c(colors)
+
+  # 12. Make the table for the Unknown variants that are still linking. These
+  # Variants do not have positional data usable in a manner on this plot and as
+  # such should not be represented in the positional graph. They are instead
+  # put into a table with a separate warning for the user and displayed below.
+  unknown <- cbind(unknown[1], unknown[2], unknown[4], unknown[5], unknown[8])
+  colnames(unknown) <- c("SNP", "Chomosome", "Gene_Start", "Gene_Stop", "r2")
+  unknown$"Reason" <- "*** No position was found in data for SNP on the gene ***"
+  # Make a table Grob with the gridExtra package.
+  table <- gridExtra::tableGrob(unknown)
+
+  features$featureLayerID <- paste("tx", layerIDs, sep = "_")
+  # 12. Change the axis to fit the data.
+  xaxis <- c(start, (start[length(start)] + diff[length(diff)]))
+  # 13. Make the file for the output of the pdf if the boolean is True. The
+  # output which the file will be saved is the current working directory.
+  if(tableOff == FALSE){
+    if(pdf_out == TRUE) {
+      pdf(file = paste0(getwd(), "lolliplot_vargen", sep = ""), paper = "a4")
+
+      if(xaxis_show == TRUE) {
+        trackViewer::lolliplot(lolliplot_vargen, features,
+                               legend = legend, xaxis = xaxis)
+      } else {
+        trackViewer::lolliplot(lolliplot_vargen, features,
+                               legend = legend, xaxis = FALSE)
+      }
+      grid::grid.text(title, x = .5, y = .98, just = "top",
+                      gp = grid::gpar(cex = 1.5, fontface = "bold"))
+      lolli <- grid::grid.grab()
+      cowplot::plot_grid(lolli, table)
+      dev.off()
+    } else {
+      if(xaxis_show == TRUE) {
+        trackViewer::lolliplot(lolliplot_vargen, features,
+                               legend = legend, xaxis = xaxis)
+      } else {
+        trackViewer::lolliplot(lolliplot_vargen, features,
+                               legend = legend, xaxis = FALSE)
+      }
+      grid::grid.text(title, x = .5, y = .98, just = "top",
+                       gp = grid::gpar(cex = 1.5, fontface = "bold"))
+
+      lolli <- grid::grid.grab()
+      cowplot::plot_grid(lolli, table, ncol = 1)
+    }
+  } else {
+    if(pdf_out == TRUE) {
+        pdf(file = paste0(getwd(), "lolliplot_vargen", sep = ""), paper = "a4")
+
+        trackViewer::lolliplot(lolliplot_vargen, features,
+                               legend = legend, xaxis = xaxis)
+        dev.off()
+    } else {
+      if(xaxis_show == TRUE) {
+          trackViewer::lolliplot(lolliplot_vargen, features,
+                                 legend = legend, xaxis = xaxis)
+      } else {
+        trackViewer::lolliplot(lolliplot_vargen, features,
+                               legend = legend, xaxis = FALSE)
+      }
+    }
+  }
 }
 
