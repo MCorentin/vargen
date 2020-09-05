@@ -64,7 +64,7 @@
       print(paste0("Using output directory ", output_dir))
     }
   }
-
+  
   return(output_dir)
 }
 
@@ -92,7 +92,7 @@
     # Only 1 and 0 are selected here as the default is 2 in the program.
     print("No genes were given with gene mode, thus no gene mode can/will be used")
   }
-
+  
   return(gene_mode)
 }
 
@@ -105,7 +105,7 @@
       pval <- NA
     }
   }
-
+  
   return(pval)
 }
 
@@ -115,10 +115,10 @@
     #Separate the bad and good chromosomes
     bad_chrs <- chrs[!(chrs %in% chrs[grep("chr[0-9]", x = chrs)])]
     good_chrs <- chrs[grep("chr[0-9]", x = chrs)]
-
+    
     print(paste0("Chromosomes must be given as a value 'chr3'. Currently given badly as: ",
                  bad_chrs, ". Cleaning up bad entries to fit entry format as possible."))
-
+    
     for(i in 1:length(bad_chrs)){
       if(anyNA(as.double(bad_chrs[i])) == FALSE) {
         bad_chrs[i] <- paste("chr", bad_chrs[i], sep = "")
@@ -136,7 +136,7 @@
                    bad_chrs, ". All chromosomes to be used by default"))
     }
   }
-
+  
   return(chrs)
 }
 
@@ -151,7 +151,7 @@
     traits = NA
     chrs = NA
   }
-
+  
   return(list(rsid, genes, traits, chrs))
 }
 
@@ -164,7 +164,7 @@
     pval_thresh = NA
     pval_thresh_show = 1
   }
-
+  
   return(list(omim, pval_thresh, pval_thresh_show))
 }
 
@@ -179,7 +179,7 @@
   if(is.null(pval_low_col) || is.na(pval_low_col)){
     pval_low_col = "#09873e"
   }
-
+  
   return(list(color, pval_low_col, pval_high_col))
 }
 
@@ -189,7 +189,7 @@
     print(paste0("parameter: ", show_pval_thresh, " is not valid. Set to 1"))
     show_pval_thresh = 1
   }
-
+  
   return(show_pval_thresh)
 }
 
@@ -198,7 +198,7 @@
   if(is.null(trait)) {
     trait = NA
   }
-
+  
   return(trait)
 }
 
@@ -258,7 +258,7 @@
   params[[13]] <- .check_show_pval_thresh(params[[13]])
   # 10. Check that traits not given as null and if so change to be NA.
   params[[3]] <- .check_trait(params[[3]])
-
+  
   return(params)
 }
 
@@ -279,22 +279,22 @@
   }, error = function(e) {
     NULL
   })
-
+  
   ko_ids <- c()
   # 2. Check the values and get the id split form the actual genes
   if(is.null(kegg_genes) == FALSE){
     kegg_id <- kegg_genes[seq(1, length(kegg_genes), by = 2)]
     kegg_info <- kegg_genes[seq(0, length(kegg_genes), 2)]
-
+    
     kegg_info <- sub(";.*\\[KO:", ",", kegg_info)
     kegg_info <- sub(" \\[EC:.*", "", kegg_info)
     kegg_info <- sub("]", "", kegg_info)
     kegg_info <- strsplit(kegg_info, ",")
-
+    
     # Two column dataset with matching ko ids and genes.
     kegg_info <- t(data.frame(kegg_info))
     kegg_info <- data.frame(kegg_info)
-
+    
     return(list(kegg_info[["X1"]],
                 gsub("hsa", "map", kegg_path_id),
                 kegg_id, kegg_info[["X2"]]))
@@ -328,7 +328,7 @@
         }
       }
       variants_traits <- gwascat::subsetByTraits(x = gwas_cat, tr = params[[3]])
-
+      
     } else if(is.na(params[[1]]) == FALSE && is.na(params[[3]])
               && is.na(params[[4]]) == FALSE && is.na(params[[6]])) {
       # Case 2: Restrict the variants by chromosome only.
@@ -347,11 +347,11 @@
         colnames(variants_traits) <- cbind("rsid", "ensembl_gene_id",
                                            "p-value", "mapped_genes",
                                            "reported_genes")
-
+        
         variants_traits <- data.frame(variants_traits)
         variants_single <- subset(variants_traits,
                                   variants_traits[["mapped_genes"]] == params[[6]])
-
+        
         for(i in 1:nrow(variants_traits)) {
           print(paste0("searching ", i, " out of ", nrow(variants_traits), " special cases."))
           inner_genes <- strsplit(variants_traits[["mapped_genes"]], ", ")[[i]]
@@ -362,7 +362,7 @@
           }
         }
         variants_traits <- variants_singlef
-
+        
       } else if(params[[7]] == 0) {
         variants_traits <- cbind(gwas_cat$"SNPS", gwas_cat$"SNP_GENE_IDS",
                                  gwas_cat$"P-VALUE", gwas_cat$"MAPPED_GENE",
@@ -370,11 +370,11 @@
         colnames(variants_traits) <- cbind("rsid", "ensembl_gene_id",
                                            "p-value", "mapped_genes",
                                            "reported_genes")
-
+        
         variants_traits <- data.frame(variants_traits)
         variants_multi <- subset(variants_traits,
                                  variants_traits[["reported_genes"]] == params[[6]])
-
+        
         for(i in 1:nrow(variants_traits)){
           inner_genes <- strsplit(variants_traits[["reported_genes"]], ", ")[[i]]
           if(params[[6]] %in% inner_genes){
@@ -391,13 +391,13 @@
         colnames(variants_traits) <- cbind("rsid", "ensembl_gene_id",
                                            "p-value", "mapped_genes",
                                            "reported_genes")
-
+        
         variants_traits <- data.frame(variants_traits)
         variants_single_reported <- subset(variants_traits,
                                            variants_traits[["reported_genes"]] == params[[6]])
         variants_single_mapped <- subset(variants_traits,
                                          variants_traits[["mapped_genes"]] == params[[6]])
-
+        
         for(i in 1:nrow(variants_traits)){
           print(paste0("searching ", i, " out of ", nrow(variants_traits), " special cases."))
           inner_genes_reported <- strsplit(variants_traits[["reported_genes"]], ", ")[[i]]
@@ -447,11 +447,11 @@
         colnames(variants_info) <- cbind("rsid", "ensembl_gene_id",
                                          "p-value", "mapped_genes",
                                          "reported_genes")
-
+        
         variants_info <- data.frame(variants_info)
         variants_single <- subset(variants_info,
                                   variants_info[["mapped_genes"]] == params[[6]])
-
+        
         for(i in 1:nrow(variants_info)){
           print(paste0("searching ", i, " out of ", nrow(variants_info), " special cases."))
           inner_genes <- strsplit(variants_info[["mapped_genes"]], ", ")[[i]]
@@ -462,7 +462,7 @@
           }
         }
         variants_traits <- variants_single
-
+        
       } else if(params[[7]] == 0) {
         variants_info <- cbind(gwas_cat$"SNPS", gwas_cat$"SNP_GENE_IDS",
                                gwas_cat$"P-VALUE", gwas_cat$"MAPPED_GENE",
@@ -470,11 +470,11 @@
         colnames(variants_info) <- cbind("rsid", "ensembl_gene_id",
                                          "p-value", "mapped_genes",
                                          "reported_genes")
-
+        
         variants_info <- data.frame(variants_info)
         variants_multi <- subset(variants_info,
                                  variants_info[["reported_genes"]] == params[[6]])
-
+        
         for(i in 1:nrow(variants_info)){
           print(paste0("searching ", i, " out of ", nrow(variants_info), " special cases."))
           inner_genes <- strsplit(variants_info[["reported_genes"]], ", ")[[i]]
@@ -492,13 +492,13 @@
         colnames(variants_info) <- cbind("rsid", "ensembl_gene_id",
                                          "p-value", "mapped_genes",
                                          "reported_genes")
-
+        
         variants_info <- data.frame(variants_info)
         variants_single_reported <- subset(variants_info,
                                            variants_info[["reported_genes"]] == params[[6]])
         variants_single_mapped <- subset(variants_info,
                                          variants_info[["mapped_genes"]] == params[[6]])
-
+        
         for(i in 1:nrow(variants_info)){
           print(paste0("searching ", i, " out of ", nrow(variants_info), " special cases."))
           inner_genes_reported <- strsplit(variants_info[["reported_genes"]], ", ")[[i]]
@@ -532,11 +532,11 @@
         colnames(variants_info) <- cbind("rsid", "ensembl_gene_id",
                                          "p-value", "mapped_genes",
                                          "reported_genes")
-
+        
         variants_info <- data.frame(variants_info)
         variants_single <- subset(variants_info,
                                   variants_info[["mapped_genes"]] == params[[6]])
-
+        
         for(i in 1:nrow(variants_info)){
           print(paste0("searching ", i, " out of ", nrow(variants_info), " special cases."))
           inner_genes <- strsplit(variants_info[["mapped_genes"]], ", ")[[i]]
@@ -547,7 +547,7 @@
           }
         }
         variants_traits <- variants_single
-
+        
       }
       else if(params[[7]] == 0) {
         variants_info <- cbind(gwas_cat$"SNPS", gwas_cat$"SNP_GENE_IDS",
@@ -556,11 +556,11 @@
         colnames(variants_info) <- cbind("rsid", "ensembl_gene_id",
                                          "p-value", "mapped_genes",
                                          "reported_genes")
-
+        
         variants_info <- data.frame(variants_info)
         variants_multi <- subset(variants_info,
                                  variants_info[["reported_genes"]] == params[[6]])
-
+        
         for(i in 1:nrow(variants_info)){
           print(paste0("searching ", i, " out of ", nrow(variants_info), " special cases."))
           inner_genes <- strsplit(variants_info[["reported_genes"]], ", ")[[i]]
@@ -578,13 +578,13 @@
         colnames(variants_info) <- cbind("rsid", "ensembl_gene_id",
                                          "p-value", "mapped_genes",
                                          "reported_genes")
-
+        
         variants_info <- data.frame(variants_info)
         variants_single_reported <- subset(variants_info,
                                            variants_info[["reported_genes"]] == params[[6]])
         variants_single_mapped <- subset(variants_info,
                                          variants_info[["mapped_genes"]] == params[[6]])
-
+        
         for(i in 1:nrow(variants_info)){
           print(paste0("searching ", i, " out of ", nrow(variants_info), " special cases."))
           inner_genes_reported <- strsplit(variants_info[["reported_genes"]], ", ")[[i]]
@@ -618,11 +618,11 @@
         colnames(variants_info) <- cbind("rsid", "ensembl_gene_id",
                                          "p-value", "mapped_genes",
                                          "reported_genes")
-
+        
         variants_info <- data.frame(variants_info)
         variants_single <- subset(variants_info,
                                   variants_info[["mapped_genes"]] == params[[6]])
-
+        
         for(i in 1:nrow(variants_info)){
           print(paste0("searching ", i, " out of ", nrow(variants_info), " special cases."))
           inner_genes <- strsplit(variants_info[["mapped_genes"]], ", ")[[i]]
@@ -633,7 +633,7 @@
           }
         }
         variants_traits <- variants_single
-
+        
       }
       else if(params[[7]] == 0) {
         variants_info <- cbind(gwas_cat$"SNPS", gwas_cat$"SNP_GENE_IDS",
@@ -642,11 +642,11 @@
         colnames(variants_info) <- cbind("rsid", "ensembl_gene_id",
                                          "p-value", "mapped_genes",
                                          "reported_genes")
-
+        
         variants_info <- data.frame(variants_info)
         variants_multi <- subset(variants_info,
                                  variants_info[["reported_genes"]] == params[[6]])
-
+        
         for(i in 1:nrow(variants_info)){
           print(paste0("searching ", i, " out of ", nrow(variants_info), " special cases."))
           inner_genes <- strsplit(variants_info[["reported_genes"]], ", ")[[i]]
@@ -664,13 +664,13 @@
         colnames(variants_info) <- cbind("rsid", "ensembl_gene_id",
                                          "p-value", "mapped_genes",
                                          "reported_genes")
-
+        
         variants_info <- data.frame(variants_info)
         variants_single_reported <- subset(variants_info,
                                            variants_info[["reported_genes"]] == params[[6]])
         variants_single_mapped <- subset(variants_info,
                                          variants_info[["mapped_genes"]] == params[[6]])
-
+        
         for(i in 1:nrow(variants_info)){
           print(paste0("searching ", i, " out of ", nrow(variants_info), " special cases."))
           inner_genes_reported <- strsplit(variants_info[["reported_genes"]], ", ")[[i]]
@@ -703,7 +703,7 @@
       variants_traits_chrs <- gwascat::subsetByChromosome(x = variants_traits, ch = params[[4]])
       variants_traits_chrs <- variants_traits_chrs[which(IRanges::overlapsAny(variants_traits_chrs,
                                                                               gwas_cat))]
-
+      
       if(params[[7]] == 1){
         variants_info <- cbind(variants_traits$"SNPS", variants_traits$"SNP_GENE_IDS",
                                variants_traits$"P-VALUE", variants_traits$"MAPPED_GENE",
@@ -711,11 +711,11 @@
         colnames(variants_info) <- cbind("rsid", "ensembl_gene_id",
                                          "p-value", "mapped_genes",
                                          "reported_genes")
-
+        
         variants_info <- data.frame(variants_info)
         variants_single <- subset(variants_info,
                                   variants_info[["mapped_genes"]] == params[[6]])
-
+        
         for(i in 1:nrow(variants_info)){
           print(paste0("searching ", i, " out of ", nrow(variants_info), " special cases."))
           inner_genes <- strsplit(variants_info[["mapped_genes"]], ", ")[[i]]
@@ -726,7 +726,7 @@
           }
         }
         variants_traits <- variants_single
-
+        
       } else if(params[[7]] == 0) {
         variants_info <- cbind(gwas_cat$"SNPS", gwas_cat$"SNP_GENE_IDS",
                                gwas_cat$"P-VALUE", gwas_cat$"MAPPED_GENE",
@@ -734,11 +734,11 @@
         colnames(variants_info) <- cbind("rsid", "ensembl_gene_id",
                                          "p-value", "mapped_genes",
                                          "reported_genes")
-
+        
         variants_info <- data.frame(variants_info)
         variants_multi <- subset(variants_info,
                                  variants_info[["reported_genes"]] == params[[6]])
-
+        
         for(i in 1:nrow(variants_info)){
           print(paste0("searching ", i, " out of ", nrow(variants_info), " special cases."))
           inner_genes <- strsplit(variants_info[["reported_genes"]], ", ")[[i]]
@@ -756,13 +756,13 @@
         colnames(variants_info) <- cbind("rsid", "ensembl_gene_id",
                                          "p-value", "mapped_genes",
                                          "reported_genes")
-
+        
         variants_info <- data.frame(variants_info)
         variants_single_reported <- subset(variants_info,
                                            variants_info[["reported_genes"]] == params[[6]])
         variants_single_mapped <- subset(variants_info,
                                          variants_info[["mapped_genes"]] == params[[6]])
-
+        
         for(i in 1:nrow(variants_info)){
           print(paste0("searching ", i, " out of ", nrow(variants_info), " special cases."))
           inner_genes_reported <- strsplit(variants_info[["reported_genes"]], ", ")[[i]]
@@ -912,13 +912,13 @@
       fg <- matched_info[[2]]
       bg <- matched_info[[3]]
       ko_matched <- matched_info[[4]]
-
+      
       matched_info <- .mapped_high_paths_info_helper(kegg_paths_high, kegg_genes, ko_ids, pval_high_col)
       matched <- c(matched, matched_info[[1]])
       fg <- c(fg, matched_info[[2]])
       bg <- c(bg, matched_info[[3]])
       ko_matched <- c(ko_matched, matched_info[[4]])
-
+      
       if(length(kegg_paths_mixed) != 0) {
         matched_info <- .mapped_mixed_paths_info_helper(kegg_paths_mixed, kegg_genes, ko_ids, pval_mix_col)
         matched <- c(matched, matched_info[[1]])
@@ -940,13 +940,13 @@
       fg <- matched_info[[2]]
       bg <- matched_info[[3]]
       ko_matched <- matched_info[[4]]
-
+      
       matched_info <- .reported_high_paths_info_helper(kegg_paths_high, kegg_genes, ko_ids, pval_high_col)
       matched <- c(matched, matched_info[[1]])
       fg <- c(fg, matched_info[[2]])
       bg <- c(bg, matched_info[[3]])
       ko_matched <- c(ko_matched, matched_info[[4]])
-
+      
       if(length(kegg_paths_mixed) != 0) {
         matched_info <- .reported_mixed_paths_info_helper(kegg_paths_mixed, kegg_genes, ko_ids, pval_mix_col)
         matched <- c(matched, matched_info[[1]])
@@ -961,13 +961,13 @@
       fg <- matched_info[[2]]
       bg <- matched_info[[3]]
       ko_matched <- matched_info[[4]]
-
+      
       matched_info <- .reported_info_helper(kegg_paths, kegg_genes, ko_ids, color)
       matched <- c(matched, matched_info[[1]])
       fg <- c(fg, matched_info[[2]])
       bg <- c(bg, matched_info[[3]])
       ko_matched <- c(ko_matched, matched_info[[4]])
-
+      
       if(length(kegg_paths_mixed) != 0) {
         matched_info <- .reported_mixed_paths_info_helper(kegg_paths_mixed, kegg_genes, ko_ids, pval_mix_col)
         matched <- c(matched, matched_info[[1]])
@@ -982,13 +982,13 @@
       fg <- matched_info[[2]]
       bg <- matched_info[[3]]
       ko_matched <- matched_info[[4]]
-
+      
       matched_info <- .mapped_high_paths_info_helper(kegg_paths_high, kegg_genes, ko_ids, pval_high_col)
       matched <- c(matched, matched_info[[1]])
       fg <- c(fg, matched_info[[2]])
       bg <- c(bg, matched_info[[3]])
       ko_matched <- c(ko_matched, matched_info[[4]])
-
+      
       if(length(kegg_paths_mixed) != 0) {
         matched_info <- .mapped_mixed_paths_info_helper(kegg_paths_mixed, kegg_genes, ko_ids, pval_mix_col)
         matched <- c(matched, matched_info[[1]])
@@ -996,19 +996,19 @@
         bg <- c(bg, matched_info[[3]])
         ko_matched <- c(ko_matched, matched_info[[4]])
       }
-
+      
       matched_info <- .reported_low_paths_info_helper(kegg_paths_low, kegg_genes, ko_ids, pval_low_col)
       matched <- c(matched, matched_info[[1]])
       fg <- c(fg, matched_info[[2]])
       bg <- c(bg, matched_info[[3]])
       ko_matched <- c(ko_matched, matched_info[[4]])
-
+      
       matched_info <- .reported_high_paths_info_helper(kegg_paths_high, kegg_genes, ko_ids, pval_high_col)
       matched <- c(matched, matched_info[[1]])
       fg <- c(fg, matched_info[[2]])
       bg <- c(bg, matched_info[[3]])
       ko_matched <- c(ko_matched, matched_info[[4]])
-
+      
       if(length(kegg_paths_mixed) != 0) {
         matched_info <- .reported_mixed_paths_info_helper(kegg_paths_mixed, kegg_genes, ko_ids, pval_mix_col)
         matched <- c(matched, matched_info[[1]])
@@ -1018,7 +1018,7 @@
       }
     }
   }
-
+  
   return(list(matched, fg, bg,  ko_matched))
 }
 
@@ -1057,10 +1057,10 @@
       }
     }
   }
-
+  
   fg <- replicate(length(matched), color)
   bg <- replicate(length(matched), "#000000")
-
+  
   return(list(matched, fg, bg, ko_matched))
 }
 
@@ -1078,7 +1078,7 @@
   matched <- c()
   index <- c()
   ko_matched <- c()
-
+  
   for (i in 1:length(unique(data[["hgnc_symbol"]]))) {
     if (anyNA(match(unique(data[["hgnc_symbol"]])[i], unlist(kegg_genes))) == FALSE) {
       index <- c(index, match(unique(data[["hgnc_symbol"]])[i], unlist(kegg_genes)))
@@ -1088,10 +1088,10 @@
       }
     }
   }
-
+  
   fg <- replicate(length(matched), color)
   bg <- replicate(length(matched), "#000000")
-
+  
   return(list(matched, fg, bg, ko_matched))
 }
 
@@ -1116,10 +1116,10 @@
       }
     }
   }
-
+  
   fg <- replicate(length(matched), color)
   bg <- replicate(length(matched), "#000000")
-
+  
   return(list(matched, fg, bg, ko_matched))
 }
 
@@ -1146,10 +1146,10 @@
       }
     }
   }
-
+  
   fg <- replicate(length(matched), color)
   bg <- replicate(length(matched), "#000000")
-
+  
   return(list(matched, fg, bg, ko_matched))
 }
 
@@ -1176,10 +1176,10 @@
       }
     }
   }
-
+  
   fg_low <- replicate(length(matched), pval_low_col)
   bg_low <- replicate(length(matched), "#000000")
-
+  
   return(list(matched, fg_low, bg_low, ko_matched))
 }
 
@@ -1206,10 +1206,10 @@
       }
     }
   }
-
+  
   fg_low <- replicate(length(matched), pval_mixed_col)
   bg_low <- replicate(length(matched), "#000000")
-
+  
   return(list(matched, fg_low, bg_low, ko_matched))
 }
 
@@ -1236,10 +1236,10 @@
       }
     }
   }
-
+  
   fg_low <- replicate(length(matched), pval_low_col)
   bg_low <- replicate(length(matched), "#000000")
-
+  
   return(list(matched, fg_low, bg_low, ko_matched))
 }
 
@@ -1266,10 +1266,10 @@
       }
     }
   }
-
+  
   fg_high <- replicate(length(matched), pval_high_col)
   bg_high <- replicate(length(matched), "#000000")
-
+  
   return(list(matched, fg_high, bg_high, ko_matched))
 }
 
@@ -1296,10 +1296,10 @@
       }
     }
   }
-
+  
   fg_low <- replicate(length(matched), pval_mixed_col)
   bg_low <- replicate(length(matched), "#000000")
-
+  
   return(list(matched, fg_low, bg_low, ko_matched))
 }
 
@@ -1326,10 +1326,10 @@
       }
     }
   }
-
+  
   fg_high <- replicate(length(matched), pval_high_col)
   bg_high <- replicate(length(matched), "#000000")
-
+  
   return(list(matched, fg_high, bg_high, ko_matched))
 }
 
@@ -1348,10 +1348,10 @@ get_LD_populations <- function() {
                         httr::content_type("application/json"))
       data <- jsonlite::fromJSON(jsonlite::toJSON(httr::content(data)))
       data <- data.frame(data, do.call(rbind, stringr::str_split(data[["name"]], ":")))
-
+      
       data <- data[, c(2,6)]
       colnames(data) <- c("Description", "Code")
-
+      
       return(data)
     },
     error = function(UnableToRetrieveDataError) {
@@ -1359,7 +1359,7 @@ get_LD_populations <- function() {
                    "form the site or couldn't be formatted from url ",
                    "'https://rest.ensembl.org/info/variation/populations/homo_sapiens?filter=LD'.",
                    sep = ""))
-
+      
       print(paste0("R thown error:"))
       message(UnableToRetrieveDataError)
     }
@@ -1384,19 +1384,19 @@ get_LD_scores <- function(rsid, pop_code, d_prime_thresh = NULL) {
   tryCatch(
     {
       get_output <- httr::GET(paste0("https://rest.ensembl.org/ld/human/",
-                                       rsid, "/1000GENOMES:phase_3:", pop_code,
-                                       "?", sep = ""),
-                                httr::content_type("application/json"))
+                                     rsid, "/1000GENOMES:phase_3:", pop_code,
+                                     "?", sep = ""),
+                              httr::content_type("application/json"))
       get_output <- data.frame(jsonlite::fromJSON(jsonlite::toJSON(httr::content(get_output))))
-
+      
       get_output$r2 <- as.numeric(as.character(get_output$r2))
       get_output$r2 <- as.numeric(as.character(get_output$d_prime))
-
+      
       # 2. Restrict the dataset by the D' value.
       if(is.null(d_prime_thresh) == FALSE) {
         get_output <- subset(get_output, get_output$d_prime >= d_prime_thresh)
       }
-
+      
       return(get_output)
     },
     error = function(UnableToRetrieveDataError) {
@@ -1474,18 +1474,18 @@ kegg_search_graph <- function(vargen_dir = NA, output_dir = NA, traits = NA, chr
       print(paste("Number of variants found with current restictions: ", length(variants_traits)))
     }
   }
-
+  
   # 4. Get KEGG pathways for the filtered variants above.
   if(length(variants_traits) != 0  &&
      (length(!(variants_traits$"SNP_GENE_IDS" %in% "")) != 0 ||
       length(!(variants_traits$"ensembl_gene_id" %in% "")) != 0)) {
     if(is.na(params[[14]])) {
       if(is.na(omim_ids) == FALSE) {
-      kegg_paths <- biomaRt::getBM(
-        attributes = c("kegg_enzyme", "ensembl_gene_id"),
-        filters = c("ensembl_gene_id"),
-        values = variants_traits$"ensembl_gene_id",
-        mart = connect_to_gene_ensembl(), uniqueRows = TRUE)
+        kegg_paths <- biomaRt::getBM(
+          attributes = c("kegg_enzyme", "ensembl_gene_id"),
+          filters = c("ensembl_gene_id"),
+          values = variants_traits$"ensembl_gene_id",
+          mart = connect_to_gene_ensembl(), uniqueRows = TRUE)
       } else {
         kegg_paths <- biomaRt::getBM(
           attributes = c("kegg_enzyme", "ensembl_gene_id"),
@@ -1511,7 +1511,7 @@ kegg_search_graph <- function(vargen_dir = NA, output_dir = NA, traits = NA, chr
   } else {
     stop(print("No variants found for given restrictions."))
   }
-
+  
   # 5. Make the directory and title as fit given the parameter inputs.
   if(nrow(kegg_paths) == 0 || is.na(unique(kegg_paths[["kegg_enzyme"]])[1])){
     stop(paste0("No KEGG pathways found.  Try broading the search."))
@@ -1523,7 +1523,7 @@ kegg_search_graph <- function(vargen_dir = NA, output_dir = NA, traits = NA, chr
     if(is.na(params[[5]])) {
       titleKey <- TRUE
     }
-
+    
     # Get the information out of the grange.
     if(is.na(params[[14]])) {
       variant_info <- cbind(variants_traits$"SNPS", variants_traits$"SNP_GENE_IDS",
@@ -1537,7 +1537,7 @@ kegg_search_graph <- function(vargen_dir = NA, output_dir = NA, traits = NA, chr
       variant_info <- merge(x = variants_traits, y = kegg_paths,
                             by = "ensembl_gene_id", all.x = TRUE)
     }
-
+    
     # 6. Subset and restrict the variants by the pathways and the p-values.
     # In this section the genes are also gone through for each mode (either
     # reported, mapped or both) as well.
@@ -1547,18 +1547,18 @@ kegg_search_graph <- function(vargen_dir = NA, output_dir = NA, traits = NA, chr
     kegg_paths <- subset(variant_info, is.na(variant_info[["kegg_enzyme"]]) == FALSE)
     kegg_paths <- subset(kegg_paths, kegg_paths[["kegg_enzyme"]] != "")
     print(paste("Number of KEGG pathways found for variants via the kegg api: ", nrow(kegg_paths)))
-
+    
     # 6.2 Get the values that are missing KEGG pathways.
     kegg_paths_na <- subset(variant_info, is.na(variant_info[["kegg_enzyme"]]) == TRUE)
     kegg_paths_na <- subset(kegg_paths_na, kegg_paths_na[["kegg_enzyme"]] != "")
-
+    
     if(is.na(params[[9]]) == FALSE){
       kegg_paths_na <- subset(kegg_paths_na, kegg_paths_na[["p_value"]] >= is.na(params[[9]]))
     }
     # 6.3 Write output to text file in same directory of values not found with KEGG pathways
     # in the next for loop.
     file_out <- file(paste(output_dir, "variants_without_kegg.txt"))
-
+    
     kegg_paths_low <- kegg_paths
     kegg_paths_high <- kegg_paths
     kegg_paths_mixed <- c()
@@ -1573,7 +1573,7 @@ kegg_search_graph <- function(vargen_dir = NA, output_dir = NA, traits = NA, chr
         # 6.4.1 Find the values in the high and low categories.
         kegg_paths_high <- kegg_paths[which(kegg_paths[["p_value"]] >= params[[9]]), ]
         kegg_paths_low <- kegg_paths[which(kegg_paths[["p_value"]] < params[[9]]), ]
-
+        
         # 6.4.2 Find if there were any intersection between them and if there were remove and
         # add them to the mixed paths.
         intersect <- intersect(kegg_paths_high[["rsid"]], kegg_paths_low[["rsid"]])
@@ -1581,22 +1581,22 @@ kegg_search_graph <- function(vargen_dir = NA, output_dir = NA, traits = NA, chr
           kegg_paths_mixed.1 <- subset(kegg_paths_high, kegg_paths_high[["rsid"]] %in% intersect[["rsid"]])
           kegg_paths_mixed.2 <- subset(kegg_paths_low, kegg_paths_low[["rsid"]] %in% intersect[["rsid"]])
           kegg_paths_mixed <- merge(kegg_paths_mixed.1, kegg_paths_mixed.2, by = "rsid")
-
+          
           kegg_paths_high[!kegg_paths_high[["rsid"]] %in% intersect[["rsid"]],]
           kegg_paths_low[!kegg_paths_low[["rsid"]] %in% intersect[["rsid"]],]
         }
-
+        
       } else {
         kegg_paths <- kegg_paths[which(kegg_paths[["p_value"]] < params[[9]]), ]
       }
     }
-
+    
     if(nrow(kegg_paths) == 0){
       writeLines(c(variant_info[["rsid"]][cnt]), file_out)
       print("No KEGG pathways available for this search request. Try broading search if possible.")
       print(paste0("File written in"), getwd())
     }
-
+    
     # 7. Output KEGG pathways for each pathway in the output directory
     # assuming it doesn't already exist. Also write the file containing
     # the rsids that were aquired by filtered out due to the p-value
@@ -1608,7 +1608,7 @@ kegg_search_graph <- function(vargen_dir = NA, output_dir = NA, traits = NA, chr
       kegg_genes <- kegg_info[1]
       kegg_path_id <- kegg_info[2]
       ko_ids <- kegg_info[4]
-
+      
       fg <- c()
       bg <- c()
       matched <- c()
@@ -1620,12 +1620,12 @@ kegg_search_graph <- function(vargen_dir = NA, output_dir = NA, traits = NA, chr
                                              color, params, kegg_paths_low, kegg_paths_high,
                                              pval_low_col, pval_high_col, fg, bg, ko_ids,
                                              ko_matched, kegg_paths_mixed, pval_mix_col)
-
+        
         matched <- final_info[[1]]
         fg <- final_info[[2]]
         bg <- final_info[[3]]
         ko_matched <- final_info[[4]]
-
+        
       } else {
         final_info <- .get_final_output_omim(index, matched, kegg_paths, kegg_genes,
                                              color, params, fg, bg, ko_ids,
@@ -1635,45 +1635,45 @@ kegg_search_graph <- function(vargen_dir = NA, output_dir = NA, traits = NA, chr
         bg <- final_info[[3]]
         ko_matched <- final_info[[4]]
       }
-
+      
       # 7.3 Make sure that some value is found so that a pathway can be made.
       if (is.null(unlist(kegg_genes)) == FALSE
           && identical(unlist(kegg_genes), character(0)) == FALSE
           && length(unlist(kegg_genes, use.names=FALSE)) != 0
           && length(matched) != 0) {
-
+        
         matched <- unlist(matched)
         fg <- unlist(fg)
         bg <- unlist(bg)
-
+        
         df <- data.frame(unlist(kegg_genes), unlist(kegg_info[[3]]))
         df <- df[is.element(df$"unlist.kegg_genes.", matched),]
         colnames(df) <- cbind("matched", "id")
-
+        
         # Get unique fg and bg colors for the macthed information as duplicated can occur if reported
         # and mapped have same information.
         temp_df <- data.frame(matched, fg, bg, ko_matched)
         df <- merge(x = df, y = temp_df[!duplicated(temp_df[["matched"]]), ], by = "matched", all.x = TRUE)
-
+        
         temp <- df[["id"]]
         for(i in 1:length(df[["id"]])) {
           temp[i] <- paste("hsa:", df[["id"]][i], sep = "")
         }
         kegg_id <- temp
-
+        
         kegg_genes <- df[["matched"]]
         fg <- df[["fg"]]
         bg <- df[["bg"]]
         ko_matched <- df[["ko_matched"]]
-
+        
         print(paste0("Number of unique variants found for pathway ", kegg_pathway, " : ", length(kegg_genes)))
-
+        
         if(length(ko_matched) != 0) {
           url <- KEGGREST::color.pathway.by.objects(paste("path:", kegg_path_id, sep = ""),
                                                     unlist(ko_matched),
                                                     fg.color.list = unlist(fg),
                                                     bg.color.list = unlist(bg))
-
+          
           # 6.4 Make the correct titles for each of the pathways.
           if (titleKey == TRUE) {
             title <- paste0("hsa_", kegg_path_id, "_kegg.png")
@@ -1682,7 +1682,7 @@ kegg_search_graph <- function(vargen_dir = NA, output_dir = NA, traits = NA, chr
               title <- paste0(cnt, "_", title)
             }
           }
-
+          
           if (file.exists(paste(output_dir, title, sep = ""))) {
             file_cnt <- sapply(output_dir, function(output_dir) {
               length(list.files(output_dir, pattern = title))
@@ -1725,15 +1725,15 @@ kegg_vargen_graph <- function(data, output_dir = NULL, color = "#da8cde") {
   # 1. Check the dataset and the output directory.  Make the directory if necessary.
   .check_dataframe(data)
   output_dir <- .check_output_dir(output_dir, "KEGG_images")
-
+  
   kegg_paths <- biomaRt::getBM(
     attributes = c("kegg_enzyme", "ensembl_gene_id", "entrezgene_id"),
     filters = c("ensembl_gene_id"),
     values = data[["ensembl_gene_id"]],
     mart = connect_to_gene_ensembl(), uniqueRows = TRUE)
-
+  
   variants_info <- c()
-
+  
   if(length(unique(kegg_paths[["kegg_enzyme"]])) != 1) {
     variants_info <- merge(data[, c(1,4:5)], kegg_paths, by = c("ensembl_gene_id"),
                            all.x = TRUE)
@@ -1755,14 +1755,14 @@ kegg_vargen_graph <- function(data, output_dir = NULL, color = "#da8cde") {
   } else if(na(unique(kegg_paths[["kegg_enzyme"]])[1]) && length(unique(kegg_paths[["kegg_enzyme"]])) == 1) {
     stop(paste("No KEGG pathways are available for the variants found in the KEGG database"))
   }
-
+  
   for (kegg_pathway in variants_info[["kegg_enzyme"]]) {
     # 4. Get the matching genes.
     kegg_info <- .make_genes(kegg_pathway)
     kegg_genes <- kegg_info[1]
     kegg_path_id <- kegg_info[2]
     ko_ids <- kegg_info[4]
-
+    
     fg <- c()
     bg <- c()
     matched <- c()
@@ -1774,38 +1774,38 @@ kegg_vargen_graph <- function(data, output_dir = NULL, color = "#da8cde") {
     fg <- matched_info[[2]]
     bg <- matched_info[[3]]
     ko_matched <- matched_info[[4]]
-
+    
     if (is.null(unlist(kegg_genes)) == FALSE
         && identical(unlist(kegg_genes), character(0)) == FALSE
         && length(unlist(kegg_genes, use.names=FALSE)) != 0
         && length(matched) != 0) {
-
+      
       matched <- unlist(matched)
       fg <- unlist(fg)
       bg <- unlist(bg)
-
+      
       df <- data.frame(unlist(kegg_genes), unlist(kegg_info[[3]]))
       df <- df[is.element(df$"unlist.kegg_genes.", matched),]
       colnames(df) <- cbind("matched", "id")
-
+      
       # Get unique fg and bg colors for the macthed information as duplicated can occur if reported
       # and mapped have same information.
       temp_df <- data.frame(matched, fg, bg, ko_matched)
       df <- merge(x = df, y = temp_df[!duplicated(temp_df[["matched"]]), ], by = "matched", all.x = TRUE)
-
+      
       temp <- df[["id"]]
       for(i in 1:length(df[["id"]])) {
         temp[i] <- paste("hsa:", df[["id"]][i], sep = "")
       }
       kegg_id <- temp
-
+      
       kegg_genes <- df[["matched"]]
       fg <- df[["fg"]]
       bg <- df[["bg"]]
       ko_matched <- df[["ko_matched"]]
-
+      
       print(paste0("Number of unique variants found for pathway ", kegg_pathway, " : ", length(kegg_genes)))
-
+      
       if(length(ko_matched) != 0) {
         url <- KEGGREST::color.pathway.by.objects(paste("path:", kegg_path_id, sep = ""),
                                                   unlist(ko_matched),
@@ -1837,7 +1837,7 @@ omim_graph_online <- function(type = "linear", omim_id){
   if(is.null(omim_id) || is.na(omim_id)) {
     stop(print("There is no OMIM ID given."))
   }
-
+  
   # 2. Get the url from the OMIM database depending on the omim id.
   if(type %in% c("linear", "l")) {
     url <- paste0("https://omim.org/graph/linear/", omim_id, sep = "")
@@ -1878,7 +1878,7 @@ treemap_graph <- function(data, title = "VarGen Treemap Graph", top_thresh = NUL
   # 1. Check that each of the parameters to see if they are valid.
   # 1.1 Check if the dataset is null, na, or contains no data.
   .check_dataframe(data)
-
+  
   # 1.2 Check if the threshold is a number or can be converted to one if
   # given as a string.
   if(typeof(top_thresh) != "double" && is.na(top_thresh) == FALSE
@@ -1908,8 +1908,8 @@ treemap_graph <- function(data, title = "VarGen Treemap Graph", top_thresh = NUL
   if(ontology != TRUE && is.null(ontol_genes) == FALSE) {
     print("Genes can only be restricted when using ontology mode.")
   }
-
-
+  
+  
   # Option: ontology is being counted or just the number of variants are being counted.
   if(ontology == FALSE) {
     # 2.a Get the count data for the genes.
@@ -1930,7 +1930,7 @@ treemap_graph <- function(data, title = "VarGen Treemap Graph", top_thresh = NUL
     }
     colnames(hgnc_cnt) <- c("Var1", "Var2", "Freq")
   }
-
+  
   # Option: normilization of the variant counts.
   if(mode == "norm") {
     # 2.1.a Get the gene length data for normalization.  All data that doesn't have a start
@@ -1941,7 +1941,7 @@ treemap_graph <- function(data, title = "VarGen Treemap Graph", top_thresh = NUL
                   all.x = TRUE)
     data <- data[!is.na(data[["end_position"]]), ]
     data <- unique(data)
-
+    
     if(length(hgnc_cnt) == 2) {
       # 2.2.a. Normalize the count data.
       colnames(hgnc_cnt) <- c("hgnc_symbol", "Freq")
@@ -1966,20 +1966,20 @@ treemap_graph <- function(data, title = "VarGen Treemap Graph", top_thresh = NUL
       # rounding off the counts.
       hgnc_cnt[["Freq"]] <- round(hgnc_cnt[["Freq"]], digit = 3)
       colnames(hgnc_cnt) <- c("Var1", "Var2", "Freq")
-
+      
       #Check if no positions are found and report it to the user.
       if(is.na(unique(hgnc_cnt[["Freq"]])[1]) && nrow(hgnc_cnt) == 1) {
         stop(print("None of the genes found can be normalized due to not having positional data."))
       }
     }
   }
-
+  
   # Option: restrict by n number of the most hit counts as given by the user.
   if(is.null(top_thresh) == FALSE) {
     hgnc_cnt <- hgnc_cnt[order(-hgnc_cnt[["Freq"]]),]
     hgnc_cnt <- hgnc_cnt[1:top_thresh,]
   }
-
+  
   # 2.3. Alert the user to the genes that were removed due to not having positions
   # if any have been removed during the 'norm' normalization process.
   if(mode == "norm") {
@@ -1991,17 +1991,17 @@ treemap_graph <- function(data, title = "VarGen Treemap Graph", top_thresh = NUL
       print(paste0("There were some genes without positions and couldn't be normalized",
                    " thus were removed: ", removed[["V1"]]))
     }
-
+    
     if(length(na.omit(removed[["V1"]])) == length(na.omit(unique(hgnc_cnt[["Var1"]])))) {
       stop("No genes found with proper elements for this analysis with given data.")
     }
   }
-
+  
   # 3. Add in the labels that include the counts and genes.
   if((length(hgnc_cnt) == 2 && mode == "raw") ||
      (length(hgnc_cnt) == 5 && mode == "norm")) {
     hgnc_cnt$"labels" <- paste(hgnc_cnt[["Var1"]], hgnc_cnt[["Freq"]], sep = ": ")
-
+    
     # 4. Grpah the information gathered for the treemap package.
     if(nrow(hgnc_cnt) != 0) {
       x11()
@@ -2011,7 +2011,7 @@ treemap_graph <- function(data, title = "VarGen Treemap Graph", top_thresh = NUL
     }
   } else {
     hgnc_cnt$"labels" <- paste(hgnc_cnt[["Var1"]], hgnc_cnt[["Freq"]], sep = ": ")
-
+    
     # 4. Graph the information gathered for the treemap package.
     if(nrow(hgnc_cnt) != 0) {
       x11()
@@ -2023,7 +2023,7 @@ treemap_graph <- function(data, title = "VarGen Treemap Graph", top_thresh = NUL
                        ), fontsize.labels = c(14, 11),
                        border.col = c("black","white"), border.lwds = c(5,2),
                        bg.labels = "#abe1f5", fontfamily.labels = c("serif", "sans"))
-
+      
       d3treeR::d3tree(treemap::treemap(dtf = hgnc_cnt, index = c("Var2", "labels"), vSize = "Freq",
                                        type = "value", vColor = "Freq", title = title,
                                        overlap.labels = 0.5, align.labels = list(
@@ -2032,7 +2032,7 @@ treemap_graph <- function(data, title = "VarGen Treemap Graph", top_thresh = NUL
                                        ), fontsize.labels = c(14, 11),
                                        border.col = c("black","white"), border.lwds = c(5,2),
                                        bg.labels = "#abe1f5", fontfamily.labels = c("serif", "sans")))
-
+      
     }
   }
 }
@@ -2079,14 +2079,14 @@ pathview_vargen <- function(data, output_dir = NULL, title = NULL,
                       'topright', or 'bottomright'. The default 'topright' will be used."))
     key_pos <- "topright"
   }
-
+  
   # 2. Get the Entrez IDs and KEGG pathway IDs for each of the variants.
   kegg_paths <- biomaRt::getBM(
     attributes = c("kegg_enzyme", "ensembl_gene_id", "entrezgene_id"),
     filters = c("ensembl_gene_id"),
     values = data[["ensembl_gene_id"]],
     mart = connect_to_gene_ensembl(), uniqueRows = TRUE)
-
+  
   # 3. Merge the datasets together if there are KEGG pathways found.
   variants_info <- c()
   if(is.na(unique(kegg_paths[["kegg_enzyme"]]))) {
@@ -2112,13 +2112,13 @@ pathview_vargen <- function(data, output_dir = NULL, title = NULL,
   }
   hgnc_cnt <- data.frame(table(variants_info[["hgnc_symbol"]]))
   colnames(hgnc_cnt) <- c("hgnc_symbol", "cnts")
-
+  
   # 4. Restrict by the top threshold if it is not null.
   if(is.null(top_thresh) == FALSE) {
     hgnc_cnt <- hgnc_cnt[order(-hgnc_cnt[["cnts"]]),]
     hgnc_cnt <- hgnc_cnt[1:top_thresh,]
   }
-
+  
   # 5. Get the sum of the total genes found, not just those with a pathway.
   # This makes the counts into frequencies.
   sum <- sum( hgnc_cnt[["cnts"]])
@@ -2127,7 +2127,7 @@ pathview_vargen <- function(data, output_dir = NULL, title = NULL,
   }
   # 6. Get the restricted information since pathways are the limiting factor.
   hgnc_cnt <- merge(hgnc_cnt, variants_info, by = "hgnc_symbol", all = TRUE)
-
+  
   # 7. Make the proper input for each of the pathways for the pathview and then create the Pathview images.
   # The gene data is the frequency of the counts of variants found by VarGen with entrez genes IDs as the
   # requested ID.  The pathway id is the kedd_id.
@@ -2138,7 +2138,7 @@ pathview_vargen <- function(data, output_dir = NULL, title = NULL,
     sel_info <- unique(hgnc_cnt[, c(6,2)])
     sel_genes <- as.matrix(sel_info[, 2])
     rownames(sel_genes) <- c(sel_info[, 1])
-
+    
     pathview::pathview(gene.data = sel_genes, pathway.id = kegg_id,
                        gene.idtype = "entrez", species = "hsa",
                        kegg.native = FALSE, key_pos = key_pos,
@@ -2179,27 +2179,33 @@ lolliplot_LD <- function(get_output, title = NULL, pdf_out = FALSE,
   # 1.3 This needs to be removed as it creates unnessary
   # categories if it is included.
   get_output$d_prime <- NULL
-
+  
   # 2. Make a Grange object.
   # 2.1 get the rsids with only their numeric parts.
   get_output$"num_variation2" <- as.numeric(gsub("rs([0-9]+).*",
                                                  "\\1",
                                                  get_output[["variation2"]]))
   get_output <- get_output[order(get_output[["num_variation2"]]),]
-
+  
   # 3. Get the variables needed for the GRanges.
   # 3A. The chromosome information and genes names.
+  snp_mart <- biomaRt::useEnsembl(biomart = "snp",
+                                  host = "www.ensembl.org",
+                                  version = 100,
+                                  dataset = "hsapiens_snp")
+  
   rsids_info <- biomaRt::getBM(
     attributes = c("refsnp_id", "chr_name", "ensembl_gene_stable_id",
                    "chrom_start", "chrom_end"),
     filters = "snp_filter",
     values = unlist(get_output[["variation2"]]),
-    mart = connect_to_snp_ensembl(), uniqueRows = TRUE)
+    mart = snp_mart, uniqueRows = TRUE)
+  
   # 3B.1 Removing variants without any stable gene id and adding them into a separate
   # dataframe to be added to the figure after.
   rsids_unknown <- subset(rsids_info, rsids_info[["ensembl_gene_stable_id"]] == "")
   rsids_info <- subset(rsids_info, rsids_info[["ensembl_gene_stable_id"]] != "")
-
+  
   chrom <- unique(rsids_info[["chr_name"]])
   # 3C. Get the start and stop position for the genes as well as their symbol.
   gene_info <- biomaRt::getBM(
@@ -2207,7 +2213,7 @@ lolliplot_LD <- function(get_output, title = NULL, pdf_out = FALSE,
     filters = "ensembl_gene_id",
     values = rsids_info[["ensembl_gene_stable_id"]],
     mart = connect_to_gene_ensembl(), uniqueRows = TRUE)
-
+  
   cnt <- 1
   rep_col <- c()
   rep_index <- which(gene_info[["hgnc_symbol"]] %in% "")
@@ -2215,53 +2221,63 @@ lolliplot_LD <- function(get_output, title = NULL, pdf_out = FALSE,
     gene_info[["hgnc_symbol"]][[item]] <- paste("Uknown", cnt, sep = "")
     cnt <- cnt + 1
   }
-
+  
   colnames(rsids_info) <- c("refsnp_id", "chr_name", "ensembl_gene_id",
                             "start_position_rsid","end_position_rsid")
   all_info <- merge(rsids_info, gene_info, by = "ensembl_gene_id", all.x = TRUE)
+  all_info$"dup" <- duplicated(all_info[["refsnp_id"]])
+  all_info <- subset(all_info, all_info[["dup"]] == FALSE)
+  
   res_all <- unique(all_info[,c(6,7,8)])
-
+  
   genes <- unlist(res_all[["hgnc_symbol"]])
+  genes <- genes[!is.na(genes)]
+  
   # 3D. The variant IDs and names.
-  rsid_pos <- unlist(all_info[["start_position_rsid"]])
-  rsid <- unlist(all_info[["refsnp_id"]])
+  rsid_pos <- unique(unlist(all_info[["start_position_rsid"]]))
+  rsid <- unique(unlist(all_info[["refsnp_id"]]))
+  
   # 3E. The width of each gene.
   gene_width <- unlist(unique(res_all[["start_position"]]))
-
+  
   # 4. Get all the information into the same dataset restricted by the origional data
   get_output <- as.data.frame(lapply(get_output, unlist))
   colnames(get_output) <- gsub("variation2", "refsnp_id", colnames(get_output))
   all_info <- merge(get_output, all_info, by = "refsnp_id", all.x = TRUE)
-
+  
   unknown <- subset(all_info, is.na(all_info[["chr_name"]]))
   unknown <- merge(rsids_unknown, unknown, by = "refsnp_id", all = TRUE)
-
+  
   # This will contain all information that has a gene and positional information
   # needed for graphing.
   all_info <- subset(all_info, is.na(all_info[["chr_name"]]) == FALSE)
-
+  
   rsid_unknown <- unlist(unknown[["refsnp_id"]])
-
+  
   rsid_pos_unknown <- c()
   multi <- 10
   for(i in 1:length(rsid_unknown)) {
     rsid_pos_unknown <- c(rsid_pos_unknown, multi)
     multi <- multi + 10
   }
-
+  
   # 5. Get the total width of the gene in a column with the start and end right after the other.
   all_info <- all_info[order(all_info[["start_position"]]),]
-
+  
   height_score <- all_info[["r2"]] * 100
   gene_length_height <- replicate(length(genes), .018)
-
+  
   height_score_unknown <- unknown[["r2"]] * 100
   gene_length_height_unknown <- .018
-
+  
   start <- unlist(unique(all_info[["start_position"]]))
   stop <- unlist(unique(all_info[["end_position"]]))
   diff <- stop - start
-
+  
+  start <- start[!is.na(start)]
+  stop <- stop[!is.na(stop)]
+  diff <- diff[!is.na(diff)]
+  
   # 6. Make the scores much like a heatmap for the gradiant.
   gradient <- c("#F7FBFF", "#DEEBF7", "#C6DBEF", "#9ECAE1", "#6BAED6",
                 "#4292C6", "#2171B5", "#08519C", "#08306B")
@@ -2298,38 +2314,41 @@ lolliplot_LD <- function(get_output, title = NULL, pdf_out = FALSE,
     }
   }
   all_info[["color_score"]] <- rep_col
-
+  
   all_info <- all_info[order(all_info[["start_position"]]),]
   genes <- unique(unlist(all_info[["hgnc_symbol"]]))
-
+  genes <- genes[!is.na(genes)]
+  
   # 7. Make the GRanges and plot the track.
   lolliplot_vargen <- GenomicRanges::GRanges(chrom, IRanges::IRanges(rsid_pos, width = 1, names = rsid))
   lolliplot_vargen_unknown <- GenomicRanges::GRanges(chrom, IRanges::IRanges(rsid_pos_unknown, width = 1, names = rsid_unknown))
+  
   features <- GenomicRanges::GRanges(chrom, IRanges::IRanges(c(start),
                                                              width = c(diff),
                                                              names = genes))
+  
   features_unknown <- GenomicRanges::GRanges(chrom, IRanges::IRanges(c(1, max(rsid_pos_unknown)+10)))
   # 8. Get the colors for the sections, ends, and the caps.
   colors <- colorspace::qualitative_hcl((length(genes)), palette = "Set 3")
   lolliplot_vargen$dashline.col <- lolliplot_vargen$color
-
+  
   lolliplot_vargen$color <- all_info[["color_score"]]
   lolliplot_vargen_unknown$color <- unknown[["color_score"]]
-
+  
   temp <- cbind(genes, colors)
   colnames(temp) <- c("hgnc_symbol", "colors")
   all_info <- merge(all_info, temp, by = "hgnc_symbol")
   all_info <- all_info[order(all_info[["start_position"]]),]
-
+  
   label.parameter.gp.col <- grid::gpar(col = all_info[["colors"]])
   lolliplot_vargen$label.parameter.gp <- label.parameter.gp.col
-
+  
   # 9. Change the height.
   lolliplot_vargen$score <- height_score
   features$height <- gene_length_height
   lolliplot_vargen_unknown$score <- height_score_unknown
   features_unknown$height <- gene_length_height_unknown
-
+  
   # 10. Get the overlap of the genes and make separate layers for each one by finding
   # if the start and stop lengths have an overlap.  If they do, then they are
   # separated into different layers.
@@ -2337,6 +2356,7 @@ lolliplot_LD <- function(get_output, title = NULL, pdf_out = FALSE,
   ranges <- split(IRanges::IRanges(all_info[["start_position"]],
                                    all_info[["end_position"]]),
                   all_info[["hgnc_symbol"]])
+  
   for(gr1 in ranges) {
     for(gr2 in ranges) {
       overlap <- IRanges::findOverlaps(gr1, gr2)
@@ -2352,8 +2372,8 @@ lolliplot_LD <- function(get_output, title = NULL, pdf_out = FALSE,
   # Holds the unique genes that are overlaped.
   gene_overlap <- unique(subset(all_info,
                                 all_info[["start_position"]] == pos)[,c("hgnc_symbol")])
-
-  # 11. Make the GRanges with each of the genes that overlap not geing on the same layers.
+  
+  # 11. Make the GRanges with each of the genes that overlap not being on the same layers.
   features <- GenomicRanges::GRanges(c(seqnames = NULL, ranges = NULL, strand = NULL)) # Holds the feature layers
   genes <- genes[!(genes %in% gene_overlap)]
   colors <- c()
@@ -2366,10 +2386,10 @@ lolliplot_LD <- function(get_output, title = NULL, pdf_out = FALSE,
     start <- unlist(unique(all_info_ss[["start_position"]]))
     stop <- unlist(unique(all_info_ss[["end_position"]]))
     diff <- stop - start
-
+    
     genes <- unique(all_info_ss[["hgnc_symbol"]])
     colors <- c(colors, unique(all_info_ss[["colors"]]))
-
+    
     feature <- GenomicRanges::GRanges(chrom, IRanges::IRanges(c(start),
                                                               width = c(diff),
                                                               names = genes))
@@ -2377,9 +2397,9 @@ lolliplot_LD <- function(get_output, title = NULL, pdf_out = FALSE,
     features <- c(features, feature)
     layerIDs <- c(layerIDs, unique(all_info_ss[["hgnc_symbol"]]))
   }
-
+  
   features$fill <- c(colors)
-
+  
   # 12. Make the table for the Unknown variants that are still linking. These
   # Variants do not have positional data usable in a manner on this plot and as
   # such should not be represented in the positional graph. They are instead
@@ -2389,58 +2409,122 @@ lolliplot_LD <- function(get_output, title = NULL, pdf_out = FALSE,
   unknown$"Reason" <- "*** No position was found in data for SNP on the gene ***"
   # Make a table Grob with the gridExtra package.
   table <- gridExtra::tableGrob(unknown)
-
-  features$featureLayerID <- paste("tx", layerIDs, sep = "_")
+  
+  print(start)
+  print(stop)
   # 12. Change the axis to fit the data.
   xaxis <- c(start, (start[length(start)] + diff[length(diff)]))
-  # 13. Make the file for the output of the pdf if the boolean is True. The
-  # output which the file will be saved is the current working directory.
-  if(tableOff == FALSE){
-    if(pdf_out == TRUE) {
-      pdf(file = paste0(getwd(), "lolliplot_vargen", sep = ""), paper = "a4")
-
-      if(xaxis_show == TRUE) {
-        trackViewer::lolliplot(lolliplot_vargen, features,
-                               legend = legend, xaxis = xaxis)
-      } else {
-        trackViewer::lolliplot(lolliplot_vargen, features,
-                               legend = legend, xaxis = FALSE)
-      }
-      grid::grid.text(title, x = .5, y = .98, just = "top",
-                      gp = grid::gpar(cex = 1.5, fontface = "bold"))
-      lolli <- grid::grid.grab()
-      cowplot::plot_grid(lolli, table)
-      dev.off()
-    } else {
-      if(xaxis_show == TRUE) {
-        trackViewer::lolliplot(lolliplot_vargen, features,
-                               legend = legend, xaxis = xaxis)
-      } else {
-        trackViewer::lolliplot(lolliplot_vargen, features,
-                               legend = legend, xaxis = FALSE)
-      }
-      grid::grid.text(title, x = .5, y = .98, just = "top",
-                       gp = grid::gpar(cex = 1.5, fontface = "bold"))
-
-      lolli <- grid::grid.grab()
-      cowplot::plot_grid(lolli, table, ncol = 1)
-    }
-  } else {
-    if(pdf_out == TRUE) {
+  if(is.null(layerIDs) == FALSE) {
+    features$featureLayerID <- paste("tx", layerIDs, sep = "_")
+    # 13. Make the file for the output of the pdf if the boolean is True. The
+    # output which the file will be saved is the current working directory.
+    if(tableOff == FALSE){
+      if(pdf_out == TRUE) {
         pdf(file = paste0(getwd(), "lolliplot_vargen", sep = ""), paper = "a4")
-
+        
+        if(xaxis_show == TRUE) {
+          trackViewer::lolliplot(lolliplot_vargen, features,
+                                 legend = legend, xaxis = xaxis)
+        } else {
+          trackViewer::lolliplot(lolliplot_vargen, features,
+                                 legend = legend, xaxis = FALSE)
+        }
+        grid::grid.text(title, x = .5, y = .98, just = "top",
+                        gp = grid::gpar(cex = 1.5, fontface = "bold"))
+        lolli <- grid::grid.grab()
+        cowplot::plot_grid(lolli, table)
+        dev.off()
+      } else {
+        print("hit3")
+        if(xaxis_show == TRUE) {
+          trackViewer::lolliplot(lolliplot_vargen, features,
+                                 legend = legend, xaxis = xaxis)
+        } else {
+          trackViewer::lolliplot(lolliplot_vargen, features,
+                                 legend = legend, xaxis = FALSE)
+        }
+        grid::grid.text(title, x = .5, y = .98, just = "top",
+                        gp = grid::gpar(cex = 1.5, fontface = "bold"))
+        
+        lolli <- grid::grid.grab()
+        cowplot::plot_grid(lolli, table, ncol = 1)
+      }
+    } else {
+      if(pdf_out == TRUE) {
+        pdf(file = paste0(getwd(), "lolliplot_vargen", sep = ""), paper = "a4")
+        
         trackViewer::lolliplot(lolliplot_vargen, features,
                                legend = legend, xaxis = xaxis)
         dev.off()
-    } else {
-      if(xaxis_show == TRUE) {
+      } else {
+        if(xaxis_show == TRUE) {
           trackViewer::lolliplot(lolliplot_vargen, features,
                                  legend = legend, xaxis = xaxis)
+        } else {
+          trackViewer::lolliplot(lolliplot_vargen, features,
+                                 legend = legend, xaxis = FALSE)
+        }
+      }
+    }
+  } else {
+    start <- unlist(unique(all_info[["start_position"]]))
+    stop <- unlist(unique(all_info[["end_position"]]))
+    genes <- unlist(res_all[["hgnc_symbol"]])
+    genes <- genes[!is.na(genes)]
+    
+    features <- GenomicRanges::GRanges(chrom, IRanges::IRanges(c(start),
+                                                               width = c(diff),
+                                                               names = genes))
+    colors <- colorspace::qualitative_hcl((length(genes)), palette = "Set 3")
+    features$fill <- c(colors)
+    lolliplot_vargen$dashline.col <- lolliplot_vargen$color
+    
+    if(tableOff == FALSE){
+      if(pdf_out == TRUE) {
+        pdf(file = paste0(getwd(), "lolliplot_vargen", sep = ""), paper = "a4")
+        
+        if(xaxis_show == TRUE) {
+          trackViewer::lolliplot(lolliplot_vargen, features,
+                                 legend = legend, xaxis = xaxis)
+        } else {
+          trackViewer::lolliplot(lolliplot_vargen, features,
+                                 legend = legend, xaxis = FALSE)
+        }
+        grid::grid.text(title, x = .5, y = .98, just = "top",
+                        gp = grid::gpar(cex = 1.5, fontface = "bold"))
+        lolli <- grid::grid.grab()
+        cowplot::plot_grid(lolli, table)
+        dev.off()
       } else {
+        if(xaxis_show == TRUE) {
+          trackViewer::lolliplot(lolliplot_vargen, features,
+                                 legend = legend, xaxis = xaxis)
+        } else {
+          trackViewer::lolliplot(lolliplot_vargen, features,
+                                 legend = legend, xaxis = FALSE)
+        }
+        grid::grid.text(title, x = .5, y = .98, just = "top",
+                        gp = grid::gpar(cex = 1.5, fontface = "bold"))
+        
+        lolli <- grid::grid.grab()
+        cowplot::plot_grid(lolli, table, ncol = 1)
+      }
+    } else {
+      if(pdf_out == TRUE) {
+        pdf(file = paste0(getwd(), "lolliplot_vargen", sep = ""), paper = "a4")
+        
         trackViewer::lolliplot(lolliplot_vargen, features,
-                               legend = legend, xaxis = FALSE)
+                               legend = legend, xaxis = xaxis)
+        dev.off()
+      } else {
+        if(xaxis_show == TRUE) {
+          trackViewer::lolliplot(lolliplot_vargen, features,
+                                 legend = legend, xaxis = xaxis)
+        } else {
+          trackViewer::lolliplot(lolliplot_vargen, features,
+                                 legend = legend, xaxis = FALSE)
+        }
       }
     }
   }
 }
-
