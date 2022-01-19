@@ -17,7 +17,7 @@
 #' @export
 connect_to_gene_ensembl <- function(mirror = "www"){
   gene_mart <- biomaRt::useEnsembl(biomart = "ENSEMBL_MART_ENSEMBL",
-                                   host = "www.ensembl.org",
+                                   host = "https://www.ensembl.org",
                                    mirror = mirror,
                                    dataset = "hsapiens_gene_ensembl")
   return(gene_mart)
@@ -41,7 +41,7 @@ connect_to_gene_ensembl <- function(mirror = "www"){
 #' @export
 connect_to_snp_ensembl <- function(mirror = "www"){
   snp_mart <- biomaRt::useEnsembl(biomart = "snp",
-                                  host = "www.ensembl.org",
+                                  host = "https://www.ensembl.org",
                                   mirror = mirror,
                                   dataset = "hsapiens_snp")
   return(snp_mart)
