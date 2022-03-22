@@ -239,6 +239,7 @@ plot_manhattan_gwas <- function(traits, gwas_cat, list_chr) {
                 "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15",
                 "chr16", "chr17", "chr18", "chr19", "chr20", "chr21", "chr22",
                 "chrX", "chrY")
+  chrNames <- as.factor(chrNames)
 
   chrLengths <- c(248956422, 242193529, 198295559, 190214555, 181538259, 170805979,
                   159345973, 145138636, 138394717, 133797422, 135086622, 133275309,
@@ -270,7 +271,7 @@ plot_manhattan_gwas <- function(traits, gwas_cat, list_chr) {
                   ggplot2::aes(y = variants_traits$PVALUE_MLOG,
                                color = variants_traits$Trait)) +
     # To add the chromosome name on top
-    ggplot2::facet_grid(. ~seqnames, scales = "free_x") +
+    ggplot2::facet_grid(. ~factor(seqnames, levels = chrNames), scales = "free_x", switch="both") +
 
     # genome-wide significant threshold (p-value < 1 x 10-8)
     # because : -log10(5*10^-8) = 7.30
