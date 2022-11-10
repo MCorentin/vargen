@@ -29,8 +29,8 @@ get_phenotype_terms <- function(keywords, snp_mart) {
   }
 
   # Get all the possible values for the phenotype filter:
-  biomart_filters <- biomaRt::filterOptions(filter = "phenotype_description",
-                                            mart = snp_mart)
+  biomart_filters <- biomaRt::listFilterOptions(filter = "phenotype_description",
+                                                mart = snp_mart)
   # Unlist the result and use grep to subset the relevant phenotypes
   filters <- unlist(strsplit(x = as.character(biomart_filters), split = ","))
   # paste() is done in case there are more than one keyword, the "|" will act as an OR

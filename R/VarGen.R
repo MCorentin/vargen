@@ -11,9 +11,12 @@
 #'   \item enhancer_tss_associations.bed
 #' }
 #'
+#'
 #' @param install_dir the path to the installation folder (default = "./")
 #' @param gtex_version the version of gtex to download, only "v7" and "v8" are
 #' supported (default = "v8")
+#' @param timeout the timeout set in options(), reading/downloading files online
+#' might fail with the default timeout of 60 seconds.
 #' @param verbose if TRUE will print progress messages (default = FALSE)
 #'
 #' @return nothing, download files in "install_dir".
@@ -21,7 +24,10 @@
 #' @examples
 #' vargen_install("./", verbose = TRUE)
 #' @export
-vargen_install <- function(install_dir = "./", gtex_version = "v8", verbose = FALSE){
+vargen_install <- function(install_dir = "./", gtex_version = "v8", timeout = 10000, verbose = FALSE){
+  original_timeout <- getOption("timeout")
+  options(timeout = timeout)
+  if(verbose) print(paste0("Setting the timeout to '", timeout, "'"))
 
   if (!file.exists(install_dir)){
     if(verbose) print(paste0("Creating folder '", install_dir, "'"))
@@ -46,6 +52,7 @@ vargen_install <- function(install_dir = "./", gtex_version = "v8", verbose = FA
   # download gwas file:
   if(verbose) print("Downloading the gwas catalog file from ebi")
   gwasurl <- "https://www.ebi.ac.uk/gwas/api/search/downloads/full"
+  #gwasurl <- "ftp://ftp.ebi.ac.uk/pub/databases/gwas/releases/latest/gwas-catalog-associations.tsv"
   # gwasheaders contains the http header from the URL
   gwasheaders <- curlGetHeaders(url = gwasurl, redirect = TRUE, verify = TRUE)
   # From the header, we can extract the line where the filename is
@@ -95,6 +102,9 @@ vargen_install <- function(install_dir = "./", gtex_version = "v8", verbose = FA
   utils::download.file(url = gtex_lookup_url,
                        destfile = paste0(install_dir, "/", gtex_lookup_filename),
                        mode = "wb")
+
+  options(timeout = original_timeout)
+  if(verbose) print(paste0("Resetting the timeout to previous value '", original_timeout, "'"))
 }
 
 

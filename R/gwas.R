@@ -15,17 +15,24 @@
 #' If specified, this function will look for files that begin with "gwas_catalog".
 #' If more than one is found, the user will have to choose one via a text menu
 #' @param verbose if true, will print progress information (default: FALSE)
+#' @param timeout the timeout set in options(), reading/downloading files online
+#' might fail with the default timeout of 60 seconds.
 #'
 #' @return a gwaswloc object containing the information from the gwas catalog.
 #'
 #' @examples
 #' gwas_cat <- create_gwas()
 #' @export
-create_gwas <- function(vargen_dir, verbose = FALSE){
+create_gwas <- function(vargen_dir, verbose = FALSE, timeout = 1000){
   # If useURL is TRUE (user choice or no local gwas file found, then we download
   # the catalog from the URL)
+  original_timeout <- getOption("timeout")
+  options(timeout = timeout)
+  if(verbose) print(paste0("Setting the timeout to value '", timeout, "'"))
+
   useURL <- FALSE
-  table.url <- "http://www.ebi.ac.uk/gwas/api/search/downloads/alternative"
+  table.url <- "https://www.ebi.ac.uk/gwas/api/search/downloads/alternative"
+  #table.url <- "ftp://ftp.ebi.ac.uk/pub/databases/gwas/releases/latest/gwas-catalog-associations.tsv"
 
   if(missing(vargen_dir)){
     # If the vargen_dir is not specified, we use the url instead
@@ -77,7 +84,12 @@ create_gwas <- function(vargen_dir, verbose = FALSE){
 
   # We transform the gwas cat object into a GRanges object:
   gwas_cat <- gwascat:::gwdf2GRanges(df = gwas_cat, extractDate = extract_date)
+  if(typeof(gwas_cat) == "list"){ gwas_cat <- gwas_cat$okrngs }
   rtracklayer::genome(gwas_cat) <- "GRCh38"
+
+  options(timeout = original_timeout)
+  if(verbose) print(paste0("Resetting the timeout to previous value '", original_timeout, "'"))
+
 
   return(gwas_cat)
 }
