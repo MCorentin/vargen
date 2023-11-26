@@ -5,12 +5,16 @@
 #'
 #' @param enhancer_tss_association the "enhancer_tss_associations.bed" file from FANTOM5.
 #' The file can be downloaded here:
-#' http://enhancer.binf.ku.dk/presets/enhancer_tss_associations.bed
+#' https://slidebase.binf.ku.dk/human_enhancers/presets/serve/enhancer_tss_associations
 #' @return a data.frame containing the file information
 prepare_fantom <- function(enhancer_tss_association) {
   # TSS = Transcripton Start Site
-  fantom <- utils::read.delim(enhancer_tss_association, skip = 1,
+  fantom <- utils::read.delim(enhancer_tss_association, header = F,
                               stringsAsFactors = FALSE)
+
+  colnames(fantom) <- c("chrom", "chromStart", "chromEnd", "name", "score",
+                        "strand", "thickStart", "thickEnd", "itemRgb",
+                        "blockCount", "blockSizes", "chromStarts")
 
   # The enhancer position correspond to the 4th column of the bed file
   # SO we split it by ";" and get the chr, start, stop and gene symbol.
