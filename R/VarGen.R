@@ -77,10 +77,11 @@ vargen_install <- function(install_dir = "./", gtex_version = "v8", timeout = 10
   if(verbose) print("Downloading GTEx variant association file... This may take a while")
   if(gtex_version == "v7") {
     gtex_filename = "GTEx_Analysis_v7_eQTL.tar.gz"
-    gtex_url = "https://storage.googleapis.com/gtex_analysis_v7/single_tissue_eqtl_data/GTEx_Analysis_v7_eQTL.tar.gz"
+    gtex_url = paste0("https://storage.googleapis.com/adult-gtex/bulk-qtl/v8/single-tissue-cis-qtl/", gtex_filename)
   } else if(gtex_version == "v8") {
     gtex_filename = "GTEx_Analysis_v8_eQTL.tar"
-    gtex_url = "https://storage.googleapis.com/gtex_analysis_v8/single_tissue_qtl_data/GTEx_Analysis_v8_eQTL.tar"
+    # gtex_url = "https://storage.googleapis.com/gtex_analysis_v8/single_tissue_qtl_data/GTEx_Analysis_v8_eQTL.tar"
+    gtex_url = paste0("https://storage.googleapis.com/adult-gtex/bulk-qtl/v8/single-tissue-cis-qtl/", gtex_filename)
   } else {
     stop(paste0("Please set 'gtex_version' as v7 or v8, current value: '", gtex_version, "'"))
   }
@@ -102,7 +103,7 @@ vargen_install <- function(install_dir = "./", gtex_version = "v8", timeout = 10
   # Installing GTEx lookup table
   if(verbose) print("Downloading GTEx lookup table... This may take a while")
   gtex_lookup_filename <- "GTEx_Analysis_2017-06-05_v8_WholeGenomeSeq_838Indiv_Analysis_Freeze.lookup_table.txt.gz"
-  gtex_lookup_url <- paste0("https://storage.googleapis.com/gtex_analysis_v8/reference/", gtex_lookup_filename)
+  gtex_lookup_url <- paste0("https://storage.googleapis.com/adult-gtex/references/v8/reference-tables/", gtex_lookup_filename)
   utils::download.file(url = gtex_lookup_url,
                        destfile = paste0(install_dir, "/", gtex_lookup_filename),
                        mode = "wb")
